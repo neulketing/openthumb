@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# openthumb-fleet — drive many OpenThumb devices from one host.
+#
+# Each debug build serves JSON-RPC on device-local 127.0.0.1:5321. That port is
+# unreachable from the host, so we forward one host port per device and talk to
+# all of them at once. adb is the only dependency besides curl and python3.
+#
+#   openthumb-fleet devices              list attached devices running OpenThumb
+#   openthumb-fleet status               one status line per device
+#   openthumb-fleet call <method> [json] raw JSON-RPC against every device
+#   openthumb-fleet prompt "<text>"      send a prompt to every device's agent
+#   openthumb-fleet cancel               stop in-flight runs
+#
+# Env: OPENTHUMB_PKG (default com.neulketing.openthumb)
+#      OPENTHUMB_BASE_PORT (default 15321) — host ports are BASE+index
+#      OPENTHUMB_TIMEOUT (default 30, seconds per call)
+set -uo pipefail
+
+PKG="${OPENTHUMB_PKG:-com.neulketing.openthumb}"
+BASE_PORT="${OPENTHUMB_BASE_PORT:-15321}"
+DEVICE_PORT=5321
+
+command -v adb >/dev/null || { echo "openthumb-fleet: adb not found" >&2; exit 1; }
+
+# Serials of attached devices that actually have the app installed. Devices in
+# `unauthorized`/`offline` are skipped by matching only the `device` state.
+# `adb shell` inherits stdin and will eat the rest of the serial list, so every
+# adb call inside the loop is fed /dev/null — without it the loop stops after
+# the first device.
+fleet_serials() {
+  adb devices | awk '$2 == "device" { print $1 }' | while read -r s; do
+    adb -s "$s" shell pm list packages </dev/null 2>/dev/null \
+      | tr -d '\r' | grep -q "^package:$PKG$" && echo "$s"
+  done
+}
+
+# Forward a host port to the device's RPC port and echo the host port. Ports are
+# derived from the index so repeat runs reuse the same mapping instead of
+# leaking a new forward on every invocation.
+ensure_forward() {
+  local serial="$1" index="$2" port=$((BASE_PORT + index))
+  adb -s "$serial" forward "tcp:$port" "tcp:$DEVICE_PORT" >/dev/null 2>&1 || return 1
+  echo "$port"
+}
+
+# One JSON-RPC call. Prints the raw response body; empty means the app is not
+# running, or is a release build (those ship no debug server at all).
+rpc() {
+  local port="$1" method="$2" params="${3:-}"
+  local body="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$method\""
+  [ -n "$params" ] && body="$body,\"params\":$params"
+  body="$body}"
+  curl -s -m "${OPENTHUMB_TIMEOUT:-30}" "http://127.0.0.1:$port" \
+    -H 'Content-Type: application/json' -d "$body"
+}
+
+format_status() {
+  python3 -c '
+import json,sys
+try:
+    r = json.load(sys.stdin)["result"]
+except Exception:
+    print("BAD RESPONSE"); sys.exit()
+print("android=%s sdk=%s sandbox=%s device=%s" % (
+    r.get("androidVersion","?"), r.get("sdkVersion","?"),
+    "up" if r.get("prootBooted") else "down", r.get("device","?")))
+'
+}
+
+# Run one method across the whole fleet, a line of output per device.
+fleet_each() {
+  local method="$1" params="${2:-}" fmt="${3:-raw}"
+  local index=0 found=0 serial port resp
+  while read -r serial; do
+    [ -n "$serial" ] || continue
+    found=1
+    if ! port=$(ensure_forward "$serial" "$index"); then
+      printf '%-24s ERROR    adb forward failed\n' "$serial"
+      index=$((index + 1)); continue
+    fi
+    resp=$(rpc "$port" "$method" "$params")
+    if [ -z "$resp" ]; then
+      printf '%-24s OFFLINE  no debug server on :%s (app stopped, or release build)\n' "$serial" "$port"
+    else
+      printf '%-24s ' "$serial"
+      case "$fmt" in
+        status) printf '%s\n' "$resp" | format_status ;;
+        *)      printf '%s\n' "$resp" ;;
+      esac
+    fi
+    index=$((index + 1))
+  done < <(fleet_serials)
+  [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
+}
+
+usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; }
+
+case "${1:-}" in
+  devices)
+    n=0
+    while read -r s; do [ -n "$s" ] && { echo "$s"; n=$((n + 1)); }; done < <(fleet_serials)
+    echo "$n device(s) with $PKG" >&2
+    ;;
+  status) fleet_each debug.appInfo '' status ;;
+  call)
+    [ $# -ge 2 ] || { echo "usage: openthumb-fleet call <method> [params-json]" >&2; exit 1; }
+    fleet_each "$2" "${3:-}"
+    ;;
+  prompt)
+    [ $# -ge 2 ] || { echo "usage: openthumb-fleet prompt \"<text>\"" >&2; exit 1; }
+    # wait=false so the fleet runs concurrently; poll with `call chat.session.status`.
+    text=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$2")
+    fleet_each chat.prompt "{\"text\":$text,\"wait\":false}"
+    ;;
+  cancel) fleet_each chat.session.cancel ;;
+  ""|-h|--help|help) usage ;;
+  *) echo "openthumb-fleet: unknown command '$1'" >&2; usage >&2; exit 1 ;;
+esac
