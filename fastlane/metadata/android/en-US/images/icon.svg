@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="OpenThumb icon">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3DDC84"/>
+      <stop offset="1" stop-color="#8A2BE2"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12161d"/>
+      <stop offset="1" stop-color="#0a0d12"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g fill="none" stroke="url(#g)" stroke-width="19" stroke-linecap="round" stroke-linejoin="round"
+     transform="translate(58 104) scale(1.32)">
+    <circle cx="20" cy="112" r="17"/>
+    <path d="M37 112 H74"/>
+    <path d="M74 112 C112 112 112 44 150 44"/>
+    <path d="M74 112 H150"/>
+    <path d="M74 112 C112 112 112 180 150 180"/>
+    <rect x="150" y="16" width="46" height="56" rx="13"/>
+    <rect x="150" y="84" width="46" height="56" rx="13"/>
+    <rect x="150" y="152" width="46" height="56" rx="13"/>
+  </g>
+</svg>

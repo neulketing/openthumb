@@ -94,7 +94,7 @@ collection — the same treatment as a browser.
 - [x] Privacy policy live at a public URL
 - [x] Prominent accessibility disclosure in-app
 - [x] `foregroundServiceType` matches actual behaviour (was `mediaPlayback`)
-- [ ] Build an **AAB** (`bundleRelease`); Play no longer takes APKs for new apps
+- [x] Signed **AAB** built (`bundleRelease`, 20 MB, jarsigner verified)
 - [ ] Screenshots — phone (min 2), on a real device
-- [ ] Feature graphic 1024×500, icon 512×512
+- [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
 - [ ] Developer account ($25, owner)
