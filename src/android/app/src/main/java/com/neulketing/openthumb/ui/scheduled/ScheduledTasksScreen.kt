@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -74,6 +75,7 @@ fun ScheduledTasksScreen(
     onEditTask: (taskId: String?) -> Unit,
     onViewRuns: (taskId: String) -> Unit,
     onOpenSession: (sessionId: String) -> Unit,
+    onTriggersClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val vm: ScheduledTasksViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
@@ -97,6 +99,16 @@ fun ScheduledTasksScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),
+                        )
+                    }
+                },
+                actions = {
+                    // [T-thumb-notification-triggers] Event-driven rules live
+                    // next to time-driven tasks.
+                    IconButton(onClick = onTriggersClick) {
+                        Icon(
+                            Icons.Outlined.Notifications,
+                            contentDescription = "Notification triggers",
                         )
                     }
                 },

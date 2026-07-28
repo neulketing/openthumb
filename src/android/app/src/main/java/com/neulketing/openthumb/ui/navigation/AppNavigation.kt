@@ -179,6 +179,8 @@ object Routes {
     // [T-android-scheduled-tasks-run-records] per-task execution log.
     const val SCHEDULED_TASK_RUNS = "scheduled_tasks/runs/{taskId}"
     fun scheduledTaskRuns(taskId: String): String = "scheduled_tasks/runs/$taskId"
+    // [T-thumb-notification-triggers] Notification trigger rules.
+    const val NOTIFICATION_TRIGGERS = "notification_triggers"
 
     fun logDetail(fileName: String) = "log_detail/$fileName"
     fun sessionStorageDetail(sessionId: String) = "session_storage/$sessionId"
@@ -1213,6 +1215,15 @@ fun AppNavigation(
                 onOpenSession = { sessionId ->
                     navController.safeNavigate(Routes.chat(sessionId))
                 },
+                onTriggersClick = {
+                    navController.safeNavigate(Routes.NOTIFICATION_TRIGGERS)
+                },
+            )
+        }
+        // [T-thumb-notification-triggers] Notification trigger rules.
+        composable(Routes.NOTIFICATION_TRIGGERS) {
+            com.neulketing.openthumb.ui.trigger.NotificationTriggersScreen(
+                onBack = { navController.safePopBackStack() },
             )
         }
         // [T-android-scheduled-tasks-run-records] per-task run records.
