@@ -1302,6 +1302,11 @@
     <string name="system_permissions_a11y_row">Minis Accessibility Service</string>
     <string name="system_permissions_a11y_enabled">Enabled — android-a11y-cli is ready</string>
     <string name="system_permissions_a11y_disabled">Disabled — tap to enable in system Settings</string>
+    <!-- [T-thumb-play-a11y-disclosure] Play prominent-disclosure gate. Keep in sync with PRIVACY.md. -->
+    <string name="a11y_disclosure_title">Before you enable accessibility</string>
+    <string name="a11y_disclosure_body">OpenThumb uses Android\'s accessibility service to read what is on your screen and tap, type and scroll on your behalf — this is what lets the agent operate other apps for you.\n\nWhat is accessed: the content of screens you have open while the agent is working, including text within them.\n\nWhat it is used for: carrying out the tasks you ask for, and the automations you set up yourself.\n\nWhere it goes: screen content is sent only to the AI model provider you configured, as part of your conversation. OpenThumb has no server, collects no analytics, and shares this data with no one else.\n\nYou can turn accessibility off at any time in system settings.</string>
+    <string name="a11y_disclosure_continue">Continue to settings</string>
+    <string name="a11y_disclosure_cancel">Not now</string>
     <string name="system_permissions_a11y_footer">Required by android-a11y-cli for UI-tree reads, gesture injection, and event monitoring. Without this, AI agents cannot drive other apps. Toggle the switch under Minis on the next screen.</string>
     <string name="system_permissions_a11y_oem_header">Service keeps getting killed?</string>
     <string name="system_permissions_a11y_oem_footer">%1$s may show \"this service has failed\" and stop the accessibility service in the background. Whitelist autostart and remove the battery restriction so it stays connected.</string>

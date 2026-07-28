@@ -162,7 +162,7 @@ class AgentForegroundService : Service() {
                     startForeground(
                         NOTIFICATION_ID,
                         stub,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                        fgsType(),
                     )
                 } else {
                     startForeground(NOTIFICATION_ID, stub)
@@ -201,7 +201,7 @@ class AgentForegroundService : Service() {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                fgsType()
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
@@ -209,6 +209,18 @@ class AgentForegroundService : Service() {
 
         return START_STICKY
     }
+
+    /**
+     * [T-thumb-play-fgs-type] Foreground-service type actually matching what
+     * this service does. Upstream declared mediaPlayback purely to dodge the
+     * dataSync runtime cap — Play rejects a type that does not describe the
+     * work, so we declare specialUse (uncapped, justification in the
+     * manifest property) on API 34+, and dataSync below that, where
+     * specialUse does not exist as a manifest flag.
+     */
+    private fun fgsType(): Int =
+        if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        else ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -249,7 +261,7 @@ class AgentForegroundService : Service() {
             startForeground(
                 NOTIFICATION_ID,
                 notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
+                fgsType(),
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)

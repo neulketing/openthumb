@@ -53,6 +53,9 @@ import kotlinx.coroutines.delay
 fun SystemPermissionsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var a11yEnabled by remember { mutableStateOf(isAccessibilityEnabled(context)) }
+    // [T-thumb-play-a11y-disclosure] Prominent-disclosure gate before the
+    // accessibility grant (Play policy requirement).
+    var showA11yDisclosure by remember { mutableStateOf(false) }
     // [T-android-a11y-miui-service-failure] "Service failed" degraded state:
     // the OEM ROM (MIUI etc.) reports the service as enabled in Settings but
     // has killed the process / revoked the binding, so getInstance() is null.
@@ -101,8 +104,27 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                         stringResource(R.string.system_permissions_a11y_enabled)
                     else
                         stringResource(R.string.system_permissions_a11y_disabled),
-                    onClick = { openAccessibilitySettings(context) },
+                    // [T-thumb-play-a11y-disclosure] Play requires a prominent
+                    // in-app disclosure before sending the user to enable an
+                    // AccessibilityService: what is accessed, what it is used
+                    // for, and that it is not shared. Gate the settings jump
+                    // behind it. Skipped once already enabled (nothing to
+                    // disclose — the user is going in to turn it off).
+                    onClick = {
+                        if (a11yEnabled) openAccessibilitySettings(context)
+                        else showA11yDisclosure = true
+                    },
                     showDivider = false,
+                )
+            }
+
+            if (showA11yDisclosure) {
+                AccessibilityDisclosureDialog(
+                    onDismiss = { showA11yDisclosure = false },
+                    onContinue = {
+                        showA11yDisclosure = false
+                        openAccessibilitySettings(context)
+                    },
                 )
             }
 
@@ -223,6 +245,44 @@ private fun isAccessibilityEnabled(context: Context): Boolean {
         Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
     ) ?: return false
     return enabled.split(':').any { it.equals(expected, ignoreCase = true) }
+}
+
+/**
+ * [T-thumb-play-a11y-disclosure] Prominent disclosure shown before the user
+ * is sent to the system accessibility screen. Play's Accessibility API policy
+ * requires the app to state, in-app and before the grant, what is accessed,
+ * what it is used for, and that the data is not sent anywhere else. The text
+ * matches PRIVACY.md — keep them in sync.
+ */
+@Composable
+private fun AccessibilityDisclosureDialog(
+    onDismiss: () -> Unit,
+    onContinue: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.a11y_disclosure_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+            ) {
+                Text(
+                    stringResource(R.string.a11y_disclosure_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onContinue) {
+                Text(stringResource(R.string.a11y_disclosure_continue))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.a11y_disclosure_cancel))
+            }
+        },
+    )
 }
 
 private fun openAccessibilitySettings(context: Context) {

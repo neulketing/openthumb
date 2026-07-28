@@ -9,17 +9,19 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- T-android-fgs-timeout-crash: switched from dataSync to mediaPlayback.
-         dataSync has a hard 6h/24h cumulative cap on Android 14+, after
-         which the system throws ForegroundServiceDidNotStopInTimeException
-         and force-kills the process. Long-running novel-writing / shell /
-         iSH sessions reliably hit this on OnePlus PJZ110 / Android 16.
-         mediaPlayback has no such cap and AOSP's foreground-service-type
-         validation accepts it as long as the permission is held; the
-         "must use MediaStyle / play actual media" rule is Play Store
-         policy, not an OS runtime check, and Minis ships as a sideload.
+    <!-- T-android-fgs-timeout-crash / [T-thumb-play-fgs-type]: dataSync has a
+         hard 6h/24h cumulative cap on Android 14+, after which the system
+         throws ForegroundServiceDidNotStopInTimeException and force-kills the
+         process — long shell / iSH sessions hit it. Upstream escaped the cap
+         with mediaPlayback; that type misdescribes the work and Play rejects
+         it. specialUse is equally uncapped and honest, so we use it on API
+         34+ (where it exists) and dataSync below.
     -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- [T-thumb-play-fgs-type] The agent loop is background work, not media.
+         specialUse (API 34+) carries no runtime cap and is honest about what
+         the service does; dataSync covers older devices. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <!-- T50: PARTIAL_WAKE_LOCK held by AgentForegroundService while sessions
          are streaming so Doze + OEM CPU throttling don't stall long shell
          tools after screen-off. -->
@@ -432,13 +434,19 @@
         </activity>
 
         <!-- Agent foreground service -->
-        <!-- T-android-fgs-timeout-crash: type=mediaPlayback to escape the
-             dataSync 6h cap. See FOREGROUND_SERVICE_MEDIA_PLAYBACK
-             permission comment above. -->
+        <!-- [T-thumb-play-fgs-type] Both types are declared; the service picks
+             specialUse on API 34+ and dataSync below (see fgsType()). The
+             original T-android-fgs-timeout-crash fix used mediaPlayback to
+             escape the dataSync cap — specialUse is uncapped AND truthful,
+             which Play requires. -->
         <service
             android:name=".service.AgentForegroundService"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="dataSync|specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Runs the user's AI agent task to completion with the screen off: model streaming, sandboxed shell commands and scheduled or notification-triggered runs. The work is user-initiated and has no fixed duration, so it fits no other foreground service type." />
+        </service>
 
         <!-- Alarm broadcast receiver (also handles BOOT_COMPLETED for re-scheduling) -->
         <receiver
