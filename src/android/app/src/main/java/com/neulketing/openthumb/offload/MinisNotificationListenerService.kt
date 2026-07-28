@@ -6,6 +6,7 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.trigger.NotificationTriggerEngine
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -40,6 +41,11 @@ class MinisNotificationListenerService : NotificationListenerService() {
         // until the listener has actually observed its own post.
         val key = postKey(sbn.packageName, sbn.id)
         postedLatches.remove(key)?.countDown()
+
+        // [T-thumb-notification-triggers] Event-driven agent runs. maybeFire
+        // never throws and returns fast (heavy work goes to its own scope),
+        // so the latch path above stays safe.
+        NotificationTriggerEngine.maybeFire(applicationContext, sbn)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {}
