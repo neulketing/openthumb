@@ -1,48 +1,60 @@
 # Contributing
 
-Thanks for your interest in Minis.
+OpenThumb is a fork of [OpenMinis](https://github.com/OpenMinis/OpenMinis), an
+on-device AI agent for Android and iOS. This fork adds fleet tooling and carries
+its own fixes; everything else comes from upstream.
 
-## We do not accept pull requests
+## Send it upstream first
 
-This repository is a **mirror**. Development happens in a private tree and is
-published here on each release, so a pull request opened against this
-repository has nowhere to land — merging it would be overwritten by the next
-sync, and we cannot merge it upstream either.
+If the bug or feature is not specific to this fork — anything in the agent loop,
+providers, the sandbox, the UI, iOS — please report it to
+[OpenMinis](https://github.com/OpenMinis/OpenMinis) instead. Fixes landed there
+reach far more users and flow back into this fork on the next sync.
 
-Please do not spend your time preparing one. If you have already opened a PR,
-we will close it with a pointer back to this document; that is not a judgement
-on the work.
+Bring it here when it is about fork-specific code: `tools/openthumb-fleet`, the
+rebranded package (`com.neulketing.openthumb`), or a fix upstream has declined.
+Note that upstream does not accept pull requests — it is a release mirror — so a
+patch rejected there on those grounds is still welcome here.
 
-## What we do want
+## Building
 
-Everything else. The product is shaped by what people report:
+See [BUILDING.md](BUILDING.md). Short version for Android:
 
-- **[Open an issue](https://github.com/OpenMinis/OpenMinis/issues)** — bugs,
-  crashes, papercuts, feature requests, questions about behaviour. A clear
-  report is worth more to us than a patch, because it tells us what to build.
-- **Share what you have built** — real workflows and use cases go in
-  **[AwesomeMinis](https://github.com/OpenMinis/AwesomeMinis)**, which does
-  take contributions.
-- **Write a skill** — **[MinisSkills](https://github.com/OpenMinis/MinisSkills)**
-  also takes contributions, and skills are how most people extend Minis
-  without touching the app at all.
-- **Talk to us** — the [Telegram group](https://t.me/+2NzhOJuzRyI1YmM1) is
-  where most day-to-day discussion happens.
+```sh
+./deps/build_proot.sh
+./scripts/prepare_android_sandbox.sh
+cd src/android && ./gradlew :app:assembleDebug
+```
 
-## Filing a good issue
+You need JDK 17, the Android SDK (compileSdk 36), NDK r28+ with
+`$ANDROID_NDK_HOME` set, and CMake 3.22.1. Only `arm64-v8a` is built, so use an
+arm64 device or emulator image.
 
-The more of this you can give us, the faster it gets fixed:
+CI (`.github/workflows/android.yml`) runs the same sequence on every push and
+pull request against `main`.
 
-- Platform and version (Settings → About shows both)
-- What you expected, what happened instead
-- Steps to reproduce, or the prompt that triggered it
-- Which model / provider was selected, if relevant
-- Logs, if the app produced any (Settings → Logs)
+## The JNI / package-rename trap
 
-## Using the source
+JNI entry points encode the Java package path in the C symbol name:
+`com.neulketing.openthumb.sandbox.PtyBridge.forkExec` is exported from
+`src/android/app/src/main/cpp/pty_bridge.c` as
+`Java_com_neulketing_openthumb_sandbox_PtyBridge_forkExec`.
 
-The code is GPLv3. You are free to fork it, modify it and run your own build —
-see [BUILDING.md](BUILDING.md). The licence obliges you to publish the source
-of anything you distribute, and to keep it under GPLv3.
+So renaming the package means renaming those C/C++ symbols in lockstep. Miss it
+and **nothing fails at build time** — the APK links, installs and starts, then
+the shell dies the moment it tries to bind the native method. `scripts/rebrand.sh`
+rewrites both sides together; if you rename by hand, grep `Java_com_` under
+`src/android/app/src/main/cpp/` and fix every hit.
 
-We simply do not merge changes back through this repository.
+## Commit messages
+
+Conventional commits: `feat:`, `fix:`, `docs:`, `chore:`, `test:`.
+
+```
+fix: guard Android 10 notification API behind SDK_INT check
+```
+
+## Licence
+
+OpenThumb is GPL-3.0. Contributions are accepted under the same licence — by
+opening a pull request you agree your changes ship under GPL-3.0.

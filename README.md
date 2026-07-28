@@ -1,25 +1,112 @@
-# OpenThumb
+<div align="center">
 
-> **This is a fork of [OpenMinis](https://github.com/OpenMinis/OpenMinis).**
-> Nearly all of the code here was written by the OpenMinis authors, not by us.
-> OpenThumb exists to run the agent across a *fleet* of Android devices driven
-> from a single host, rather than as one agent on one phone. If you want the
-> original — better documented, actively released, on the App Store —
-> **go use [OpenMinis](https://github.com/OpenMinis/OpenMinis).**
->
-> **Our changes so far**
-> - Fixed a startup crash on Android 9: `Environment.isExternalStorageLegacy()`
->   (API 29) was called unguarded on the pre-R path, so the app died in
->   `Application.onCreate` on every API 26–28 device despite `minSdk = 26`.
->   Verified fixed on a Galaxy Note8 (Android 9). *Also offered upstream.*
-> - Renamed the package and launcher label (`scripts/rebrand.sh`). JNI entry
->   points encode the package path, so the C/C++ sources are renamed in lockstep
->   — miss that and the shell dies at runtime with no build error.
->
-> Licensed GPL-3.0, same as upstream. Copyright notices are unmodified.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/openthumb-banner-dark.svg">
+  <img alt="OpenThumb" src="assets/openthumb-banner-light.svg" width="440">
+</picture>
+
+**One host. Many phones. Each one running a real AI agent.**
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
-[![Platforms](https://img.shields.io/badge/Platforms-iOS%20%7C%20Android-lightgrey.svg)](#beta-programme)
+[![Android CI](https://github.com/neulketing/openthumb/actions/workflows/android.yml/badge.svg)](https://github.com/neulketing/openthumb/actions/workflows/android.yml)
+[![Fork of OpenMinis](https://img.shields.io/badge/fork%20of-OpenMinis-8A2BE2)](https://github.com/OpenMinis/OpenMinis)
+[![minSdk 26](https://img.shields.io/badge/minSdk-26%20(Android%208)-3DDC84)](#android-8-and-9-support)
+
+</div>
+
+An on-device AI agent — a full Alpine Linux shell, browser automation, and
+device integrations, running *on the phone*. OpenThumb adds the part we needed
+and upstream does not target: **driving a rack of them at once.**
+
+```console
+$ openthumb-fleet status
+REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
+REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
+REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1
+```
+
+> That is real output from three Galaxy Note8s on Android 9 — devices upstream
+> crashes on. See [Android 8 and 9 support](#android-8-and-9-support).
+
+---
+
+## This is a fork — read this first
+
+**Nearly all of the code here was written by the [OpenMinis](https://github.com/OpenMinis/OpenMinis)
+authors, not by us.** If you want one great agent on your own phone — better
+documented, actively released, on the App Store — **use OpenMinis.** It is the
+better choice for almost everyone.
+
+OpenThumb exists for one case upstream does not aim at: a *fleet* of Android
+devices driven from a single host. Everything below marked **fork** is ours;
+everything else is upstream's work under GPL-3.0, with copyright notices
+unmodified.
+
+| | |
+|---|---|
+| **fork** | [`tools/openthumb-fleet`](tools/openthumb-fleet) — multi-device orchestration over the built-in JSON-RPC server |
+| **fork** | [Android 8/9 startup crash fix](#android-8-and-9-support) |
+| **fork** | CI that actually builds the APK and runs `lintDebug` (upstream has none) |
+| **fork** | [`scripts/rebrand.sh`](scripts/rebrand.sh) — reproducible package rename, JNI symbols included |
+
+---
+
+## The fleet tool
+
+Every debug build already serves JSON-RPC on device-local `127.0.0.1:5321` —
+that is upstream's work, and it is the whole reason this fork is small. The
+port is unreachable from the host, so `openthumb-fleet` forwards one host port
+per device via `adb` and fans calls out across all of them.
+
+```sh
+tools/openthumb-fleet devices          # attached devices that have the app
+tools/openthumb-fleet status           # android/sdk/sandbox per device
+tools/openthumb-fleet prompt "..."     # same prompt to every agent, concurrently
+tools/openthumb-fleet call <method>    # any RPC method, fleet-wide
+tools/openthumb-fleet cancel           # stop in-flight runs
+```
+
+`call` takes any method the app exposes — ask a device for the list with
+`call rpc.discover`. Dependencies: `adb`, `curl`, `python3`. No install step,
+no daemon, no config file.
+
+Two things worth knowing before you rely on it:
+
+- **Debug builds only.** Release builds ship no debug server, by design. A
+  fleet is a lab, not a product surface.
+- **The RPC has no authentication.** It is bound to device-localhost and
+  reached through `adb`, so physical/USB access is the boundary. Do not expose
+  that port to a network.
+
+## Android 8 and 9 support
+
+Upstream declares `minSdk = 26` (Android 8) but crashes at startup on anything
+below Android 10:
+
+```
+java.lang.NoSuchMethodError: No static method isExternalStorageLegacy()Z
+        at com.openminis.app.MinisApp.onCreate
+```
+
+`Environment.isExternalStorageLegacy()` is API 29, called unguarded on the
+pre-R branch of a diagnostic helper — so every API 26–28 device dies in
+`Application.onCreate`. One version guard fixes it. We audited the rest of the
+tree for the same class of bug and found no other unguarded API 29+ call.
+
+This is exactly what CI is for, which is why this fork has some: upstream runs
+no lint, so `NewApi` never fired.
+
+Fixed and verified on a Galaxy Note8 (Android 9, API 28) — sandbox boots, shell
+runs, no `UnsatisfiedLinkError`. Reported to upstream as an issue; upstream is a
+release mirror and does not take pull requests.
+
+---
+
+## The app itself
+
+> Everything from here down describes the app OpenThumb inherits, adapted from
+> the [upstream OpenMinis README](https://github.com/OpenMinis/OpenMinis) —
+> their work, their words, lightly edited where paths differ in this fork.
 
 **Your private, on-device AI agent.**
 
@@ -145,8 +232,8 @@ source** rather than committed as binaries.
 The short version:
 
 ```sh
-git clone --recurse-submodules https://github.com/OpenMinis/OpenMinis.git
-cd OpenMinis
+git clone --recurse-submodules https://github.com/neulketing/openthumb.git
+cd openthumb
 
 # iOS  — order matters: FFmpeg links against LAME
 ./deps/build_lame.sh && ./deps/build_ffmpeg.sh
