@@ -145,8 +145,25 @@ This is exactly what CI is for, which is why this fork has some: upstream runs
 no lint, so `NewApi` never fired.
 
 Fixed and verified on a Galaxy Note8 (Android 9, API 28) — sandbox boots, shell
-runs, no `UnsatisfiedLinkError`. Reported to upstream as an issue; upstream is a
-release mirror and does not take pull requests.
+runs, no `UnsatisfiedLinkError`. Contributed upstream as a verified patch on
+[OpenMinis#118](https://github.com/OpenMinis/OpenMinis/issues/118) (a user's
+report of the same crash); upstream is a release mirror and does not take pull
+requests.
+
+---
+
+## Optional sync — your own backend, off by default
+
+OpenThumb has no server and no accounts, and that does not change. If you want
+your trigger rules, trigger run history and scheduled tasks replicated to a
+second device, `tools/sync-worker/` is a Cloudflare Worker you deploy to *your
+own* Cloudflare account (D1 + R2, free tier covers personal use) — the app
+points at your URL with a bearer token you generate. Nobody else operates it;
+the worker keeps no analytics and never logs payload contents.
+
+Sync is disabled until you enter an endpoint and token in **Settings → Sync**.
+v1 pushes rules, run history and scheduled tasks; chat and two-way merge are
+deliberately later. See `tools/sync-worker/README.md` for the 8-step deploy.
 
 ---
 
