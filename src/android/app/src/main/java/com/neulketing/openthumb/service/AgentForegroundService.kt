@@ -154,7 +154,7 @@ class AgentForegroundService : Service() {
         if (com.neulketing.openthumb.crash.CrashFrequencyDetector.isSafeMode()) {
             try {
                 val stub = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Minis")
+                    .setContentTitle("OpenThumb")
                     .setSmallIcon(android.R.drawable.stat_sys_warning)
                     .setOngoing(false)
                     .build()

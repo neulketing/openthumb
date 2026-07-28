@@ -96,7 +96,7 @@ internal fun TypingIndicator() {
     // (MinisApp.onCreate via refreshCache); collectAsState makes Compose
     // recompose the indicator immediately when it changes.
     val soulMeta by com.neulketing.openthumb.agent.SoulStore.cachedMetadata.collectAsState()
-    val soulName = soulMeta.name.trim().ifEmpty { "Minis" }
+    val soulName = soulMeta.name.trim().ifEmpty { "OpenThumb" }
 
     Row(
         modifier = Modifier.padding(top = 2.dp, bottom = 8.dp),

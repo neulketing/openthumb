@@ -1149,7 +1149,7 @@ private suspend fun saveImageToGallery(context: Context, src: File): Boolean =
                 val dir = Environment.getExternalStoragePublicDirectory(
                     Environment.DIRECTORY_PICTURES,
                 )
-                val minisDir = File(dir, "Minis").also { it.mkdirs() }
+                val minisDir = File(dir, "OpenThumb").also { it.mkdirs() }
                 val dest = File(minisDir, filename)
                 src.inputStream().use { input ->
                     dest.outputStream().use { input.copyTo(it) }
