@@ -4,6 +4,27 @@ Everything Play asks for, pre-written. Copy into the console at submission
 time. Owner action still required: the $25 developer account, and taking the
 store screenshots on a real device.
 
+## Account type — decide this first (it sets the timeline)
+
+Play gates production access on account type, not app category:
+
+| | Personal | Organization (개인사업자 / 법인) |
+|---|---|---|
+| Cost | $25 one-time | $25 one-time |
+| Closed testing before production | **12 testers, opted in 14 consecutive days** — for every new app | **Exempt** |
+| Extra requirement | none | D-U-N-S number (free, up to ~30 days; ~8 business days paid) |
+| Start time | immediately | after D-U-N-S + verification |
+
+A Korean 개인사업자 qualifies as an organization: D&B issues D-U-N-S to sole
+proprietors, and 사업자등록증 is the business document verification asks for.
+**The business name must match exactly across three places** — Play account,
+사업자등록증, and the D-U-N-S registration — or verification fails.
+
+Recommendation: **개인사업자 → organization account.** The tester gate applies
+to every new app on a personal account, not just the first, and a farm-run
+tester pool risks the account itself. D-U-N-S is the long pole, so apply
+before anything else.
+
 ## Store listing
 
 **App name**: OpenThumb
@@ -97,4 +118,4 @@ collection — the same treatment as a browser.
 - [x] Signed **AAB** built (`bundleRelease`, 20 MB, jarsigner verified)
 - [ ] Screenshots — phone (min 2), on a real device
 - [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
-- [ ] Developer account ($25, owner)
+- [ ] Developer account ($25, owner) — pick type first (see above); D-U-N-S if organization
