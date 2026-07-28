@@ -68,6 +68,19 @@ android {
         }
     }
 
+    // Release signing comes from the environment so no key material lives in
+    // the repo. Without OPENTHUMB_KEYSTORE set (CI, fresh clones), release
+    // falls back to the debug key, same as upstream.
+    val releaseKeystore = System.getenv("OPENTHUMB_KEYSTORE")
+    if (releaseKeystore != null) {
+        signingConfigs.create("release") {
+            storeFile = file(releaseKeystore)
+            storePassword = System.getenv("OPENTHUMB_KEYSTORE_PASS")
+            keyAlias = System.getenv("OPENTHUMB_KEY_ALIAS") ?: "openthumb"
+            keyPassword = System.getenv("OPENTHUMB_KEYSTORE_PASS")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -75,7 +88,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 
