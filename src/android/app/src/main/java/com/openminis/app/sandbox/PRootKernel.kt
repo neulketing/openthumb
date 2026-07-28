@@ -450,7 +450,9 @@ object PRootKernel {
             else -> {
                 val granted = context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) ==
                     android.content.pm.PackageManager.PERMISSION_GRANTED
-                "sdk=$sdk legacyStorageGranted=$granted legacyExtStorageOptIn=${Environment.isExternalStorageLegacy()}"
+                // isExternalStorageLegacy() is API 29+; below Q all storage is legacy by definition.
+                val legacyOptIn = if (sdk >= Build.VERSION_CODES.Q) Environment.isExternalStorageLegacy() else true
+                "sdk=$sdk legacyStorageGranted=$granted legacyExtStorageOptIn=$legacyOptIn"
             }
         }
     }
