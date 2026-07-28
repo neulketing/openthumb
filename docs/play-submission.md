@@ -120,7 +120,8 @@ collection — the same treatment as a browser.
 - [x] Prominent accessibility disclosure in-app
 - [x] `foregroundServiceType` matches actual behaviour (was `mediaPlayback`)
 - [x] Signed **AAB** built (`bundleRelease`, 20 MB, jarsigner verified)
-- [ ] Screenshots — phone (min 2), on a real device
+- [x] Screenshots — 5 phone shots at 1080x2400, `fastlane/.../phoneScreenshots/`
+      (captured on an arm64 API-35 emulator; retake on a real device before launch if you want photographic status bars)
 - [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
 - [ ] D-U-N-S number — free via Apple's lookup form (works for non-US
       businesses; the number is shared with Google). Needs an Apple ID sign-in.

@@ -55,6 +55,14 @@ unmodified.
 
 ---
 
+<div align="center">
+
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_notification-triggers.png" width="30%" alt="Notification trigger rules">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_trigger-rule-editor.png" width="30%" alt="Trigger rule editor">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1_welcome.png" width="30%" alt="Onboarding">
+
+</div>
+
 ## Notification triggers
 
 Upstream's agent answers when you talk to it, and its scheduled tasks fire on a
