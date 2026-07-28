@@ -1,4 +1,22 @@
-# OpenMinis
+# OpenThumb
+
+> **This is a fork of [OpenMinis](https://github.com/OpenMinis/OpenMinis).**
+> Nearly all of the code here was written by the OpenMinis authors, not by us.
+> OpenThumb exists to run the agent across a *fleet* of Android devices driven
+> from a single host, rather than as one agent on one phone. If you want the
+> original — better documented, actively released, on the App Store —
+> **go use [OpenMinis](https://github.com/OpenMinis/OpenMinis).**
+>
+> **Our changes so far**
+> - Fixed a startup crash on Android 9: `Environment.isExternalStorageLegacy()`
+>   (API 29) was called unguarded on the pre-R path, so the app died in
+>   `Application.onCreate` on every API 26–28 device despite `minSdk = 26`.
+>   Verified fixed on a Galaxy Note8 (Android 9). *Also offered upstream.*
+> - Renamed the package and launcher label (`scripts/rebrand.sh`). JNI entry
+>   points encode the package path, so the C/C++ sources are renamed in lockstep
+>   — miss that and the shell dies at runtime with no build error.
+>
+> Licensed GPL-3.0, same as upstream. Copyright notices are unmodified.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%20%7C%20Android-lightgrey.svg)](#beta-programme)
