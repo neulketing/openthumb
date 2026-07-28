@@ -163,8 +163,11 @@
   /* ── real screenshots (base44's artifact strip) ──────────────── */
   .shots { display:flex; gap:18px; margin-top:52px; overflow-x:auto; padding:6px 2px 20px;
            scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
-  .shots figure { flex:0 0 auto; width:212px; scroll-snap-align:center; }
-  .shots img { width:100%; display:block; border-radius:18px; border:1px solid var(--line);
+  .shots figure { flex:0 0 auto; width:208px; scroll-snap-align:center; }
+  /* Crop to a window rather than showing the full 9:20 frame — otherwise the
+     cards run past the fold and take the captions with them. */
+  .shots img { width:100%; height:392px; object-fit:cover; object-position:top;
+               display:block; border-radius:18px; border:1px solid var(--line);
                background:var(--panel); box-shadow:0 18px 44px -26px rgba(0,0,0,.5);
                transition:transform .4s cubic-bezier(.2,.7,.3,1); }
   .shots figure:hover img { transform:translateY(-6px); }
@@ -405,8 +408,8 @@
       <figcaption>Trigger rules</figcaption></figure>
     <figure><img src="shots/trigger-rule-editor.jpg" alt="Editing a trigger rule" loading="lazy" width="540" height="1200">
       <figcaption>Rule editor</figcaption></figure>
-    <figure><img src="shots/chat-tools.jpg" alt="Chat with the tool menu open" loading="lazy" width="540" height="1200">
-      <figcaption>Chat and tools</figcaption></figure>
+    <figure><img src="shots/settings.jpg" alt="Settings — providers, agent runtime, appearance" loading="lazy" width="540" height="1200">
+      <figcaption>Settings</figcaption></figure>
     <figure><img src="shots/shell-and-browser.jpg" alt="Shell and browser menu" loading="lazy" width="540" height="1200">
       <figcaption>Shell and browser</figcaption></figure>
     <figure><img src="shots/welcome.jpg" alt="Onboarding" loading="lazy" width="540" height="1200">
