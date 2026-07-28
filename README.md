@@ -7,7 +7,8 @@
 
 **One host. Many phones. Each one running a real AI agent.**
 
-[openthumb website](https://neulketing.github.io/openthumb/)
+[openthumb website](https://neulketing.github.io/openthumb/) ·
+[Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Android CI](https://github.com/neulketing/openthumb/actions/workflows/android.yml/badge.svg)](https://github.com/neulketing/openthumb/actions/workflows/android.yml)
