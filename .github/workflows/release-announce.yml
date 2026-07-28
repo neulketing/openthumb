@@ -1,0 +1,41 @@
+name: Release announcement
+
+on:
+  release:
+    types: [published]
+
+# Sends the release notes to the maintainer inbox. Skips cleanly when the
+# SMTP secrets are not configured (forks, local tests) — secrets can't be
+# referenced in job-level `if`, so detection goes through an env probe.
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Detect SMTP credentials
+        id: creds
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          if [ -n "$GMAIL_USER" ] && [ -n "$GMAIL_APP_PASSWORD" ]; then
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "SMTP secrets not set — skipping announcement"
+          fi
+
+      - name: Send announcement email
+        if: steps.creds.outputs.ok == '1'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "[OpenThumb] ${{ github.event.release.tag_name }} published — ${{ github.event.release.name }}"
+          to: neulketing@gmail.com
+          from: OpenThumb CI <${{ secrets.GMAIL_USER }}>
+          body: |
+            ${{ github.event.release.body }}
+
+            ---
+            ${{ github.event.release.html_url }}

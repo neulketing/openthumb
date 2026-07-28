@@ -1,0 +1,91 @@
+name: Upstream watch
+
+on:
+  schedule:
+    # Every day at 00:17 UTC — off the :00 herd.
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+
+# Forks live or die by how fast they notice upstream. Polls OpenMinis/OpenMinis
+# for its newest release tag; when it moves past the tag recorded in
+# docs/upstream-last-seen.txt, opens an issue here (titled for a merge review)
+# and updates the marker file. If SMTP secrets are configured, also emails the
+# maintainer inbox.
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare upstream latest with last seen
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest=$(gh api repos/OpenMinis/OpenMinis/releases --jq 'map(select(.draft|not))[0].tag_name' || echo "")
+          [ -n "$latest" ] || { echo "upstream releases API empty — nothing to do"; exit 0; }
+          seen=$(cat docs/upstream-last-seen.txt 2>/dev/null || echo "none")
+          echo "latest=$latest seen=$seen"
+          if [ "$latest" != "$seen" ]; then
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+            echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open merge-review issue
+        if: steps.diff.outputs.changed == '1'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Upstream ${{ steps.diff.outputs.latest }} released — merge review" \
+            --body "OpenMinis/OpenMinis published a new release: **${{ steps.diff.outputs.latest }}** (previous marker: $(cat docs/upstream-last-seen.txt 2>/dev/null || echo none)).
+
+Review what changed upstream, decide merge or skip, then close this issue and commit the updated \`docs/upstream-last-seen.txt\`.
+
+https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}
+
+_Filed by .github/workflows/upstream-watch.yml_" \
+            --label upstream || gh issue create \
+            --title "Upstream ${{ steps.diff.outputs.latest }} released — merge review" \
+            --body "OpenMinis/OpenMinis published **${{ steps.diff.outputs.latest }}**. Review for merge. https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}"
+
+      - name: Advance the marker
+        if: steps.diff.outputs.changed == '1'
+        run: |
+          echo "${{ steps.diff.outputs.latest }}" > docs/upstream-last-seen.txt
+          git config user.name "openthumb-bot"
+          git config user.email "bot@neulketing.github.io"
+          git add docs/upstream-last-seen.txt
+          git commit -m "chore(upstream): last seen ${{ steps.diff.outputs.latest }} [skip ci]" || true
+          git push
+
+      - name: Detect SMTP credentials
+        id: creds
+        if: steps.diff.outputs.changed == '1'
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          if [ -n "$GMAIL_USER" ] && [ -n "$GMAIL_APP_PASSWORD" ]; then
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Email the maintainer inbox
+        if: steps.diff.outputs.changed == '1' && steps.creds.outputs.ok == '1'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "[OpenThumb] upstream released ${{ steps.diff.outputs.latest }} — merge review needed"
+          to: neulketing@gmail.com
+          from: OpenThumb CI <${{ secrets.GMAIL_USER }}>
+          body: |
+            OpenMinis/OpenMinis published a new release: ${{ steps.diff.outputs.latest }}
+
+            A merge-review issue was opened on neulketing/openthumb.
+            https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}

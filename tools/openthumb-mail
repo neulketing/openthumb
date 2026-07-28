@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# openthumb-mail — send email from the command line via Gmail SMTP.
+# For project automation that runs off-CI (release notes to a list,
+# overnight fleet job summaries, "build finished" pings).
+#
+#   export GMAIL_USER=neulketing@gmail.com
+#   export GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   # Google account app password
+#   tools/openthumb-mail <to> <subject> [body-file|-]
+#
+# App passwords need 2-Step Verification on the Google account:
+# myaccount.google.com/apppasswords
+set -euo pipefail
+
+[ $# -ge 2 ] || { echo "usage: tools/openthumb-mail <to> <subject> [body-file|-]" >&2; exit 2; }
+: "${GMAIL_USER:?set GMAIL_USER}"
+: "${GMAIL_APP_PASSWORD:?set GMAIL_APP_PASSWORD}"
+
+to="$1"; subject="$2"
+if [ $# -ge 3 ] && [ "$3" != "-" ]; then body_file="$3"; else body_file="/dev/stdin"; fi
+
+mime=$(mktemp)
+trap 'rm -f "$mime"' EXIT
+{
+  printf 'From: OpenThumb <%s>\r\n' "$GMAIL_USER"
+  printf 'To: %s\r\n' "$to"
+  printf 'Subject: %s\r\n' "$subject"
+  printf 'Content-Type: text/plain; charset=utf-8\r\n\r\n'
+  cat "$body_file"
+  printf '\r\n'
+} > "$mime"
+
+curl -sS --ssl-reqd \
+  --url "smtps://smtp.gmail.com:465" \
+  --user "$GMAIL_USER:$GMAIL_APP_PASSWORD" \
+  --mail-from "$GMAIL_USER" \
+  --mail-rcpt "$to" \
+  --upload-file "$mime"
+echo "sent → $to"
