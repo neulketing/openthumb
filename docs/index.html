@@ -24,6 +24,7 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html { scroll-behavior:smooth; }
+  body { overflow-x:hidden; }
   body {
     background:var(--bg); color:var(--fg);
     font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -74,7 +75,11 @@
   .term .c { color:var(--dim); }
 
   /* ---- sections ---- */
-  section { padding:64px 0; border-top:1px solid var(--line); }
+  /* full-bleed divider so section rules line up with the nav border,
+     without wrapping every section in an extra element */
+  section { padding:64px 0; position:relative; }
+  section::before { content:""; position:absolute; top:0; left:50%;
+    width:100vw; transform:translateX(-50%); border-top:1px solid var(--line); }
   h2 { font-size:1.55rem; font-weight:800; letter-spacing:-.02em; }
   .sub { color:var(--dim); margin-top:10px; max-width:40em; }
   .grid { display:grid; gap:16px; margin-top:34px;
@@ -115,7 +120,7 @@
 <nav>
   <div class="wrap">
     <span class="mark">
-      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
         <defs><linearGradient id="nm" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#3DDC84"/><stop offset="1" stop-color="#8A2BE2"/></linearGradient></defs>
         <g fill="none" stroke="url(#nm)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
