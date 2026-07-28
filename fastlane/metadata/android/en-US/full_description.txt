@@ -6,9 +6,17 @@ persistent memory.
 It is a GPL-3.0 fork of OpenMinis (github.com/OpenMinis/OpenMinis), which does
 almost all of the heavy lifting. OpenThumb adds what upstream does not target:
 
+• Notification triggers — the agent acts when something happens, not only
+  when you talk to it. Rules match incoming notifications by app and text and
+  run the agent headlessly, with cooldowns, quiet hours, per-rule active
+  windows, a test-fire button and a full run history.
+• Scheduled tasks — prompts that fire on a clock, with per-task run records.
 • Fleet orchestration — drive many devices from one host over the built-in
-  JSON-RPC server with the openthumb-fleet tool.
+  JSON-RPC server with the openthumb-fleet tool (health checks, result
+  collection, a job queue).
 • Android 8/9 support — fixes a startup crash affecting all API 26–28 devices.
+• Optional sync to a server you deploy yourself (BYO Cloudflare Worker —
+  tools/sync-worker), off by default.
 • CI-built, reproducible releases.
 
 No analytics, no telemetry, no accounts. Your keys and conversations stay on

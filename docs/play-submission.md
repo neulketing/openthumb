@@ -125,4 +125,6 @@ collection — the same treatment as a browser.
 - [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
 - [ ] D-U-N-S number — free via Apple's lookup form (works for non-US
       businesses; the number is shared with Google). Needs an Apple ID sign-in.
-- [ ] Developer account ($25, owner) — organization type, after D-U-N-S
+      **Owner action** — cannot be automated.
+- [ ] Developer account ($25, owner) — organization type, after D-U-N-S.
+      **Owner action** — payment + identity verification.
