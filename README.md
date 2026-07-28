@@ -7,6 +7,8 @@
 
 **One host. Many phones. Each one running a real AI agent.**
 
+[openthumb website](https://neulketing.github.io/openthumb/)
+
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Android CI](https://github.com/neulketing/openthumb/actions/workflows/android.yml/badge.svg)](https://github.com/neulketing/openthumb/actions/workflows/android.yml)
 [![Fork of OpenMinis](https://img.shields.io/badge/fork%20of-OpenMinis-8A2BE2)](https://github.com/OpenMinis/OpenMinis)
@@ -44,6 +46,7 @@ unmodified.
 
 | | |
 |---|---|
+| **fork** | [Notification triggers](#notification-triggers) — the agent wakes on the notifications you choose and handles them, unattended |
 | **fork** | [`tools/openthumb-fleet`](tools/openthumb-fleet) — multi-device orchestration over the built-in JSON-RPC server |
 | **fork** | [Android 8/9 startup crash fix](#android-8-and-9-support) |
 | **fork** | CI that actually builds the APK and runs `lintDebug` (upstream has none) |
@@ -51,6 +54,24 @@ unmodified.
 | **fork** | [Privacy policy](PRIVACY.md) (nothing collected) · [distribution channels](docs/distribution.md) |
 
 ---
+
+## Notification triggers
+
+Upstream's agent answers when you talk to it, and its scheduled tasks fire on a
+clock. Neither covers *"something happened, deal with it."* A trigger rule is
+an app package plus a text match plus a prompt; when a matching notification
+arrives, the agent runs headlessly on the same path scheduled tasks use — so it
+inherits the foreground service, session handling and completion notice for
+free.
+
+Rules live in **Scheduled tasks → the bell icon**. Four gates keep it from
+running away: the app ignores its own notifications (a self-trigger loop would
+never stop), ongoing and group-summary notifications are skipped, each rule has
+a cooldown claimed *before* dispatch so a burst cannot double-fire it, and no
+more than two trigger runs are ever in flight.
+
+Requires Notification access, which Android only grants by hand — the rules
+screen links straight to that settings page.
 
 ## The fleet tool
 
