@@ -1,9 +1,9 @@
-package com.openminis.app.scheduled
+package com.neulketing.openblue.scheduled
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

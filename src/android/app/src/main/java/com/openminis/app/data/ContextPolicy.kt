@@ -1,4 +1,4 @@
-package com.openminis.app.data
+package com.neulketing.openblue.data
 
 /**
  * Pure-logic policy that decides, given a token estimate and the model's

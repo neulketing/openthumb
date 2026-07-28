@@ -1,4 +1,4 @@
-package com.openminis.app.data
+package com.neulketing.openblue.data
 
 import android.content.Context
 import android.content.Intent
@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

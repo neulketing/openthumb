@@ -1,4 +1,4 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

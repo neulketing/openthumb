@@ -1,15 +1,15 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.AlarmClock
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.offload.RepeatMode
-import com.openminis.app.sandbox.NativeOffloadHandler
-import com.openminis.app.sandbox.NativeOffloadRequest
-import com.openminis.app.sandbox.NativeOffloadResult
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.offload.RepeatMode
+import com.neulketing.openblue.sandbox.NativeOffloadHandler
+import com.neulketing.openblue.sandbox.NativeOffloadRequest
+import com.neulketing.openblue.sandbox.NativeOffloadResult
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar

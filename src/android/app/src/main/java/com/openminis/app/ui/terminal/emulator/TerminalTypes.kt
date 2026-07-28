@@ -1,4 +1,4 @@
-package com.openminis.app.ui.terminal.emulator
+package com.neulketing.openblue.ui.terminal.emulator
 
 import androidx.compose.ui.graphics.Color
 

@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

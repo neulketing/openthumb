@@ -1,4 +1,4 @@
-package com.openminis.app.logging
+package com.neulketing.openblue.logging
 
 import android.content.Context
 import android.util.Log

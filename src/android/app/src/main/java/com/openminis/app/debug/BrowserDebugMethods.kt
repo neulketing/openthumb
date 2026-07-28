@@ -1,11 +1,11 @@
-package com.openminis.app.debug
+package com.neulketing.openblue.debug
 
 import android.content.Context
-import com.openminis.app.MinisApp
-import com.openminis.app.browser.BrowserAction
-import com.openminis.app.browser.BrowserActionInput
-import com.openminis.app.browser.BrowserTabPool
-import com.openminis.app.browser.BrowserUseManager
+import com.neulketing.openblue.MinisApp
+import com.neulketing.openblue.browser.BrowserAction
+import com.neulketing.openblue.browser.BrowserActionInput
+import com.neulketing.openblue.browser.BrowserTabPool
+import com.neulketing.openblue.browser.BrowserUseManager
 import org.json.JSONArray
 import org.json.JSONObject
 

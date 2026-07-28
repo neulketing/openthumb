@@ -1,4 +1,4 @@
-package com.openminis.app.speech
+package com.neulketing.openblue.speech
 
 import android.Manifest
 import android.content.BroadcastReceiver

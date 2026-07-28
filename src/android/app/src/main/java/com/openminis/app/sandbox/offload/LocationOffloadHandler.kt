@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
 import android.Manifest
 import android.content.Context
@@ -9,11 +9,11 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.os.Looper
 import androidx.core.content.ContextCompat
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.offload.OffloadPermissionManager
-import com.openminis.app.sandbox.NativeOffloadHandler
-import com.openminis.app.sandbox.NativeOffloadRequest
-import com.openminis.app.sandbox.NativeOffloadResult
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openblue.sandbox.NativeOffloadHandler
+import com.neulketing.openblue.sandbox.NativeOffloadRequest
+import com.neulketing.openblue.sandbox.NativeOffloadResult
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject

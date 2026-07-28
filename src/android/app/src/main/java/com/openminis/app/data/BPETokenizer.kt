@@ -1,4 +1,4 @@
-package com.openminis.app.data
+package com.neulketing.openblue.data
 
 import android.content.Context
 import android.graphics.BitmapFactory

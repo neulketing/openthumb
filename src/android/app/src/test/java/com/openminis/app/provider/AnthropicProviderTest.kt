@@ -1,12 +1,12 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
-import com.openminis.app.data.model.AgentContentPart
-import com.openminis.app.data.model.LLMError
-import com.openminis.app.data.model.LLMMessage
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.LLMStreamChunk
-import com.openminis.app.data.model.ThinkingLevel
-import com.openminis.app.provider.anthropic.AnthropicProvider
+import com.neulketing.openblue.data.model.AgentContentPart
+import com.neulketing.openblue.data.model.LLMError
+import com.neulketing.openblue.data.model.LLMMessage
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.LLMStreamChunk
+import com.neulketing.openblue.data.model.ThinkingLevel
+import com.neulketing.openblue.provider.anthropic.AnthropicProvider
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import okhttp3.mockwebserver.MockResponse

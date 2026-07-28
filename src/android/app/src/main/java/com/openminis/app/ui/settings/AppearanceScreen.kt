@@ -1,8 +1,8 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
-import com.openminis.app.R
-import com.openminis.app.data.repository.AppIconRepository
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.repository.AppIconRepository
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 import android.content.Context
 import android.content.SharedPreferences

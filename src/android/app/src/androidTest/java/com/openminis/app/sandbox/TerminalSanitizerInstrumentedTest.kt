@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*

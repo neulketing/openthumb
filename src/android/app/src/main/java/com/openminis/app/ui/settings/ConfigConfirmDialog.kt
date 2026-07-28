@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,15 +37,15 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
-import com.openminis.app.config.ConfigRisk
-import com.openminis.app.config.confirm.ConfigConfirmationGate
-import com.openminis.app.config.confirm.PendingConfigChange
-import com.openminis.app.config.confirm.PendingConfigChangeItem
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.config.ConfigRisk
+import com.neulketing.openblue.config.confirm.ConfigConfirmationGate
+import com.neulketing.openblue.config.confirm.PendingConfigChange
+import com.neulketing.openblue.config.confirm.PendingConfigChangeItem
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 /**
  * Root-level confirmation dialog for every minis-config write.
- * Mirrors iOS `ConfigConfirmSheet`. Mounted in [com.openminis.app.MainActivity]
+ * Mirrors iOS `ConfigConfirmSheet`. Mounted in [com.neulketing.openblue.MainActivity]
  * so it shows over any active screen. Bound to
  * [ConfigConfirmationGate.pending].
  *

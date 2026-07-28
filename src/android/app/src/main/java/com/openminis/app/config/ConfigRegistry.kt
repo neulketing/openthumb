@@ -1,9 +1,9 @@
-package com.openminis.app.config
+package com.neulketing.openblue.config
 
 import android.content.Context
-import com.openminis.app.data.repository.ChatRepository
-import com.openminis.app.data.repository.EnvVarRepository
-import com.openminis.app.data.repository.ProviderRepository
+import com.neulketing.openblue.data.repository.ChatRepository
+import com.neulketing.openblue.data.repository.EnvVarRepository
+import com.neulketing.openblue.data.repository.ProviderRepository
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

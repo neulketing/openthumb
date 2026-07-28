@@ -1,4 +1,4 @@
-package com.openminis.app.auth
+package com.neulketing.openblue.auth
 
 import org.json.JSONObject
 

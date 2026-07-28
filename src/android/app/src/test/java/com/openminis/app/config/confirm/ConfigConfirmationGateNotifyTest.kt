@@ -1,6 +1,6 @@
-package com.openminis.app.config.confirm
+package com.neulketing.openblue.config.confirm
 
-import com.openminis.app.config.ConfigRisk
+import com.neulketing.openblue.config.ConfigRisk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

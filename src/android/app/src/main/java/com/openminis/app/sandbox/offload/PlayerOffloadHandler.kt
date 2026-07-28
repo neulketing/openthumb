@@ -1,9 +1,9 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
-import com.openminis.app.offload.MediaPlayerManager
-import com.openminis.app.sandbox.NativeOffloadHandler
-import com.openminis.app.sandbox.NativeOffloadRequest
-import com.openminis.app.sandbox.NativeOffloadResult
+import com.neulketing.openblue.offload.MediaPlayerManager
+import com.neulketing.openblue.sandbox.NativeOffloadHandler
+import com.neulketing.openblue.sandbox.NativeOffloadRequest
+import com.neulketing.openblue.sandbox.NativeOffloadResult
 
 /**
  * android-player — control audio playback.

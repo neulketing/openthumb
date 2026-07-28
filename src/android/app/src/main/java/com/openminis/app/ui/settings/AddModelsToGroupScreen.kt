@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,13 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.openminis.app.R
-import com.openminis.app.data.model.SystemVoiceEntries
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.ui.components.PickerModalityFilter
-import com.openminis.app.ui.components.modelEntryPickerItems
-import com.openminis.app.ui.components.MinisButton
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.model.SystemVoiceEntries
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.ui.components.PickerModalityFilter
+import com.neulketing.openblue.ui.components.modelEntryPickerItems
+import com.neulketing.openblue.ui.components.MinisButton
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,7 +63,7 @@ fun AddModelsToGroupScreen(
 
     val searchQuery = remember { mutableStateOf("") }
     var selectedIds by remember { mutableStateOf(setOf<String>()) }
-    var quickTestEntry by remember { mutableStateOf<com.openminis.app.data.model.ModelEntry?>(null) }
+    var quickTestEntry by remember { mutableStateOf<com.neulketing.openblue.data.model.ModelEntry?>(null) }
     val collapsedInstanceIds = remember(config) {
         // T185: default-collapsed mirrors pre-refactor behaviour. The
         // shared picker auto-expands when search is non-empty so hits
@@ -140,7 +140,7 @@ fun AddModelsToGroupScreen(
     }
 
     quickTestEntry?.let { entry ->
-        com.openminis.app.ui.components.QuickTestSheet(
+        com.neulketing.openblue.ui.components.QuickTestSheet(
             entry = entry,
             providerRepository = providerRepository,
             onDismiss = { quickTestEntry = null },

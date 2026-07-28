@@ -1,4 +1,4 @@
-package com.openminis.app.diagnostics
+package com.neulketing.openblue.diagnostics
 
 import android.content.Context
 import android.os.Handler

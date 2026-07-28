@@ -1,6 +1,6 @@
-package com.openminis.app.agent
+package com.neulketing.openblue.agent
 
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest

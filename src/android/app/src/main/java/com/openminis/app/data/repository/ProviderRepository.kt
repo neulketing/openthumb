@@ -1,37 +1,37 @@
-package com.openminis.app.data.repository
+package com.neulketing.openblue.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
-import com.openminis.app.data.db.ProviderConfigDao
-import com.openminis.app.data.db.ProviderConfigMetaKeys
-import com.openminis.app.data.db.ProviderConfigSnapshot
-import com.openminis.app.data.db.ProviderDatabase
-import com.openminis.app.data.db.compositeEntryKey
-import com.openminis.app.data.db.toProviderConfig
-import com.openminis.app.data.db.toSnapshot
-import com.openminis.app.data.model.ImageEndpointMode
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.ModelEntry
-import com.openminis.app.data.model.ModelOverrides
-import com.openminis.app.data.model.ModelGroup
-import com.openminis.app.data.model.ProviderConfig
-import com.openminis.app.data.model.ProviderCredential
-import com.openminis.app.data.model.ProviderInstance
-import com.openminis.app.data.model.ProviderType
-import com.openminis.app.data.model.RoutingStrategy
-import com.openminis.app.data.model.SystemVoiceIds
-import com.openminis.app.data.model.VoiceProviderTemplate
-import com.openminis.app.data.model.hasAudioInput
-import com.openminis.app.data.model.hasAudioOutput
-import com.openminis.app.data.model.hasVoiceModality
-import com.openminis.app.data.model.isVoiceTemplateSeedShape
-import com.openminis.app.data.model.withInferredVoiceModality
-import com.openminis.app.provider.ModelsDevApi
-import com.openminis.app.provider.anthropic.AnthropicModelsApi
-import com.openminis.app.provider.gemini.GeminiModelsApi
-import com.openminis.app.provider.openai.OpenAIModelsApi
-import com.openminis.app.provider.openrouter.OpenRouterModelsApi
+import com.neulketing.openblue.data.db.ProviderConfigDao
+import com.neulketing.openblue.data.db.ProviderConfigMetaKeys
+import com.neulketing.openblue.data.db.ProviderConfigSnapshot
+import com.neulketing.openblue.data.db.ProviderDatabase
+import com.neulketing.openblue.data.db.compositeEntryKey
+import com.neulketing.openblue.data.db.toProviderConfig
+import com.neulketing.openblue.data.db.toSnapshot
+import com.neulketing.openblue.data.model.ImageEndpointMode
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.ModelEntry
+import com.neulketing.openblue.data.model.ModelOverrides
+import com.neulketing.openblue.data.model.ModelGroup
+import com.neulketing.openblue.data.model.ProviderConfig
+import com.neulketing.openblue.data.model.ProviderCredential
+import com.neulketing.openblue.data.model.ProviderInstance
+import com.neulketing.openblue.data.model.ProviderType
+import com.neulketing.openblue.data.model.RoutingStrategy
+import com.neulketing.openblue.data.model.SystemVoiceIds
+import com.neulketing.openblue.data.model.VoiceProviderTemplate
+import com.neulketing.openblue.data.model.hasAudioInput
+import com.neulketing.openblue.data.model.hasAudioOutput
+import com.neulketing.openblue.data.model.hasVoiceModality
+import com.neulketing.openblue.data.model.isVoiceTemplateSeedShape
+import com.neulketing.openblue.data.model.withInferredVoiceModality
+import com.neulketing.openblue.provider.ModelsDevApi
+import com.neulketing.openblue.provider.anthropic.AnthropicModelsApi
+import com.neulketing.openblue.provider.gemini.GeminiModelsApi
+import com.neulketing.openblue.provider.openai.OpenAIModelsApi
+import com.neulketing.openblue.provider.openrouter.OpenRouterModelsApi
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,7 +142,7 @@ class ProviderRepository(private val context: Context) {
         // T-android-keystore-aead-fail: route through the self-healing
         // factory so a corrupted master key on Samsung One UI / Android
         // 16 doesn't crash the app at first read.
-        com.openminis.app.util.EncryptedPrefsFactory.safeCreate(context, "provider_secrets")
+        com.neulketing.openblue.util.EncryptedPrefsFactory.safeCreate(context, "provider_secrets")
     }
 
     // [T-android-startup-config-stall] #753: loadConfig() does a synchronous
@@ -1503,7 +1503,7 @@ class ProviderRepository(private val context: Context) {
         val config = _config.value
         val candidates = config.instances.filter { inst ->
             inst.isEnabled && hasVoiceModels(inst.id) && !isVoiceShadowDisabled(inst.id) &&
-                com.openminis.app.provider.voice.VoiceProviderFactory.supports(inst, loadApiKey(inst.id))
+                com.neulketing.openblue.provider.voice.VoiceProviderFactory.supports(inst, loadApiKey(inst.id))
         }
         val byKey = candidates.groupBy { inst ->
             normalizedShadowKey(inst.customBaseURL).ifEmpty { "id:${inst.id}" }
@@ -1555,9 +1555,9 @@ class ProviderRepository(private val context: Context) {
         var apiKey = loadApiKey(instance.id)
 
         // For OAuth providers, try to refresh the token before using it (mirrors iOS validAccessToken)
-        if (instance.credentialType == com.openminis.app.data.model.ProviderCredential.oauth && apiKey != null) {
+        if (instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth && apiKey != null) {
             try {
-                val manager = com.openminis.app.auth.OAuthManager.forInstance(context, instance)
+                val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
                 val freshToken = manager?.validAccessToken()
                 if (freshToken != null && freshToken != apiKey) {
                     saveApiKey(instance.id, freshToken)
@@ -1595,7 +1595,7 @@ class ProviderRepository(private val context: Context) {
                 when (instance.providerType) {
                     ProviderType.anthropic -> AnthropicModelsApi.fetchModels(
                         apiKey, baseURL,
-                        isOAuth = instance.credentialType == com.openminis.app.data.model.ProviderCredential.oauth,
+                        isOAuth = instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth,
                         // [T-provider-custom-user-agent] models-list UA override.
                         customUserAgent = instance.customUserAgent,
                     )
@@ -1608,7 +1608,7 @@ class ProviderRepository(private val context: Context) {
                     // For API-key users we still call the same static list; if
                     // xAI later exposes a dynamic /v1/models endpoint this is
                     // the place to swap in OpenAI-compatible fetch.
-                    ProviderType.xAI -> com.openminis.app.provider.xai.XAIModelsApi.fetchModelsOAuth()
+                    ProviderType.xAI -> com.neulketing.openblue.provider.xai.XAIModelsApi.fetchModelsOAuth()
                     // [T-kimi-oauth] Kimi Code: unlike Codex OAuth, the Kimi
                     // OAuth token CAN call the models endpoint — real fetch
                     // from GET /coding/v1/models (OpenAI-compatible shape).
@@ -1616,7 +1616,7 @@ class ProviderRepository(private val context: Context) {
                     // live list replaces the minimal built-in fallback.
                     ProviderType.kimiCode -> OpenAIModelsApi.fetchModels(
                         apiKey,
-                        baseURL ?: "${com.openminis.app.auth.KimiDeviceFlow.CODING_API_BASE}/v1",
+                        baseURL ?: "${com.neulketing.openblue.auth.KimiDeviceFlow.CODING_API_BASE}/v1",
                         customUserAgent = instance.customUserAgent,
                     )
                 }
@@ -1741,7 +1741,7 @@ class ProviderRepository(private val context: Context) {
             ProviderType.openAI -> "https://api.openai.com/v1"
             ProviderType.openRouter -> "https://openrouter.ai/api/v1"
             ProviderType.xAI -> "https://api.x.ai/v1"
-            ProviderType.kimiCode -> "${com.openminis.app.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
+            ProviderType.kimiCode -> "${com.neulketing.openblue.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
         }
     }
 
@@ -1769,12 +1769,12 @@ class ProviderRepository(private val context: Context) {
      */
     private fun oauthManagerFor(
         instance: ProviderInstance,
-    ): com.openminis.app.auth.OAuthManager? = when (instance.providerType) {
-        ProviderType.anthropic -> com.openminis.app.auth.ClaudeOAuthManager(context, instance.id)
-        ProviderType.openAI -> com.openminis.app.auth.OpenAIOAuthManager(context, instance.id)
-        ProviderType.xAI -> com.openminis.app.auth.XAIOAuthManager(context, instance.id)
-        ProviderType.gemini -> com.openminis.app.auth.GeminiOAuthManager(context, instance.id)
-        ProviderType.kimiCode -> com.openminis.app.auth.KimiOAuthManager(context, instance.id)
+    ): com.neulketing.openblue.auth.OAuthManager? = when (instance.providerType) {
+        ProviderType.anthropic -> com.neulketing.openblue.auth.ClaudeOAuthManager(context, instance.id)
+        ProviderType.openAI -> com.neulketing.openblue.auth.OpenAIOAuthManager(context, instance.id)
+        ProviderType.xAI -> com.neulketing.openblue.auth.XAIOAuthManager(context, instance.id)
+        ProviderType.gemini -> com.neulketing.openblue.auth.GeminiOAuthManager(context, instance.id)
+        ProviderType.kimiCode -> com.neulketing.openblue.auth.KimiOAuthManager(context, instance.id)
         else -> null
     }
 
@@ -1868,7 +1868,7 @@ class ProviderRepository(private val context: Context) {
             // Stored per-instance via OAuthManager; only present for OAuth providers
             // where the user pasted a static token via the Manual Bearer Token UI.
             run {
-                val mgr = com.openminis.app.auth.OAuthManager.forInstance(context, instance)
+                val mgr = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
                 val manual = mgr?.loadManualBearerToken()
                 if (!manual.isNullOrEmpty()) {
                     put("manualOAuthToken", Base64.encodeToString(manual.toByteArray(), Base64.NO_WRAP))
@@ -1976,7 +1976,7 @@ class ProviderRepository(private val context: Context) {
             } catch (_: Exception) {
                 manualTokenValue
             }
-            val mgr = com.openminis.app.auth.OAuthManager.forInstance(context, instance)
+            val mgr = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
             mgr?.saveManualBearerToken(manualToken)
         }
 

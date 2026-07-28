@@ -1,7 +1,7 @@
-package com.openminis.app.offload
+package com.neulketing.openblue.offload
 
-import com.openminis.app.data.model.ModelEntry
-import com.openminis.app.data.model.ProviderInstance
+import com.neulketing.openblue.data.model.ModelEntry
+import com.neulketing.openblue.data.model.ProviderInstance
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -59,7 +59,7 @@ object ModelUseManager {
         // Enrich at read time — entries persisted before the modalities field
         // existed won't have inputModalities/outputModalities populated, so
         // look them up from the bundled models.dev registry on the fly.
-        val enrichedModel = com.openminis.app.provider.ModelsDevApi.enrichModel(entry.model)
+        val enrichedModel = com.neulketing.openblue.provider.ModelsDevApi.enrichModel(entry.model)
         val modalities = JSONArray()
         val inputs = enrichedModel.inputModalities.orEmpty()
         val outputs = enrichedModel.outputModalities.orEmpty()

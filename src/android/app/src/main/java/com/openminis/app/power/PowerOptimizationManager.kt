@@ -1,4 +1,4 @@
-package com.openminis.app.power
+package com.neulketing.openblue.power
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
@@ -9,7 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 
 /**
  * T50: helpers for two pieces of Android-only background-keep-alive

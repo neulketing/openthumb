@@ -1,7 +1,7 @@
-package com.openminis.app.agent
+package com.neulketing.openblue.agent
 
 import android.content.Context
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -426,7 +426,7 @@ object SystemPromptBuilder {
      * append the user-authored personality body from SOUL.md.
      *
      * Two distinct trailing-whitespace contracts so the next concatenated
-     * sentence in [com.openminis.app.ui.chat.ChatViewModel.buildSystemPrompt]
+     * sentence in [com.neulketing.openblue.ui.chat.ChatViewModel.buildSystemPrompt]
      * glues correctly:
      *   - No personality body → identity sentence with its original
      *     single trailing space (byte-identical to the pre-SOUL prompt).

@@ -1,14 +1,14 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
 import android.content.Context
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.sandbox.NativeOffloadHandler
-import com.openminis.app.sandbox.NativeOffloadRequest
-import com.openminis.app.sandbox.NativeOffloadResult
-import com.openminis.app.scheduled.ScheduledRepeatMode
-import com.openminis.app.scheduled.ScheduledTargetMode
-import com.openminis.app.scheduled.ScheduledTask
-import com.openminis.app.scheduled.ScheduledTaskManager
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.sandbox.NativeOffloadHandler
+import com.neulketing.openblue.sandbox.NativeOffloadRequest
+import com.neulketing.openblue.sandbox.NativeOffloadResult
+import com.neulketing.openblue.scheduled.ScheduledRepeatMode
+import com.neulketing.openblue.scheduled.ScheduledTargetMode
+import com.neulketing.openblue.scheduled.ScheduledTask
+import com.neulketing.openblue.scheduled.ScheduledTaskManager
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -128,7 +128,7 @@ class ScheduledTaskOffloadHandler(private val context: Context) : NativeOffloadH
         // Fire immediately, off-schedule. Blocks until the agent loop finishes
         // (ScheduledAgentRunner waits internally). Mirrors the editor "Run now".
         val sessionId = runBlocking {
-            com.openminis.app.scheduled.ScheduledAgentRunner.run(context, task)
+            com.neulketing.openblue.scheduled.ScheduledAgentRunner.run(context, task)
         }
         val out = JSONObject()
             .put("id", id)

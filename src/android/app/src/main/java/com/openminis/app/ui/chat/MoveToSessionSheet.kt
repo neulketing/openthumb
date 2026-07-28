@@ -1,4 +1,4 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -53,9 +53,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Context
-import com.openminis.app.R
-import com.openminis.app.data.db.ChatSessionEntity
-import com.openminis.app.data.repository.ChatRepository
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.db.ChatSessionEntity
+import com.neulketing.openblue.data.repository.ChatRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Calendar

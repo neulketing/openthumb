@@ -1,4 +1,4 @@
-package com.openminis.app.ui.markdown
+package com.neulketing.openblue.ui.markdown
 
 /**
  * Lightweight markdown parser that converts raw markdown text into a list of block nodes.

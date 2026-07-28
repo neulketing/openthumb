@@ -1,9 +1,9 @@
-package com.openminis.app.ui.onboarding
+package com.neulketing.openblue.ui.onboarding
 
-import com.openminis.app.R
+import com.neulketing.openblue.R
 import androidx.compose.ui.res.stringResource
-import com.openminis.app.ui.components.MinisButton
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.ui.components.MinisButton
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,8 +50,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.data.model.ModelGroup
-import com.openminis.app.data.repository.ProviderRepository
+import com.neulketing.openblue.data.model.ModelGroup
+import com.neulketing.openblue.data.repository.ProviderRepository
 
 /**
  * Onboarding step 2: pick 1-3 models from configured providers

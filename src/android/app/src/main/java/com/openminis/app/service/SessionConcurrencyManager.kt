@@ -1,4 +1,4 @@
-package com.openminis.app.service
+package com.neulketing.openblue.service
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

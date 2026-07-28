@@ -1,4 +1,4 @@
-package com.openminis.app.data.repository
+package com.neulketing.openblue.data.repository
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

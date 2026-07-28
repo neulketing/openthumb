@@ -1,4 +1,4 @@
-package com.openminis.app.offload
+package com.neulketing.openblue.offload
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.openminis.app.R
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.R
+import com.neulketing.openblue.logging.AppLogger
 
 /**
  * Fires when an `android-notification schedule` AlarmManager alarm

@@ -1,4 +1,4 @@
-package com.openminis.app.config
+package com.neulketing.openblue.config
 
 import org.json.JSONArray
 import org.json.JSONObject

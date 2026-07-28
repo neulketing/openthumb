@@ -1,10 +1,10 @@
-package com.openminis.app.auth
+package com.neulketing.openblue.auth
 
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
-import com.openminis.app.data.repository.ProviderRepository
+import com.neulketing.openblue.data.repository.ProviderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex

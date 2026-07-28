@@ -1,4 +1,4 @@
-package com.openminis.app.service
+package com.neulketing.openblue.service
 
 import android.app.NotificationManager
 import android.content.Context

@@ -1,12 +1,12 @@
-package com.openminis.app.config.fields
+package com.neulketing.openblue.config.fields
 
 import android.content.SharedPreferences
-import com.openminis.app.config.ConfigAccess
-import com.openminis.app.config.ConfigError
-import com.openminis.app.config.ConfigField
-import com.openminis.app.config.ConfigRisk
-import com.openminis.app.config.ConfigSchema
-import com.openminis.app.config.ConfigValue
+import com.neulketing.openblue.config.ConfigAccess
+import com.neulketing.openblue.config.ConfigError
+import com.neulketing.openblue.config.ConfigField
+import com.neulketing.openblue.config.ConfigRisk
+import com.neulketing.openblue.config.ConfigSchema
+import com.neulketing.openblue.config.ConfigValue
 
 /**
  * Convenience wrappers for the most common backend (SharedPreferences).

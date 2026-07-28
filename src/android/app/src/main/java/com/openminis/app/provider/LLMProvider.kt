@@ -1,12 +1,12 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
-import com.openminis.app.data.model.AgentToolDefinition
-import com.openminis.app.data.model.LLMError
-import com.openminis.app.data.model.LLMMessage
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.LLMResponse
-import com.openminis.app.data.model.LLMStreamChunk
-import com.openminis.app.data.model.ThinkingLevel
+import com.neulketing.openblue.data.model.AgentToolDefinition
+import com.neulketing.openblue.data.model.LLMError
+import com.neulketing.openblue.data.model.LLMMessage
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.LLMResponse
+import com.neulketing.openblue.data.model.LLMStreamChunk
+import com.neulketing.openblue.data.model.ThinkingLevel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 

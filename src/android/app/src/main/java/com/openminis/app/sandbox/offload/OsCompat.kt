@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
 import android.content.Context
 import android.os.Build

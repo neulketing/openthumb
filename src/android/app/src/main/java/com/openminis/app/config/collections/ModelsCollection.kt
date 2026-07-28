@@ -1,17 +1,17 @@
-package com.openminis.app.config.collections
+package com.neulketing.openblue.config.collections
 
-import com.openminis.app.config.ConfigCollection
-import com.openminis.app.config.ConfigError
-import com.openminis.app.config.ConfigField
-import com.openminis.app.config.ConfigRisk
-import com.openminis.app.config.ConfigSchema
-import com.openminis.app.config.ConfigValue
-import com.openminis.app.config.fields.ClosureField
-import com.openminis.app.config.fields.ReadOnlyField
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.ModelEntry
-import com.openminis.app.data.model.ModelOverrides
-import com.openminis.app.data.repository.ProviderRepository
+import com.neulketing.openblue.config.ConfigCollection
+import com.neulketing.openblue.config.ConfigError
+import com.neulketing.openblue.config.ConfigField
+import com.neulketing.openblue.config.ConfigRisk
+import com.neulketing.openblue.config.ConfigSchema
+import com.neulketing.openblue.config.ConfigValue
+import com.neulketing.openblue.config.fields.ClosureField
+import com.neulketing.openblue.config.fields.ReadOnlyField
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.ModelEntry
+import com.neulketing.openblue.data.model.ModelOverrides
+import com.neulketing.openblue.data.repository.ProviderRepository
 
 /**
  * Exposes ModelEntry overrides under `models.<entryUUID>.…`. Mirrors

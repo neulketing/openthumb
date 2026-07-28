@@ -1,4 +1,4 @@
-package com.openminis.app.data.model
+package com.neulketing.openblue.data.model
 
 /**
  * [T-android-provider-voice] Voice provider templates — Android port of iOS

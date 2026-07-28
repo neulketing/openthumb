@@ -1,8 +1,8 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
-import com.openminis.app.offload.OffloadPermissionManager
-import com.openminis.app.sandbox.NativeOffloadRequest
-import com.openminis.app.sandbox.NativeOffloadResult
+import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openblue.sandbox.NativeOffloadRequest
+import com.neulketing.openblue.sandbox.NativeOffloadResult
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 

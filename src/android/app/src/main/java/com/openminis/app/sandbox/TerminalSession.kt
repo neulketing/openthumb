@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 import android.content.Context
 import android.util.Log

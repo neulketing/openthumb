@@ -1,12 +1,12 @@
-package com.openminis.app.data.repository
+package com.neulketing.openblue.data.repository
 
-import com.openminis.app.data.db.WebAppShortcutDao
-import com.openminis.app.data.db.WebAppShortcutEntity
+import com.neulketing.openblue.data.db.WebAppShortcutDao
+import com.neulketing.openblue.data.db.WebAppShortcutEntity
 import java.util.UUID
 
 /**
  * T-pwa-1 (renamed Pwa → WebApp): thin wrapper around
- * [WebAppShortcutDao]. Constructed once in [com.openminis.app.MinisApp]
+ * [WebAppShortcutDao]. Constructed once in [com.neulketing.openblue.MinisApp]
  * and shared across UI surfaces (chat attachment chip in T-pwa-2, file
  * browser row in T-pwa-3).
  */

@@ -1,7 +1,7 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
-import com.openminis.app.R
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.R
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -43,8 +43,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.openminis.app.data.repository.MemoryRepository
-import com.openminis.app.ui.components.DialogTextField
+import com.neulketing.openblue.data.repository.MemoryRepository
+import com.neulketing.openblue.ui.components.DialogTextField
 
 /**
  * Settings-level memory file management.
@@ -70,7 +70,7 @@ fun MemoryManagementScreen(
     // entry; the Switch's onCheckedChange writes back synchronously
     // and updates the local state mirror.
     var globalMemoryOn by remember {
-        mutableStateOf(com.openminis.app.data.MemoryGlobalPrefs.isGlobalEnabled(context))
+        mutableStateOf(com.neulketing.openblue.data.MemoryGlobalPrefs.isGlobalEnabled(context))
     }
 
     LaunchedEffect(Unit) {
@@ -90,7 +90,7 @@ fun MemoryManagementScreen(
                 checked = globalMemoryOn,
                 onCheckedChange = { newValue ->
                     globalMemoryOn = newValue
-                    com.openminis.app.data.MemoryGlobalPrefs.setGlobalEnabled(context, newValue)
+                    com.neulketing.openblue.data.MemoryGlobalPrefs.setGlobalEnabled(context, newValue)
                 },
                 showDivider = false,
             )

@@ -1,8 +1,8 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.ModelEntry
-import com.openminis.app.data.model.ThinkingLevel
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.ModelEntry
+import com.neulketing.openblue.data.model.ThinkingLevel
 
 /**
  * [T-android-thinking-level-arch] Declarative catalog of each model's thinking-

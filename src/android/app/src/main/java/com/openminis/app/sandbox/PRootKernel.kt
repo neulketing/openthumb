@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -8,8 +8,8 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.util.Log
-import com.openminis.app.data.FileMentionIndex
-import com.openminis.app.data.MountedFoldersStore
+import com.neulketing.openblue.data.FileMentionIndex
+import com.neulketing.openblue.data.MountedFoldersStore
 import java.io.File
 import java.util.TimeZone
 import kotlin.math.abs
@@ -69,8 +69,8 @@ object PRootKernel {
         // config files (pip.conf, .npmrc, repositories) and would otherwise
         // revert user-chosen mirrors on every boot. Mirrors iOS ordering in
         // ISHTerminalView.startShell().
-        com.openminis.app.ui.sandbox.MirrorSpeedTestViewModel.applyAllActiveMirrors(context)
-        com.openminis.app.ui.sandbox.MirrorSpeedTestViewModel.autoDetectOnceIfNeeded(context)
+        com.neulketing.openblue.ui.sandbox.MirrorSpeedTestViewModel.applyAllActiveMirrors(context)
+        com.neulketing.openblue.ui.sandbox.MirrorSpeedTestViewModel.autoDetectOnceIfNeeded(context)
 
         // Refresh DNS from system (mirrors iOS ISHKernel.configureDns)
         rootfsManager.refreshDns()

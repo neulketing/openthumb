@@ -1,4 +1,4 @@
-package com.openminis.app.ui.theme
+package com.neulketing.openblue.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape

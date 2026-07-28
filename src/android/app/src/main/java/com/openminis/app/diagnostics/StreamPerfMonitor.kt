@@ -1,7 +1,7 @@
-package com.openminis.app.diagnostics
+package com.neulketing.openblue.diagnostics
 
 import android.os.Debug
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 
 /**
  * [T-android-stream-pipeline-incremental] Per-streaming-turn render-pipeline

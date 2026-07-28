@@ -1,12 +1,12 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
-import com.openminis.app.deeplink.DeepLinkAction
-import com.openminis.app.deeplink.DeepLinkHandler
-import com.openminis.app.sandbox.PRootKernel
-import com.openminis.app.ui.sandbox.FileItem
+import com.neulketing.openblue.deeplink.DeepLinkAction
+import com.neulketing.openblue.deeplink.DeepLinkHandler
+import com.neulketing.openblue.sandbox.PRootKernel
+import com.neulketing.openblue.ui.sandbox.FileItem
 import java.io.File
 
 /**
@@ -60,7 +60,7 @@ object ChatLinkResolver {
         // trip `shouldOverrideUrlLoading` for the initial URL, so without
         // this hop those schemes hit the WebView and surface as
         // ERR_UNKNOWN_URL_SCHEME.
-        if (com.openminis.app.ui.browser.BrowserExternalSchemeHandler.shouldHandleExternally(trimmed)) {
+        if (com.neulketing.openblue.ui.browser.BrowserExternalSchemeHandler.shouldHandleExternally(trimmed)) {
             return ChatLinkAction.ExternalApp(trimmed)
         }
 

@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 /**
  * Choose a shell-execution timeout based on the **command prefix**, matching

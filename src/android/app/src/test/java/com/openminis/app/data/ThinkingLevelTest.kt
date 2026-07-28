@@ -1,8 +1,8 @@
-package com.openminis.app.data
+package com.neulketing.openblue.data
 
-import com.openminis.app.data.model.ModelGroup
-import com.openminis.app.data.model.ModelOverrides
-import com.openminis.app.data.model.ThinkingLevel
+import com.neulketing.openblue.data.model.ModelGroup
+import com.neulketing.openblue.data.model.ModelOverrides
+import com.neulketing.openblue.data.model.ThinkingLevel
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

@@ -1,4 +1,4 @@
-package com.openminis.app.browser
+package com.neulketing.openblue.browser
 
 import android.content.Context
 import android.util.Log

@@ -1,6 +1,6 @@
-package com.openminis.app.config.confirm
+package com.neulketing.openblue.config.confirm
 
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

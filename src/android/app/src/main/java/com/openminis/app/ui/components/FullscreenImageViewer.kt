@@ -1,4 +1,4 @@
-package com.openminis.app.ui.components
+package com.neulketing.openblue.ui.components
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -57,7 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import com.openminis.app.R
+import com.neulketing.openblue.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp

@@ -1,4 +1,4 @@
-package com.openminis.app.ui.navigation
+package com.neulketing.openblue.ui.navigation
 
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController

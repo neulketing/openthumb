@@ -1,6 +1,6 @@
-package com.openminis.app.ui.browser
+package com.neulketing.openblue.ui.browser
 
-import com.openminis.app.R
+import com.neulketing.openblue.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -75,10 +75,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.browser.BrowserHistoryStore
-import com.openminis.app.browser.BrowserTabPool
-import com.openminis.app.browser.UserAgentProfile
-import com.openminis.app.ui.chat.StandardChatSheet
+import com.neulketing.openblue.browser.BrowserHistoryStore
+import com.neulketing.openblue.browser.BrowserTabPool
+import com.neulketing.openblue.browser.UserAgentProfile
+import com.neulketing.openblue.ui.chat.StandardChatSheet
 import kotlinx.coroutines.launch
 
 /**

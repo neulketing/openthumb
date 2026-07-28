@@ -1,4 +1,4 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -17,11 +17,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.openminis.app.R
-import com.openminis.app.offload.OffloadPermissionManager
-import com.openminis.app.ui.components.MinisButton
-import com.openminis.app.ui.components.MinisOutlinedButton
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.R
+import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openblue.ui.components.MinisButton
+import com.neulketing.openblue.ui.components.MinisOutlinedButton
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 /**
  * Dialog shown when an ASK_ONCE tool requests permission.

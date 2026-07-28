@@ -1,11 +1,11 @@
-package com.openminis.app.debug
+package com.neulketing.openblue.debug
 
 import android.content.Context
-import com.openminis.app.MinisApp
-import com.openminis.app.data.db.MessageEntity
-import com.openminis.app.data.repository.ChatRepository
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.service.SessionActivityTracker
+import com.neulketing.openblue.MinisApp
+import com.neulketing.openblue.data.db.MessageEntity
+import com.neulketing.openblue.data.repository.ChatRepository
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.service.SessionActivityTracker
 import org.json.JSONArray
 import org.json.JSONObject
 

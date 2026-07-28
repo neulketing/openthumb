@@ -1,4 +1,4 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import android.content.ClipboardManager
 import android.content.Context
@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import com.openminis.app.R
+import com.neulketing.openblue.R
 
 /**
  * Replaces the system Copy/Cut/Paste/SelectAll toolbar that a

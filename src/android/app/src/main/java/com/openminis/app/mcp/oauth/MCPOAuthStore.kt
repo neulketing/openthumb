@@ -1,9 +1,9 @@
-package com.openminis.app.mcp.oauth
+package com.neulketing.openblue.mcp.oauth
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.util.EncryptedPrefsFactory
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.util.EncryptedPrefsFactory
 import org.json.JSONObject
 
 /**

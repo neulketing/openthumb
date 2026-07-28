@@ -1,4 +1,4 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,9 +33,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.R
-import com.openminis.app.speech.SpeechRecognitionManager
-import com.openminis.app.ui.theme.ChatColors
+import com.neulketing.openblue.R
+import com.neulketing.openblue.speech.SpeechRecognitionManager
+import com.neulketing.openblue.ui.theme.ChatColors
 import java.util.Locale
 
 /**

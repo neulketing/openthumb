@@ -1,9 +1,9 @@
-package com.openminis.app.provider.antigravity
+package com.neulketing.openblue.provider.antigravity
 
 import android.content.Context
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.provider.ModelsDevApi
-import com.openminis.app.provider.ProviderModelsCache
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.provider.ModelsDevApi
+import com.neulketing.openblue.provider.ProviderModelsCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType

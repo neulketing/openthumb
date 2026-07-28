@@ -1,4 +1,4 @@
-package com.openminis.app.shared
+package com.neulketing.openblue.shared
 
 import android.content.Context
 import java.io.File

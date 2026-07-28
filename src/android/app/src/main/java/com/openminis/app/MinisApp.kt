@@ -1,4 +1,4 @@
-package com.openminis.app
+package com.neulketing.openblue
 
 import android.app.Activity
 import android.app.Application
@@ -14,47 +14,47 @@ import org.acra.config.CoreConfigurationBuilder
 import org.acra.data.StringFormat
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import com.openminis.app.browser.BrowserTabPool
-import com.openminis.app.data.db.AppDatabase
-import com.openminis.app.data.repository.BackgroundSettingsRepository
-import com.openminis.app.data.repository.ChatRepository
-import com.openminis.app.data.repository.EnvVarRepository
-import com.openminis.app.data.MountedFoldersStore
-import com.openminis.app.data.repository.MemoryRepository
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.data.repository.WebAppShortcutRepository
-import com.openminis.app.data.repository.MCPRepository
-import com.openminis.app.data.repository.SkillRepository
-import com.openminis.app.notification.BackgroundTaskNotifier
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.network.NetworkMonitor
-import com.openminis.app.offload.OffloadPermissionManager
-import com.openminis.app.provider.ModelsDevApi
-import com.openminis.app.sandbox.ExecutionCoordinator
-import com.openminis.app.sandbox.MountedFolderCoordinator
-import com.openminis.app.sandbox.NativeOffloadServer
-import com.openminis.app.sandbox.PRootKernel
-import com.openminis.app.sandbox.RootfsManager
-import com.openminis.app.sandbox.offload.AccessibilityOffloadHandler
-import com.openminis.app.sandbox.offload.AlarmOffloadHandler
-import com.openminis.app.sandbox.offload.BrowserUseOffloadHandler
-import com.openminis.app.sandbox.offload.CalendarOffloadHandler
-import com.openminis.app.sandbox.offload.ClipboardOffloadHandler
-import com.openminis.app.sandbox.offload.ContactsOffloadHandler
-import com.openminis.app.sandbox.offload.DeviceOffloadHandler
-import com.openminis.app.sandbox.offload.LocationOffloadHandler
-import com.openminis.app.sandbox.offload.ModelUseOffloadHandler
-import com.openminis.app.sandbox.offload.SessionsOffloadHandler
-import com.openminis.app.sandbox.offload.ShizukuOffloadHandler
-import com.openminis.app.sandbox.offload.NotificationOffloadHandler
-import com.openminis.app.sandbox.offload.OpenOffloadHandler
-import com.openminis.app.sandbox.offload.PhotosOffloadHandler
-import com.openminis.app.sandbox.offload.PlayerOffloadHandler
-import com.openminis.app.sandbox.offload.SpeakOffloadHandler
-import com.openminis.app.sandbox.offload.SpeechOffloadHandler
-import com.openminis.app.sandbox.offload.WeatherOffloadHandler
-import com.openminis.app.service.SessionActivityTracker
-import com.openminis.app.ui.MinisImageFetcher
+import com.neulketing.openblue.browser.BrowserTabPool
+import com.neulketing.openblue.data.db.AppDatabase
+import com.neulketing.openblue.data.repository.BackgroundSettingsRepository
+import com.neulketing.openblue.data.repository.ChatRepository
+import com.neulketing.openblue.data.repository.EnvVarRepository
+import com.neulketing.openblue.data.MountedFoldersStore
+import com.neulketing.openblue.data.repository.MemoryRepository
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.data.repository.WebAppShortcutRepository
+import com.neulketing.openblue.data.repository.MCPRepository
+import com.neulketing.openblue.data.repository.SkillRepository
+import com.neulketing.openblue.notification.BackgroundTaskNotifier
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.network.NetworkMonitor
+import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openblue.provider.ModelsDevApi
+import com.neulketing.openblue.sandbox.ExecutionCoordinator
+import com.neulketing.openblue.sandbox.MountedFolderCoordinator
+import com.neulketing.openblue.sandbox.NativeOffloadServer
+import com.neulketing.openblue.sandbox.PRootKernel
+import com.neulketing.openblue.sandbox.RootfsManager
+import com.neulketing.openblue.sandbox.offload.AccessibilityOffloadHandler
+import com.neulketing.openblue.sandbox.offload.AlarmOffloadHandler
+import com.neulketing.openblue.sandbox.offload.BrowserUseOffloadHandler
+import com.neulketing.openblue.sandbox.offload.CalendarOffloadHandler
+import com.neulketing.openblue.sandbox.offload.ClipboardOffloadHandler
+import com.neulketing.openblue.sandbox.offload.ContactsOffloadHandler
+import com.neulketing.openblue.sandbox.offload.DeviceOffloadHandler
+import com.neulketing.openblue.sandbox.offload.LocationOffloadHandler
+import com.neulketing.openblue.sandbox.offload.ModelUseOffloadHandler
+import com.neulketing.openblue.sandbox.offload.SessionsOffloadHandler
+import com.neulketing.openblue.sandbox.offload.ShizukuOffloadHandler
+import com.neulketing.openblue.sandbox.offload.NotificationOffloadHandler
+import com.neulketing.openblue.sandbox.offload.OpenOffloadHandler
+import com.neulketing.openblue.sandbox.offload.PhotosOffloadHandler
+import com.neulketing.openblue.sandbox.offload.PlayerOffloadHandler
+import com.neulketing.openblue.sandbox.offload.SpeakOffloadHandler
+import com.neulketing.openblue.sandbox.offload.SpeechOffloadHandler
+import com.neulketing.openblue.sandbox.offload.WeatherOffloadHandler
+import com.neulketing.openblue.service.SessionActivityTracker
+import com.neulketing.openblue.ui.MinisImageFetcher
 import kotlinx.coroutines.launch
 
 class MinisApp : Application(), ImageLoaderFactory {
@@ -174,7 +174,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // flag cache so the provider layer (no Context) can read it at
         // request-build time — including offload / title-gen calls that
         // never pass through a ViewModel.
-        com.openminis.app.data.FastModePrefs.prime(this)
+        com.neulketing.openblue.data.FastModePrefs.prime(this)
 
         // T283: install NDK signal handler for native crashes (SIGSEGV/
         // SIGABRT/SIGBUS/SIGFPE/SIGILL/SIGSYS). Writes a one-shot text
@@ -184,7 +184,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // by the rest of onCreate so the handler is in place when those
         // libs first execute.
         try {
-            com.openminis.app.crash.NativeCrashHandler.install(
+            com.neulketing.openblue.crash.NativeCrashHandler.install(
                 java.io.File(filesDir, "logs"),
             )
         } catch (t: Throwable) {
@@ -220,7 +220,7 @@ class MinisApp : Application(), ImageLoaderFactory {
                         // sticky binding down cleanly instead of
                         // re-spawning into the same trap.
                         runCatching {
-                            val intent = Intent(this, com.openminis.app.service.AgentForegroundService::class.java)
+                            val intent = Intent(this, com.neulketing.openblue.service.AgentForegroundService::class.java)
                             stopService(intent)
                         }
                     }
@@ -239,7 +239,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // Scan filesDir/logs/ for crash-*.log + native-crash-*.log files
         // touched in the last hour; if THRESHOLD+ are present, stash the
         // list so MainActivity.onCreate can prompt to share them.
-        com.openminis.app.crash.CrashFrequencyDetector.checkAtLaunch(this)
+        com.neulketing.openblue.crash.CrashFrequencyDetector.checkAtLaunch(this)
 
         // Hard short-circuit: when checkAtLaunch flips safe-mode ON, skip
         // every heavy subsystem (DB, repositories, offload server, PRoot
@@ -249,7 +249,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // onward is a potential re-crash trigger on a loop — the whole
         // point of safe-mode is to stop the bleeding before another
         // segfault rewrites the log files.
-        if (com.openminis.app.crash.CrashFrequencyDetector.isSafeMode()) {
+        if (com.neulketing.openblue.crash.CrashFrequencyDetector.isSafeMode()) {
             Log.w("MinisApp", "safe-mode ON — skipping app subsystem init")
             return
         }
@@ -265,9 +265,9 @@ class MinisApp : Application(), ImageLoaderFactory {
         // so a subsequent launch can observe whether the previous run
         // exited cleanly (onTerminate hit) or was force-killed by LMK /
         // MIUI's aggressive background cleaner. Read on next launch by
-        // [com.openminis.app.diagnostics.LaunchCycleBeacon].
+        // [com.neulketing.openblue.diagnostics.LaunchCycleBeacon].
         try {
-            com.openminis.app.diagnostics.LaunchCycleBeacon.recordLaunch(this)
+            com.neulketing.openblue.diagnostics.LaunchCycleBeacon.recordLaunch(this)
         } catch (t: Throwable) {
             Log.w("MinisApp", "LaunchCycleBeacon.recordLaunch failed: ${t.message}")
         }
@@ -281,7 +281,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // override the launch destination to home after 3 hangs in a row,
         // so a user trapped opening a session that hangs the UI gets
         // unstuck on the next launch.
-        com.openminis.app.diagnostics.HangDetector.start(this)
+        com.neulketing.openblue.diagnostics.HangDetector.start(this)
 
         database = AppDatabase.getInstance(this)
         chatRepository = ChatRepository(database.chatDao())
@@ -297,16 +297,16 @@ class MinisApp : Application(), ImageLoaderFactory {
         // file to read. Safe no-op on subsequent launches — never
         // overwrites existing user edits. Cache refresh primes the
         // synchronous metadata read-path (chat header / system prompt).
-        com.openminis.app.agent.SoulStore.ensureExists(this)
-        com.openminis.app.agent.SoulStore.refreshCache(this)
+        com.neulketing.openblue.agent.SoulStore.ensureExists(this)
+        com.neulketing.openblue.agent.SoulStore.refreshCache(this)
 
         // T-config: minis-config CLI surface — registry / audit log /
         // master-switch store. Initialized eagerly here so
         // ConfigRegistry.get() is safe from any thread for the rest of
         // the process. Mirrors iOS ConfigRegistry.shared.registerBuiltinsIfNeeded().
-        com.openminis.app.config.MinisConfigPermissionStore.init(this)
-        com.openminis.app.config.audit.ConfigAuditLog.init(this)
-        com.openminis.app.config.ConfigRegistry.init(
+        com.neulketing.openblue.config.MinisConfigPermissionStore.init(this)
+        com.neulketing.openblue.config.audit.ConfigAuditLog.init(this)
+        com.neulketing.openblue.config.ConfigRegistry.init(
             this, providerRepository, envVarRepository, chatRepository,
         )
 
@@ -320,8 +320,8 @@ class MinisApp : Application(), ImageLoaderFactory {
 
         // Privacy Mode store + redactor wiring. Mirrors iOS
         // EnvVarPrivacyStore.init / EnvVarRedactor static handoff.
-        com.openminis.app.data.EnvVarPrivacyStore.init(this)
-        com.openminis.app.data.EnvVarRedactor.envVarRepository = envVarRepository
+        com.neulketing.openblue.data.EnvVarPrivacyStore.init(this)
+        com.neulketing.openblue.data.EnvVarRedactor.envVarRepository = envVarRepository
 
         // Start network monitoring — mirrors iOS NetworkMonitor.shared.start().
         // The monitor writes /etc/resolv.conf immediately and on every
@@ -389,7 +389,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // Mirrors iOS `config_offload_register()` in ISHKernel.m.
         NativeOffloadServer.register(
             "minis-config",
-            com.openminis.app.sandbox.offload.ConfigOffloadHandler(),
+            com.neulketing.openblue.sandbox.offload.ConfigOffloadHandler(),
         )
         NativeOffloadServer.register("minis-browser-use", BrowserUseOffloadHandler(this))
         // T188: minis-sessions-cli — agent-side query of chat history.
@@ -404,7 +404,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // Scheduled Tasks editor and the iOS Shortcuts intent set.
         NativeOffloadServer.register(
             "minis-scheduled",
-            com.openminis.app.sandbox.offload.ScheduledTaskOffloadHandler(this),
+            com.neulketing.openblue.sandbox.offload.ScheduledTaskOffloadHandler(this),
         )
         // T322: android-shizuku-cli — privileged Android control via Shizuku.
         // The handler short-circuits with a typed error envelope when the
@@ -412,7 +412,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // can register unconditionally; ShizukuManager.init below wires
         // up the binder lifecycle listeners + StateFlow.
         NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(this))
-        com.openminis.app.offload.ShizukuManager.init(this)
+        com.neulketing.openblue.offload.ShizukuManager.init(this)
 
         // T-android-minis-debug-cli: shell-side CLI wrapper around the in-app
         // DebugServer (127.0.0.1:5321) JSON-RPC. DEBUG-only — Release builds
@@ -422,7 +422,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         if (BuildConfig.DEBUG) {
             NativeOffloadServer.register(
                 "minis-debug",
-                com.openminis.app.sandbox.offload.DebugOffloadHandler(this),
+                com.neulketing.openblue.sandbox.offload.DebugOffloadHandler(this),
             )
         }
 
@@ -434,7 +434,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // [T-android-session-paused-badge] Per-session badge-state queue
         // displayed in the session-list cell corner. Init early so the
         // session list can read persisted PAUSED badges on first compose.
-        com.openminis.app.service.SessionBadgeStore.init(this)
+        com.neulketing.openblue.service.SessionBadgeStore.init(this)
 
         // [T-android-session-paused-badge-hardkill] Reconcile PAUSED badges
         // against the DB's interrupted-session set. The lifecycle-callback push
@@ -449,7 +449,7 @@ class MinisApp : Application(), ImageLoaderFactory {
             // at cold start this is empty, but keeps the rule "active ⇒ never
             // paused" uniform with the foreground reconcile path).
             val active = SessionActivityTracker.activeSessions.value
-            com.openminis.app.service.SessionBadgeStore.reconcileInterruptedSessions(interrupted - active)
+            com.neulketing.openblue.service.SessionBadgeStore.reconcileInterruptedSessions(interrupted - active)
         }
 
         // T180-bg-notif: background-settings + task-completion notifier.
@@ -472,15 +472,15 @@ class MinisApp : Application(), ImageLoaderFactory {
         // notifier into the (Context-free) gate, so a minis-config approval that
         // is waiting while the app is backgrounded nudges the user before the
         // 120s timeout. Mirrors iOS ConfigConfirmationGate.notifyIfBackgrounded.
-        val configConfirmNotifier = com.openminis.app.notification.ConfigConfirmNotifier(
+        val configConfirmNotifier = com.neulketing.openblue.notification.ConfigConfirmNotifier(
             context = this,
             backgroundSettings = backgroundSettingsRepository,
             isAppForeground = ::isAppForeground,
         )
-        com.openminis.app.config.confirm.ConfigConfirmationGate.backgroundNotifier = {
+        com.neulketing.openblue.config.confirm.ConfigConfirmationGate.backgroundNotifier = {
             configConfirmNotifier.notifyIfBackgrounded(it)
         }
-        com.openminis.app.config.confirm.ConfigConfirmationGate.cancelNotification = {
+        com.neulketing.openblue.config.confirm.ConfigConfirmationGate.cancelNotification = {
             configConfirmNotifier.cancel(it)
         }
 
@@ -518,7 +518,7 @@ class MinisApp : Application(), ImageLoaderFactory {
                     kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
                         val interrupted = runCatching { chatRepository.interruptedSessionIds() }.getOrElse { emptySet() }
                         val active = SessionActivityTracker.activeSessions.value
-                        com.openminis.app.service.SessionBadgeStore.reconcileInterruptedSessions(interrupted - active)
+                        com.neulketing.openblue.service.SessionBadgeStore.reconcileInterruptedSessions(interrupted - active)
                     }
                 }
             }
@@ -528,7 +528,7 @@ class MinisApp : Application(), ImageLoaderFactory {
                 // Activity that resumes. One-shot — clears the pending
                 // list internally so config-change re-resumes don't
                 // re-prompt. Safe no-op when nothing is pending.
-                com.openminis.app.crash.CrashFrequencyDetector.maybeShowOnActivity(activity)
+                com.neulketing.openblue.crash.CrashFrequencyDetector.maybeShowOnActivity(activity)
                 // T219-1: re-probe mounted-folder writability on every
                 // foreground resume so OS permission revocations (user
                 // toggled "Allow access" off in system Files, removable
@@ -547,7 +547,7 @@ class MinisApp : Application(), ImageLoaderFactory {
                     // [T-android-config-confirm-timeout] The user switched away
                     // while a config-confirm dialog may still be showing — nudge
                     // them so they can come back before the 120s timeout.
-                    com.openminis.app.config.confirm.ConfigConfirmationGate.notifyPending()
+                    com.neulketing.openblue.config.confirm.ConfigConfirmationGate.notifyPending()
                 }
             }
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
@@ -558,7 +558,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         OffloadPermissionManager.init(this)
 
         // Initialize speech-recognition adapter layer (system + provider engines).
-        com.openminis.app.speech.SpeechRecognitionManager.init(this)
+        com.neulketing.openblue.speech.SpeechRecognitionManager.init(this)
 
         // Refresh model lists once per calendar day (mirrors iOS MinisApp.swift).
         // Runs per-instance in parallel; `autoRefreshModels` skips instances with custom models.
@@ -603,7 +603,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // Debug server: only start in debug builds (NEVER in release)
         if (BuildConfig.DEBUG) {
             try {
-                com.openminis.app.debug.DebugServer(this).start()
+                com.neulketing.openblue.debug.DebugServer(this).start()
             } catch (e: Exception) {
                 Log.w("MinisApp", "Failed to start debug server: ${e.message}")
             }
@@ -716,7 +716,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // device proves we shut down voluntarily; its absence is the
         // signal we care about for [LaunchCycleBeacon].
         try {
-            com.openminis.app.diagnostics.LaunchCycleBeacon.recordCleanExit(this)
+            com.neulketing.openblue.diagnostics.LaunchCycleBeacon.recordCleanExit(this)
         } catch (t: Throwable) {
             Log.w("MinisApp", "LaunchCycleBeacon.recordCleanExit failed: ${t.message}")
         }

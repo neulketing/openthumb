@@ -1,11 +1,11 @@
-package com.openminis.app.auth
+package com.neulketing.openblue.auth
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
-import com.openminis.app.BuildConfig
-import com.openminis.app.data.repository.ProviderRepository
+import com.neulketing.openblue.BuildConfig
+import com.neulketing.openblue.data.repository.ProviderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex

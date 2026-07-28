@@ -1,4 +1,4 @@
-package com.openminis.app.ui.sandbox
+package com.neulketing.openblue.ui.sandbox
 
 import android.text.format.Formatter
 import androidx.compose.runtime.Immutable
@@ -258,11 +258,11 @@ class FileBrowserViewModel(
             val sid = sessionId
             val ctx = appContext
             if (sid != null && ctx != null) {
-                com.openminis.app.sandbox.PRootKernel
+                com.neulketing.openblue.sandbox.PRootKernel
                     .resolveSessionHostPath(sid, linuxPath, ctx)
                     ?.let { return it }
             }
-            com.openminis.app.sandbox.PRootKernel.resolveHostPath(linuxPath)?.let { return it }
+            com.neulketing.openblue.sandbox.PRootKernel.resolveHostPath(linuxPath)?.let { return it }
         }
         return if (relativePath.isEmpty()) rootPath else File(rootPath, relativePath)
     }

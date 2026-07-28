@@ -1,7 +1,7 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import android.content.Context
-import com.openminis.app.speech.ReadAloudPlayer
+import com.neulketing.openblue.speech.ReadAloudPlayer
 
 /**
  * [T-android-selection-readaloud] Defers [ReadAloudPlayer] construction until

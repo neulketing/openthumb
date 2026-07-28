@@ -1,4 +1,4 @@
-package com.openminis.app.config
+package com.neulketing.openblue.config
 
 /**
  * Failure modes a [ConfigField] operation may surface. Matches iOS

@@ -1,6 +1,6 @@
-package com.openminis.app.tools
+package com.neulketing.openblue.tools
 
-import com.openminis.app.browser.BrowserAction
+import com.neulketing.openblue.browser.BrowserAction
 import org.json.JSONArray
 import org.json.JSONObject
 

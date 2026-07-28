@@ -1,4 +1,4 @@
-package com.openminis.app.ui.preview
+package com.neulketing.openblue.ui.preview
 
 import android.content.Context
 import android.content.Intent
@@ -7,16 +7,16 @@ import android.net.Uri
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.openminis.app.MainActivity
-import com.openminis.app.R
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.MainActivity
+import com.neulketing.openblue.R
+import com.neulketing.openblue.logging.AppLogger
 
 /**
  * Helper that pins a `file:///var/minis/...` HTML preview as a launcher
  * shortcut. Clicking the shortcut from the home screen sends a
  * `minis://preview/html?path=...&title=...` deep link back to
- * [MainActivity], which [com.openminis.app.deeplink.DeepLinkHandler] parses
- * into [com.openminis.app.deeplink.DeepLinkAction.OpenHtmlPreview]; the
+ * [MainActivity], which [com.neulketing.openblue.deeplink.DeepLinkHandler] parses
+ * into [com.neulketing.openblue.deeplink.DeepLinkAction.OpenHtmlPreview]; the
  * chat layer then opens the fullscreen WebPreview.
  */
 object WebPreviewShortcut {

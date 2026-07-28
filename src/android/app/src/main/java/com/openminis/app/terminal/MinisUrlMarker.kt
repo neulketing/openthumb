@@ -1,4 +1,4 @@
-package com.openminis.app.terminal
+package com.neulketing.openblue.terminal
 
 /**
  * Parses the OSC 1337 `MinisOpenURL` escape sequence emitted by the rootfs

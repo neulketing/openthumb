@@ -1,6 +1,6 @@
-package com.openminis.app.ui.sandbox
+package com.neulketing.openblue.ui.sandbox
 
-import com.openminis.app.R
+import com.neulketing.openblue.R
 
 import android.content.Context
 import android.content.SharedPreferences

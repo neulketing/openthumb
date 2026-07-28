@@ -1,4 +1,4 @@
-package com.openminis.app.accessibility
+package com.neulketing.openblue.accessibility
 
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.concurrent.ConcurrentHashMap

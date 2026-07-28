@@ -1,8 +1,8 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 import android.content.Context
 import android.util.Log
-import com.openminis.app.data.repository.EnvVarRepository
+import com.neulketing.openblue.data.repository.EnvVarRepository
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File

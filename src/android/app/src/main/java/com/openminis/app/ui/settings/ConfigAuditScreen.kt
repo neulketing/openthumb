@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,13 +38,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.R
-import com.openminis.app.config.audit.ConfigAuditActor
-import com.openminis.app.config.audit.ConfigAuditEntry
-import com.openminis.app.config.audit.ConfigAuditLog
-import com.openminis.app.config.audit.ConfigAuditStatus
-import com.openminis.app.config.ConfigBridge
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.R
+import com.neulketing.openblue.config.audit.ConfigAuditActor
+import com.neulketing.openblue.config.audit.ConfigAuditEntry
+import com.neulketing.openblue.config.audit.ConfigAuditLog
+import com.neulketing.openblue.config.audit.ConfigAuditStatus
+import com.neulketing.openblue.config.ConfigBridge
+import com.neulketing.openblue.ui.components.MinisTextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch

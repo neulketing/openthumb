@@ -1,11 +1,11 @@
-package com.openminis.app.provider.openrouter
+package com.neulketing.openblue.provider.openrouter
 
 import android.content.Context
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.normalizeModalities
-import com.openminis.app.provider.ModelsDevApi
-import com.openminis.app.provider.applyUserAgentOverride
-import com.openminis.app.provider.ProviderModelsCache
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.normalizeModalities
+import com.neulketing.openblue.provider.ModelsDevApi
+import com.neulketing.openblue.provider.applyUserAgentOverride
+import com.neulketing.openblue.provider.ProviderModelsCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient

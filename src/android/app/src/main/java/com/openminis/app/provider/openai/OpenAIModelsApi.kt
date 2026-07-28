@@ -1,12 +1,12 @@
-package com.openminis.app.provider.openai
+package com.neulketing.openblue.provider.openai
 
 import android.content.Context
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.data.model.normalizeModalities
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.provider.ModelsDevApi
-import com.openminis.app.provider.ProviderModelsCache
-import com.openminis.app.provider.applyUserAgentOverride
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.data.model.normalizeModalities
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.provider.ModelsDevApi
+import com.neulketing.openblue.provider.ProviderModelsCache
+import com.neulketing.openblue.provider.applyUserAgentOverride
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient

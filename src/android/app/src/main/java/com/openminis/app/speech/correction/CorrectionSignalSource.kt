@@ -1,4 +1,4 @@
-package com.openminis.app.speech.correction
+package com.neulketing.openblue.speech.correction
 
 /**
  * [T-android-voice-correction] One source of correction candidates.

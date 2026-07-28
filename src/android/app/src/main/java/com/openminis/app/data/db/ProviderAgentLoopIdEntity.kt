@@ -1,4 +1,4 @@
-package com.openminis.app.data.db
+package com.neulketing.openblue.data.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

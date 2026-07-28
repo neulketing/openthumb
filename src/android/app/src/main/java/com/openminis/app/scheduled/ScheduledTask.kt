@@ -1,4 +1,4 @@
-package com.openminis.app.scheduled
+package com.neulketing.openblue.scheduled
 
 import org.json.JSONArray
 import org.json.JSONObject

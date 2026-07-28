@@ -1,7 +1,7 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
 import android.content.Context
-import com.openminis.app.data.model.LLMModel
+import com.neulketing.openblue.data.model.LLMModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString

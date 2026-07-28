@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,11 +40,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.openminis.app.R
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.ui.components.modelEntryPickerItems
-import com.openminis.app.ui.components.MinisButton
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.ui.components.modelEntryPickerItems
+import com.neulketing.openblue.ui.components.MinisButton
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 /**
  * T185 — full-screen picker for adding model entries to the agent-loop

@@ -1,6 +1,6 @@
-package com.openminis.app.ui.terminal
+package com.neulketing.openblue.ui.terminal
 
-import com.openminis.app.R
+import com.neulketing.openblue.R
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
@@ -58,12 +58,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.sandbox.TerminalSession
-import com.openminis.app.terminal.MinisOpenUrlBroker
-import com.openminis.app.ui.terminal.canvas.TerminalNativeViewCompose
-import com.openminis.app.ui.terminal.canvas.TerminalInputView
-import com.openminis.app.ui.terminal.canvas.rememberTerminalInputController
-import com.openminis.app.ui.terminal.emulator.TerminalEmulator
+import com.neulketing.openblue.sandbox.TerminalSession
+import com.neulketing.openblue.terminal.MinisOpenUrlBroker
+import com.neulketing.openblue.ui.terminal.canvas.TerminalNativeViewCompose
+import com.neulketing.openblue.ui.terminal.canvas.TerminalInputView
+import com.neulketing.openblue.ui.terminal.canvas.rememberTerminalInputController
+import com.neulketing.openblue.ui.terminal.emulator.TerminalEmulator
 import kotlinx.coroutines.launch
 
 // iOS-matched palette
@@ -280,7 +280,7 @@ fun TerminalScreen(
         }
 
         previewUrl?.let { url ->
-            com.openminis.app.ui.components.UrlPreviewSheet(
+            com.neulketing.openblue.ui.components.UrlPreviewSheet(
                 url = url,
                 onDismiss = { previewUrl = null },
             )

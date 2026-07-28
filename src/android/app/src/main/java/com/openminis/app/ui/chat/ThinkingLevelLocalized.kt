@@ -1,8 +1,8 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import android.content.Context
-import com.openminis.app.R
-import com.openminis.app.data.model.ThinkingLevel
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.model.ThinkingLevel
 
 /**
  * Localized display name for [ThinkingLevel]. The data-layer

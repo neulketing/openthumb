@@ -1,4 +1,4 @@
-package com.openminis.app.data.model
+package com.neulketing.openblue.data.model
 
 import org.json.JSONArray
 import org.json.JSONObject

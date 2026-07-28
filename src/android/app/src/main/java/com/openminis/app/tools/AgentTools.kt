@@ -1,8 +1,8 @@
-package com.openminis.app.tools
+package com.neulketing.openblue.tools
 
-import com.openminis.app.browser.BrowserAction
-import com.openminis.app.data.model.AgentToolDefinition
-import com.openminis.app.data.model.AgentToolParam
+import com.neulketing.openblue.browser.BrowserAction
+import com.neulketing.openblue.data.model.AgentToolDefinition
+import com.neulketing.openblue.data.model.AgentToolParam
 
 /**
  * Central registry of all agent tool definitions.

@@ -1,4 +1,4 @@
-package com.openminis.app.auth
+package com.neulketing.openblue.auth
 
 import android.util.Log
 import java.io.BufferedReader

@@ -1,4 +1,4 @@
-package com.openminis.app.ui.media
+package com.neulketing.openblue.ui.media
 
 import android.content.Intent
 import android.media.MediaPlayer

@@ -1,10 +1,10 @@
-package com.openminis.app.mcp.oauth
+package com.neulketing.openblue.mcp.oauth
 
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
-import com.openminis.app.auth.OAuthCallbackServer
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.auth.OAuthCallbackServer
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext

@@ -1,4 +1,4 @@
-package com.openminis.app.mcp.oauth
+package com.neulketing.openblue.mcp.oauth
 
 import java.net.URI
 import java.net.URLEncoder

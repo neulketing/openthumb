@@ -1,4 +1,4 @@
-package com.openminis.app.browser
+package com.neulketing.openblue.browser
 
 /**
  * Injectable JavaScript for browser_use actions.

@@ -1,4 +1,4 @@
-package com.openminis.app.ui.browser
+package com.neulketing.openblue.ui.browser
 
 import android.annotation.SuppressLint
 import android.view.MotionEvent

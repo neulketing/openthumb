@@ -1,12 +1,12 @@
-package com.openminis.app.speech
+package com.neulketing.openblue.speech
 
 import android.content.Context
 import android.media.MediaPlayer
 import android.util.Log
-import com.openminis.app.MinisApp
-import com.openminis.app.R
-import com.openminis.app.provider.voice.VoiceOutputRequest
-import com.openminis.app.provider.voice.VoiceProviderFactory
+import com.neulketing.openblue.MinisApp
+import com.neulketing.openblue.R
+import com.neulketing.openblue.provider.voice.VoiceOutputRequest
+import com.neulketing.openblue.provider.voice.VoiceProviderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -35,7 +35,7 @@ import kotlin.coroutines.resume
  * settings Quick Test sheet, so no provider voice was usable in chat.
  *
  * ## Routing
- * Each utterance asks [com.openminis.app.data.repository.ProviderRepository
+ * Each utterance asks [com.neulketing.openblue.data.repository.ProviderRepository
  * .resolveVoiceOutputChoice] (added in the P0-1 commit) where to go:
  *  - System choice, no credentials, unsupported vendor, or ANY synthesis
  *    failure → [TextToSpeechManager] (the on-device engine).
@@ -190,8 +190,8 @@ class ReadAloudPlayer(context: Context) {
 
     /** @return true when provider audio was synthesized AND played. */
     private suspend fun speakViaProvider(
-        instance: com.openminis.app.data.model.ProviderInstance,
-        modelEntry: com.openminis.app.data.model.ModelEntry,
+        instance: com.neulketing.openblue.data.model.ProviderInstance,
+        modelEntry: com.neulketing.openblue.data.model.ModelEntry,
         text: String,
     ): Boolean {
         val repo = (appContext as? MinisApp)?.providerRepository ?: return false

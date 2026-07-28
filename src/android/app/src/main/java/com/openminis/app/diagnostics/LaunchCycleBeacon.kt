@@ -1,7 +1,7 @@
-package com.openminis.app.diagnostics
+package com.neulketing.openblue.diagnostics
 
 import android.content.Context
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import java.io.File
 
 /**

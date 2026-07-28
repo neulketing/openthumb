@@ -1,4 +1,4 @@
-package com.openminis.app.browser
+package com.neulketing.openblue.browser
 
 import org.json.JSONArray
 import org.json.JSONObject

@@ -14,7 +14,7 @@
  * (Android's OverScroller would re-introduce that — out of scope for
  * part-2; users still get manual drag scrollback).
  */
-package com.openminis.app.ui.terminal.canvas
+package com.neulketing.openblue.ui.terminal.canvas
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -33,12 +33,12 @@ import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import com.openminis.app.ui.terminal.emulator.CursorShape
-import com.openminis.app.ui.terminal.emulator.TerminalCell
-import com.openminis.app.ui.terminal.emulator.TerminalEmulator
-import com.openminis.app.ui.terminal.emulator.TerminalPalette
-import com.openminis.app.ui.terminal.emulator.TextAttributes
-import com.openminis.app.ui.terminal.rememberJetBrainsMonoTypeface
+import com.neulketing.openblue.ui.terminal.emulator.CursorShape
+import com.neulketing.openblue.ui.terminal.emulator.TerminalCell
+import com.neulketing.openblue.ui.terminal.emulator.TerminalEmulator
+import com.neulketing.openblue.ui.terminal.emulator.TerminalPalette
+import com.neulketing.openblue.ui.terminal.emulator.TextAttributes
+import com.neulketing.openblue.ui.terminal.rememberJetBrainsMonoTypeface
 
 /**
  * Compose wrapper around [TerminalNativeView]. Drop-in replacement for

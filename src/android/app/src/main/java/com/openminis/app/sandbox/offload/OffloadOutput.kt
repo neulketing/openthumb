@@ -1,6 +1,6 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -27,7 +27,7 @@ import org.json.JSONObject
  *
  * Handlers feed `body` without a trailing newline; the formatter never
  * adds one — the caller appends `"\n"` when wrapping in
- * [com.openminis.app.sandbox.NativeOffloadResult], matching the
+ * [com.neulketing.openblue.sandbox.NativeOffloadResult], matching the
  * existing pattern.
  */
 internal object OffloadOutput {

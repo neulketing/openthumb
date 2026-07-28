@@ -1,8 +1,8 @@
-package com.openminis.app.provider.voice
+package com.neulketing.openblue.provider.voice
 
 import android.util.Log
-import com.openminis.app.data.model.ProviderInstance
-import com.openminis.app.data.model.ProviderType
+import com.neulketing.openblue.data.model.ProviderInstance
+import com.neulketing.openblue.data.model.ProviderType
 
 /**
  * [T-android-provider-voice] Maps a configured ProviderInstance to a concrete

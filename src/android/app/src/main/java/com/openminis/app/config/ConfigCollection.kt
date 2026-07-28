@@ -1,4 +1,4 @@
-package com.openminis.app.config
+package com.neulketing.openblue.config
 
 /**
  * A dynamically-keyed group of fields, e.g. one ProviderInstance per id,

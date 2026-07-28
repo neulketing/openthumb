@@ -1,4 +1,4 @@
-package com.openminis.app.ui.components
+package com.neulketing.openblue.ui.components
 
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
@@ -52,15 +52,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.openminis.app.R
-import com.openminis.app.data.model.LLMMessage
-import com.openminis.app.data.model.LLMMediaAttachment
-import com.openminis.app.data.model.ModelEntry
-import com.openminis.app.data.model.normalizeModalityName
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.provider.ProviderFactory
-import com.openminis.app.provider.openai.OpenAIProvider
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.model.LLMMessage
+import com.neulketing.openblue.data.model.LLMMediaAttachment
+import com.neulketing.openblue.data.model.ModelEntry
+import com.neulketing.openblue.data.model.normalizeModalityName
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.provider.ProviderFactory
+import com.neulketing.openblue.provider.openai.OpenAIProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -452,7 +452,7 @@ private suspend fun performTest(
     // stack (vendor adapters + endpoints), NOT the chat provider — mirrors iOS
     // ModelQuickTestSheet .speechOut / .transcription.
     if (kind == QuickTestKind.SPEECH_OUT || kind == QuickTestKind.TRANSCRIPTION) {
-        val voice = com.openminis.app.provider.voice.VoiceProviderFactory.make(instance, apiKey)
+        val voice = com.neulketing.openblue.provider.voice.VoiceProviderFactory.make(instance, apiKey)
             ?: return@withContext failure(context.getString(R.string.quicktest_voice_unsupported))
         return@withContext when (kind) {
             QuickTestKind.SPEECH_OUT -> {
@@ -465,7 +465,7 @@ private suspend fun performTest(
                         // iOS 0a52bdbf: pass entry.model.id for both so the test
                         // speaks in THAT voice, not the vendor default.
                         val data = voice.synthesize(
-                            com.openminis.app.provider.voice.VoiceOutputRequest(
+                            com.neulketing.openblue.provider.voice.VoiceOutputRequest(
                                 input = "Hi! This is Minis testing text to speech.",
                                 model = entry.model.id,
                                 voice = entry.model.id,
@@ -488,7 +488,7 @@ private suspend fun performTest(
                         ?: return@withContext failure(context.getString(R.string.quicktest_clip_failed))
                     runCatching {
                         val resp = voice.transcribe(
-                            com.openminis.app.provider.voice.VoiceInputRequest(
+                            com.neulketing.openblue.provider.voice.VoiceInputRequest(
                                 audioData = clip,
                                 model = entry.baseModel.id,
                                 language = "en",

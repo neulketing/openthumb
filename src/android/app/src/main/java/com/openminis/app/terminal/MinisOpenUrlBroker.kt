@@ -1,4 +1,4 @@
-package com.openminis.app.terminal
+package com.neulketing.openblue.terminal
 
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow

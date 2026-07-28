@@ -1,4 +1,4 @@
-package com.openminis.app.notification
+package com.neulketing.openblue.notification
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -10,10 +10,10 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.openminis.app.R
-import com.openminis.app.data.repository.BackgroundSettingsRepository
-import com.openminis.app.data.repository.ChatRepository
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.repository.BackgroundSettingsRepository
+import com.neulketing.openblue.data.repository.ChatRepository
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
  * session finishes while the app is backgrounded. Mirrors iOS
  * `BackgroundKeepAliveManager.postBackgroundTaskNotification` (L274).
  *
- * Trigger contract: this class is hooked into [com.openminis.app.service.SessionActivityTracker]
+ * Trigger contract: this class is hooked into [com.neulketing.openblue.service.SessionActivityTracker]
  * so a session transitioning from active → inactive (i.e. its agent
  * loop completed) deterministically reaches `notifyTaskCompleted`. The
  * tracker itself is the single source of truth for "is this session
@@ -60,7 +60,7 @@ class BackgroundTaskNotifier(
     }
 
     /**
-     * Called by [com.openminis.app.service.SessionActivityTracker] when a
+     * Called by [com.neulketing.openblue.service.SessionActivityTracker] when a
      * session finishes (active → inactive transition). Looks up the
      * session title via [chatRepository] and posts the notification, off
      * the main thread. No-ops silently if the user has disabled

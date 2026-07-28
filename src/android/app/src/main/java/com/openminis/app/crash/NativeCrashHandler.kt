@@ -1,4 +1,4 @@
-package com.openminis.app.crash
+package com.neulketing.openblue.crash
 
 import android.util.Log
 import java.io.File

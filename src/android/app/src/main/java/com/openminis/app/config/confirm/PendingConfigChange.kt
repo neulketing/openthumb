@@ -1,6 +1,6 @@
-package com.openminis.app.config.confirm
+package com.neulketing.openblue.config.confirm
 
-import com.openminis.app.config.ConfigRisk
+import com.neulketing.openblue.config.ConfigRisk
 import java.util.UUID
 
 /**

@@ -1,6 +1,6 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
-import com.openminis.app.BuildConfig
+import com.neulketing.openblue.BuildConfig
 import okhttp3.Request
 
 /**

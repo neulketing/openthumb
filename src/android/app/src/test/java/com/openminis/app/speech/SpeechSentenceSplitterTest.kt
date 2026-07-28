@@ -1,4 +1,4 @@
-package com.openminis.app.speech
+package com.neulketing.openblue.speech
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

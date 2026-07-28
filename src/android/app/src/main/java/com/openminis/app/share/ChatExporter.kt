@@ -1,13 +1,13 @@
-package com.openminis.app.share
+package com.neulketing.openblue.share
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
-import com.openminis.app.data.db.ChatSessionEntity
-import com.openminis.app.data.db.MessageEntity
-import com.openminis.app.data.repository.ChatRepository
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.data.db.ChatSessionEntity
+import com.neulketing.openblue.data.db.MessageEntity
+import com.neulketing.openblue.data.repository.ChatRepository
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,6 +1,6 @@
-package com.openminis.app.debug
+package com.neulketing.openblue.debug
 
-import com.openminis.app.BuildConfig
+import com.neulketing.openblue.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
 

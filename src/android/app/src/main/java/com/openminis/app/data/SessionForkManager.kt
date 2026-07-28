@@ -1,9 +1,9 @@
-package com.openminis.app.data
+package com.neulketing.openblue.data
 
 import android.content.Context
-import com.openminis.app.data.repository.ChatRepository
-import com.openminis.app.data.repository.SkillRepository
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.data.repository.ChatRepository
+import com.neulketing.openblue.data.repository.SkillRepository
+import com.neulketing.openblue.logging.AppLogger
 import java.io.File
 
 /**

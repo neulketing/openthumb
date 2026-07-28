@@ -1,6 +1,6 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
-import com.openminis.app.data.model.AgentToolDefinition
+import com.neulketing.openblue.data.model.AgentToolDefinition
 import org.json.JSONObject
 
 /**

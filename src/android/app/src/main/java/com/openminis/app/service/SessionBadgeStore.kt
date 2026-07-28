@@ -1,4 +1,4 @@
-package com.openminis.app.service
+package com.neulketing.openblue.service
 
 import android.content.Context
 import android.content.SharedPreferences

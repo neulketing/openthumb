@@ -1,6 +1,6 @@
-package com.openminis.app.provider.voice
+package com.neulketing.openblue.provider.voice
 
-import com.openminis.app.data.model.LLMModel
+import com.neulketing.openblue.data.model.LLMModel
 import org.json.JSONObject
 
 /**

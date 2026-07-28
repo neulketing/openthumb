@@ -1,9 +1,9 @@
-package com.openminis.app.speech.correction
+package com.neulketing.openblue.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.openminis.app.MinisApp
-import com.openminis.app.shared.TextSegmenter
+import com.neulketing.openblue.MinisApp
+import com.neulketing.openblue.shared.TextSegmenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,7 +79,7 @@ object VoiceCorrection {
         // Straight from the Room singleton rather than adding an accessor to
         // MinisApp — AppDatabase.getInstance is already the shared handle.
         val dao = runCatching {
-            com.openminis.app.data.db.AppDatabase.getInstance(app).chatDao()
+            com.neulketing.openblue.data.db.AppDatabase.getInstance(app).chatDao()
         }.getOrNull()
         if (dao != null) {
             vocabularyBuilder = TypedVocabularyBuilder(app, database, dao, posTag, segment, rank)
@@ -121,7 +121,7 @@ object VoiceCorrection {
      */
     fun buildConversationContext(
         context: Context,
-        messages: List<com.openminis.app.ui.chat.ChatMessage>,
+        messages: List<com.neulketing.openblue.ui.chat.ChatMessage>,
     ): ConversationContext {
         ensureInitialized(context)
         val seg = segment ?: return ConversationContext.EMPTY
@@ -139,7 +139,7 @@ object VoiceCorrection {
      * can be unit-tested. See [buildConversationContext] for the rules.
      */
     internal fun toSourceMessages(
-        messages: List<com.openminis.app.ui.chat.ChatMessage>,
+        messages: List<com.neulketing.openblue.ui.chat.ChatMessage>,
     ): List<CorrectionSourceMessage> = messages.mapNotNull { msg ->
         val role = when (msg.role) {
             "user" -> CorrectionSourceMessage.Role.USER

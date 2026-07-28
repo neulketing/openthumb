@@ -1,4 +1,4 @@
-package com.openminis.app.webapp
+package com.neulketing.openblue.webapp
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -65,9 +65,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.openminis.app.MinisApp
-import com.openminis.app.R
-import com.openminis.app.data.repository.WebAppShortcutRepository
+import com.neulketing.openblue.MinisApp
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.repository.WebAppShortcutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

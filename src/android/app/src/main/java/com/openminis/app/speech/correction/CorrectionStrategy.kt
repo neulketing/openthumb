@@ -1,12 +1,12 @@
-package com.openminis.app.speech.correction
+package com.neulketing.openblue.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.openminis.app.data.model.LLMMessage
-import com.openminis.app.data.model.ModelEntry
-import com.openminis.app.data.model.ThinkingLevel
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.provider.ProviderFactory
+import com.neulketing.openblue.data.model.LLMMessage
+import com.neulketing.openblue.data.model.ModelEntry
+import com.neulketing.openblue.data.model.ThinkingLevel
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.provider.ProviderFactory
 
 /** Result of one correction attempt. */
 data class CorrectionOutcome(

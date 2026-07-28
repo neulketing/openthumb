@@ -1,4 +1,4 @@
-package com.openminis.app.data.repository
+package com.neulketing.openblue.data.repository
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase

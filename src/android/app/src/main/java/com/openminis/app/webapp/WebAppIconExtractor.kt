@@ -1,4 +1,4 @@
-package com.openminis.app.webapp
+package com.neulketing.openblue.webapp
 
 import java.io.File
 

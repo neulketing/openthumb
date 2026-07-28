@@ -1,4 +1,4 @@
-package com.openminis.app.offload
+package com.neulketing.openblue.offload
 
 import android.Manifest
 import android.content.ContentValues

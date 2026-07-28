@@ -1,9 +1,9 @@
-package com.openminis.app.offload
+package com.neulketing.openblue.offload
 
 import android.app.Application
 import android.content.Context
 import android.os.Build
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

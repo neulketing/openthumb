@@ -1,4 +1,4 @@
-package com.openminis.app.browser
+package com.neulketing.openblue.browser
 
 import android.content.Context
 import android.os.Message
@@ -19,7 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import com.openminis.app.R
+import com.neulketing.openblue.R
 import org.json.JSONObject
 import java.io.File
 import java.util.Date

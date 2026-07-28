@@ -1,7 +1,7 @@
-package com.openminis.app.share
+package com.neulketing.openblue.share
 
 import android.content.Context
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import org.json.JSONObject
 import java.io.File
 

@@ -1,4 +1,4 @@
-package com.openminis.app.ui.components
+package com.neulketing.openblue.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState

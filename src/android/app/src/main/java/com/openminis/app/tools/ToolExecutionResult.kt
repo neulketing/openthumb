@@ -1,4 +1,4 @@
-package com.openminis.app.tools
+package com.neulketing.openblue.tools
 
 data class ToolExecutionResult(
     val output: String,

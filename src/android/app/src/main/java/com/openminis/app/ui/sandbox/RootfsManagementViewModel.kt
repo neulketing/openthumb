@@ -1,10 +1,10 @@
-package com.openminis.app.ui.sandbox
+package com.neulketing.openblue.ui.sandbox
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.openminis.app.sandbox.RootfsInstallState
-import com.openminis.app.sandbox.RootfsManager
+import com.neulketing.openblue.sandbox.RootfsInstallState
+import com.neulketing.openblue.sandbox.RootfsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

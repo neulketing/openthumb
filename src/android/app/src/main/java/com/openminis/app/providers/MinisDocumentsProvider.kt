@@ -1,4 +1,4 @@
-package com.openminis.app.providers
+package com.neulketing.openblue.providers
 
 import android.database.Cursor
 import android.database.MatrixCursor

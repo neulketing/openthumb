@@ -1,8 +1,8 @@
-package com.openminis.app.offload
+package com.neulketing.openblue.offload
 
 import android.media.MediaPlayer
 import android.util.Log
-import com.openminis.app.sandbox.PRootKernel
+import com.neulketing.openblue.sandbox.PRootKernel
 import java.io.File
 
 /**

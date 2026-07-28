@@ -1,4 +1,4 @@
-package com.openminis.app.agent
+package com.neulketing.openblue.agent
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

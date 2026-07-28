@@ -1,6 +1,6 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
-import com.openminis.app.data.MountedFoldersStore
+import com.neulketing.openblue.data.MountedFoldersStore
 
 /**
  * Bridges the user-facing [MountedFoldersStore] to the parts of the app

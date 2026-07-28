@@ -1,4 +1,4 @@
-package com.openminis.app.ui.markdown
+package com.neulketing.openblue.ui.markdown
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -51,7 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
-import com.openminis.app.sandbox.PRootKernel
+import com.neulketing.openblue.sandbox.PRootKernel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -525,7 +525,7 @@ private fun InlineContent(
     val linkListener = remember(context) {
         LinkInteractionListener { link ->
             val url = (link as? LinkAnnotation.Url)?.url ?: return@LinkInteractionListener
-            val handled = com.openminis.app.ui.browser.BrowserExternalSchemeHandler
+            val handled = com.neulketing.openblue.ui.browser.BrowserExternalSchemeHandler
                 .handle(context, url)
             if (handled) return@LinkInteractionListener
             runCatching {

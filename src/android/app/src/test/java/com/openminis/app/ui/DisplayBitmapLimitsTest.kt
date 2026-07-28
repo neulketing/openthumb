@@ -1,4 +1,4 @@
-package com.openminis.app.ui
+package com.neulketing.openblue.ui
 
 import org.junit.Assert.assertTrue
 import org.junit.Test

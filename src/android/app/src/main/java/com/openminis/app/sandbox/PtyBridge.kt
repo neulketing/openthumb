@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 /**
  * JNI bridge to bionic libc's forkpty() + termios + waitpid.

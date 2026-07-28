@@ -1,4 +1,4 @@
-package com.openminis.app.ui.chat
+package com.neulketing.openblue.ui.chat
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween

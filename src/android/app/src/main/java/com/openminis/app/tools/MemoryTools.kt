@@ -1,6 +1,6 @@
-package com.openminis.app.tools
+package com.neulketing.openblue.tools
 
-import com.openminis.app.data.repository.MemoryRepository
+import com.neulketing.openblue.data.repository.MemoryRepository
 import org.json.JSONArray
 import org.json.JSONObject
 

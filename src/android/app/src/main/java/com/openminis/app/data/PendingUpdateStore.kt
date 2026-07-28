@@ -1,8 +1,8 @@
-package com.openminis.app.data
+package com.neulketing.openblue.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest

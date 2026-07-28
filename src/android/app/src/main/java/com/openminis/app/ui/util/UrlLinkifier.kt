@@ -1,4 +1,4 @@
-package com.openminis.app.ui.util
+package com.neulketing.openblue.ui.util
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString

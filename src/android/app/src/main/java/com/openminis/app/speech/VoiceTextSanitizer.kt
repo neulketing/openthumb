@@ -1,4 +1,4 @@
-package com.openminis.app.speech
+package com.neulketing.openblue.speech
 
 /**
  * [T-android-voice-text-sanitizer] Cleans a text unit before it is handed to

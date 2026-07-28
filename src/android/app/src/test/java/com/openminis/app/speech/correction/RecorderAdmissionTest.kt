@@ -1,4 +1,4 @@
-package com.openminis.app.speech.correction
+package com.neulketing.openblue.speech.correction
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

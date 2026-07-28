@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -59,20 +59,20 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.openminis.app.data.model.ProviderType
-import com.openminis.app.data.repository.ProviderRepository
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.ui.components.MinisAlertDialog
-import com.openminis.app.ui.util.bringIntoViewOnFocus
-import com.openminis.app.R
+import com.neulketing.openblue.data.model.ProviderType
+import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.ui.components.MinisAlertDialog
+import com.neulketing.openblue.ui.util.bringIntoViewOnFocus
+import com.neulketing.openblue.R
 import kotlinx.coroutines.launch
-import com.openminis.app.ui.components.MinisButton
-import com.openminis.app.ui.components.MinisOutlinedButton
-import com.openminis.app.ui.components.MinisSmallButton
-import com.openminis.app.ui.components.MinisSmallOutlinedButton
-import com.openminis.app.ui.components.MinisSmallTextButton
-import com.openminis.app.ui.components.MinisTextButton
-import com.openminis.app.ui.components.SectionTextField
+import com.neulketing.openblue.ui.components.MinisButton
+import com.neulketing.openblue.ui.components.MinisOutlinedButton
+import com.neulketing.openblue.ui.components.MinisSmallButton
+import com.neulketing.openblue.ui.components.MinisSmallOutlinedButton
+import com.neulketing.openblue.ui.components.MinisSmallTextButton
+import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openblue.ui.components.SectionTextField
 
 private const val TAG = "ProviderDetail"
 
@@ -94,7 +94,7 @@ fun ProviderDetailScreen(
     // re-creates them from ProviderType.builtInModels on next refresh anyway —
     // mirrors DebugProviderMutationMethods note "Built-in entries can't be
     // deleted — set isHidden=true instead".
-    var entryToDelete by remember { mutableStateOf<com.openminis.app.data.model.ModelEntry?>(null) }
+    var entryToDelete by remember { mutableStateOf<com.neulketing.openblue.data.model.ModelEntry?>(null) }
     var deleted by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
@@ -166,7 +166,7 @@ fun ProviderDetailScreen(
 
         // ─── Credential / API Key ───────────────────────────────────
         val isOAuthProvider =
-            instance.credentialType == com.openminis.app.data.model.ProviderCredential.oauth
+            instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth
         SettingsSection(
             header = if (isOAuthProvider) stringResource(R.string.add_provider_credential) else stringResource(R.string.provider_list_api_key),
             footer = if (isOAuthProvider) {
@@ -340,7 +340,7 @@ fun ProviderDetailScreen(
 
         // ─── API Format (OpenAI API-key only) ───────────────────────
         if (instance.providerType == ProviderType.openAI &&
-            instance.credentialType != com.openminis.app.data.model.ProviderCredential.oauth
+            instance.credentialType != com.neulketing.openblue.data.model.ProviderCredential.oauth
         ) {
             SettingsSection(
                 header = stringResource(R.string.provider_detail_api_format),
@@ -407,30 +407,30 @@ fun ProviderDetailScreen(
             SettingsSection(
                 header = "Image Generation",
                 footer = when (mode) {
-                    com.openminis.app.data.model.ImageEndpointMode.auto ->
+                    com.neulketing.openblue.data.model.ImageEndpointMode.auto ->
                         if (instance.imageEndpointResolved != null) {
                             val resolved = if (instance.imageEndpointResolved ==
-                                com.openminis.app.data.model.ImageEndpointMode.imagesGenerations
+                                com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations
                             ) "/v1/images/generations" else "/v1/chat/completions"
                             "Auto: tries /v1/images/generations first, falls back to /v1/chat/completions. Last successful endpoint: $resolved."
                         } else {
                             "Auto: tries /v1/images/generations first, falls back to /v1/chat/completions. Caches the working endpoint after the first call."
                         }
-                    com.openminis.app.data.model.ImageEndpointMode.imagesGenerations ->
+                    com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations ->
                         "Always use /v1/images/generations."
-                    com.openminis.app.data.model.ImageEndpointMode.chatCompletions ->
+                    com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions ->
                         "Always use /v1/chat/completions (multimodal output)."
                 },
             ) {
                 SettingsCardBlock {
                     SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                         SegmentedButton(
-                            selected = mode == com.openminis.app.data.model.ImageEndpointMode.auto,
+                            selected = mode == com.neulketing.openblue.data.model.ImageEndpointMode.auto,
                             onClick = {
-                                if (mode != com.openminis.app.data.model.ImageEndpointMode.auto) {
+                                if (mode != com.neulketing.openblue.data.model.ImageEndpointMode.auto) {
                                     providerRepository.updateInstance(
                                         instance.copy(
-                                            imageEndpointMode = com.openminis.app.data.model.ImageEndpointMode.auto,
+                                            imageEndpointMode = com.neulketing.openblue.data.model.ImageEndpointMode.auto,
                                         ),
                                     )
                                 }
@@ -438,12 +438,12 @@ fun ProviderDetailScreen(
                             shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                         ) { Text("Auto") }
                         SegmentedButton(
-                            selected = mode == com.openminis.app.data.model.ImageEndpointMode.imagesGenerations,
+                            selected = mode == com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations,
                             onClick = {
-                                if (mode != com.openminis.app.data.model.ImageEndpointMode.imagesGenerations) {
+                                if (mode != com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations) {
                                     providerRepository.updateInstance(
                                         instance.copy(
-                                            imageEndpointMode = com.openminis.app.data.model.ImageEndpointMode.imagesGenerations,
+                                            imageEndpointMode = com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations,
                                             // User-forced mode supersedes any cached probe result.
                                             imageEndpointResolved = null,
                                         ),
@@ -453,12 +453,12 @@ fun ProviderDetailScreen(
                             shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                         ) { Text("Images API") }
                         SegmentedButton(
-                            selected = mode == com.openminis.app.data.model.ImageEndpointMode.chatCompletions,
+                            selected = mode == com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions,
                             onClick = {
-                                if (mode != com.openminis.app.data.model.ImageEndpointMode.chatCompletions) {
+                                if (mode != com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions) {
                                     providerRepository.updateInstance(
                                         instance.copy(
-                                            imageEndpointMode = com.openminis.app.data.model.ImageEndpointMode.chatCompletions,
+                                            imageEndpointMode = com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions,
                                             imageEndpointResolved = null,
                                         ),
                                     )
@@ -689,7 +689,7 @@ fun ProviderDetailScreen(
 
 @Composable
 private fun OAuthCredentialBlock(
-    instance: com.openminis.app.data.model.ProviderInstance,
+    instance: com.neulketing.openblue.data.model.ProviderInstance,
     storedKey: String,
     providerRepository: ProviderRepository,
 ) {
@@ -710,7 +710,7 @@ private fun OAuthCredentialBlock(
     // [T-kimi-oauth] Device-code dialog state for Kimi re-auth (see
     // AddProviderScreen.OAuthConfigSection for the rationale).
     var kimiDeviceAuth by remember(instance.id) {
-        mutableStateOf<com.openminis.app.auth.KimiDeviceFlow.DeviceAuthorization?>(null)
+        mutableStateOf<com.neulketing.openblue.auth.KimiDeviceFlow.DeviceAuthorization?>(null)
     }
     var kimiLoginJob by remember(instance.id) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     kimiDeviceAuth?.let { auth ->
@@ -766,7 +766,7 @@ private fun OAuthCredentialBlock(
                 // and validAccessToken() silently re-minted an access token —
                 // the user stayed effectively logged in. Then flip local state so
                 // the UI swaps to the Sign In button immediately.
-                com.openminis.app.auth.OAuthManager.forInstance(context, instance)?.logout()
+                com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)?.logout()
                 providerRepository.deleteApiKey(instance.id)
                 displayedKey = ""
                 AppLogger.info(TAG, "OAuth signed out for ${instance.id} (tokens + apiKey cleared)")
@@ -787,24 +787,24 @@ private fun OAuthCredentialBlock(
                     try {
                         val token = when (instance.providerType) {
                             ProviderType.kimiCode ->
-                                com.openminis.app.auth.KimiOAuthManager.login(
+                                com.neulketing.openblue.auth.KimiOAuthManager.login(
                                     context, instance.id, providerRepository,
                                     onDeviceCode = { auth -> kimiDeviceAuth = auth },
                                 ).also { kimiDeviceAuth = null }
                             ProviderType.anthropic ->
-                                com.openminis.app.auth.ClaudeOAuthManager.login(
+                                com.neulketing.openblue.auth.ClaudeOAuthManager.login(
                                     context, instance.id, providerRepository,
                                 )
                             ProviderType.openAI ->
-                                com.openminis.app.auth.OpenAIOAuthManager.login(
+                                com.neulketing.openblue.auth.OpenAIOAuthManager.login(
                                     context, instance.id, providerRepository,
                                 )
                             ProviderType.openRouter ->
-                                com.openminis.app.auth.OpenRouterOAuthManager.login(
+                                com.neulketing.openblue.auth.OpenRouterOAuthManager.login(
                                     context, instance.id, providerRepository,
                                 )
                             ProviderType.xAI ->
-                                com.openminis.app.auth.XAIOAuthManager.login(
+                                com.neulketing.openblue.auth.XAIOAuthManager.login(
                                     context, instance.id, providerRepository,
                                 )
                             else -> null
@@ -914,7 +914,7 @@ private fun maskedKey(key: String): String {
 private fun exportProviderInstance(
     context: android.content.Context,
     providerRepository: ProviderRepository,
-    instance: com.openminis.app.data.model.ProviderInstance,
+    instance: com.neulketing.openblue.data.model.ProviderInstance,
 ) {
     val json = providerRepository.exportInstanceJSON(instance.id) ?: return
     val safeLabel = instance.label.ifBlank { "provider" }
@@ -952,11 +952,11 @@ private fun exportProviderInstance(
  */
 @Composable
 private fun ManualBearerTokenSection(
-    instance: com.openminis.app.data.model.ProviderInstance,
+    instance: com.neulketing.openblue.data.model.ProviderInstance,
     context: android.content.Context,
 ) {
     val manager = remember(instance.id) {
-        com.openminis.app.auth.OAuthManager.forInstance(context, instance)
+        com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
     }
     var reloadTick by remember(instance.id) { mutableStateOf(0) }
     val stored = remember(instance.id, reloadTick) { manager?.loadManualBearerToken() }

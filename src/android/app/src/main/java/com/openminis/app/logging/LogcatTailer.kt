@@ -1,4 +1,4 @@
-package com.openminis.app.logging
+package com.neulketing.openblue.logging
 
 import android.util.Log
 import java.io.BufferedReader

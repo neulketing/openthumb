@@ -1,4 +1,4 @@
-package com.openminis.app.provider
+package com.neulketing.openblue.provider
 
 import org.json.JSONObject
 

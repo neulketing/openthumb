@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,12 +37,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.R
-import com.openminis.app.agent.SoulBodyLimitCheck
-import com.openminis.app.agent.SoulFile
-import com.openminis.app.agent.SoulMDParser
-import com.openminis.app.agent.SoulMetadata
-import com.openminis.app.agent.SoulStore
+import com.neulketing.openblue.R
+import com.neulketing.openblue.agent.SoulBodyLimitCheck
+import com.neulketing.openblue.agent.SoulFile
+import com.neulketing.openblue.agent.SoulMDParser
+import com.neulketing.openblue.agent.SoulMetadata
+import com.neulketing.openblue.agent.SoulStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope

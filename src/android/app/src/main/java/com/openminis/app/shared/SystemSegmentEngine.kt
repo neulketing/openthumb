@@ -1,4 +1,4 @@
-package com.openminis.app.shared
+package com.neulketing.openblue.shared
 
 import android.icu.text.BreakIterator
 import java.util.Locale

@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox
+package com.neulketing.openblue.sandbox
 
 /**
  * Strips ANSI escape sequences and handles CR-based line overwrites

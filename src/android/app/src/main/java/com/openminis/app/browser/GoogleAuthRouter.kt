@@ -1,10 +1,10 @@
-package com.openminis.app.browser
+package com.neulketing.openblue.browser
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
-import com.openminis.app.logging.AppLogger
+import com.neulketing.openblue.logging.AppLogger
 import java.net.URI
 
 /**

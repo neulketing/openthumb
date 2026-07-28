@@ -1,4 +1,4 @@
-package com.openminis.app.sandbox.offload
+package com.neulketing.openblue.sandbox.offload
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Context
@@ -8,12 +8,12 @@ import android.graphics.Rect
 import android.os.Build
 import android.view.Display
 import android.view.accessibility.AccessibilityNodeInfo
-import com.openminis.app.accessibility.MinisAccessibilityService
-import com.openminis.app.accessibility.NodeRegistry
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.sandbox.NativeOffloadHandler
-import com.openminis.app.sandbox.NativeOffloadRequest
-import com.openminis.app.sandbox.NativeOffloadResult
+import com.neulketing.openblue.accessibility.MinisAccessibilityService
+import com.neulketing.openblue.accessibility.NodeRegistry
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.sandbox.NativeOffloadHandler
+import com.neulketing.openblue.sandbox.NativeOffloadRequest
+import com.neulketing.openblue.sandbox.NativeOffloadResult
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -115,7 +115,7 @@ First-run: enable "Minis" under Settings → Accessibility, then `service ping`.
         // return. Does NOT touch the per-message tool name / running
         // flag — those stay owned by ChatViewModel so the overlay's
         // tool-icon and indeterminate progress are not affected.
-        com.openminis.app.service.SessionActivityTracker.updateToolStatus(
+        com.neulketing.openblue.service.SessionActivityTracker.updateToolStatus(
             statusForSubAction(sub, args.positional.getOrNull(1), args),
         )
         return try {

@@ -1,4 +1,4 @@
-package com.openminis.app.ui.settings
+package com.neulketing.openblue.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,11 +47,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.openminis.app.R
-import com.openminis.app.data.MountedFoldersStore
-import com.openminis.app.ui.components.SectionTextField
+import com.neulketing.openblue.R
+import com.neulketing.openblue.data.MountedFoldersStore
+import com.neulketing.openblue.ui.components.SectionTextField
 import kotlinx.coroutines.launch
-import com.openminis.app.ui.components.MinisTextButton
+import com.neulketing.openblue.ui.components.MinisTextButton
 
 /**
  * Detail/edit screen for a single mounted folder. Mirrors iOS

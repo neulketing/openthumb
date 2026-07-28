@@ -1,4 +1,4 @@
-package com.openminis.app.share
+package com.neulketing.openblue.share
 
 import org.json.JSONArray
 import org.json.JSONObject

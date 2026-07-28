@@ -1,8 +1,8 @@
-package com.openminis.app.speech.correction
+package com.neulketing.openblue.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.openminis.app.R
+import com.neulketing.openblue.R
 
 /**
  * [T-android-voice-correction] Decides which mined terms are worth storing as

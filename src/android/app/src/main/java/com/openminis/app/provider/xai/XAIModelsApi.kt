@@ -1,8 +1,8 @@
-package com.openminis.app.provider.xai
+package com.neulketing.openblue.provider.xai
 
-import com.openminis.app.data.model.LLMModel
-import com.openminis.app.logging.AppLogger
-import com.openminis.app.provider.ModelsDevApi
+import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openblue.provider.ModelsDevApi
 
 /**
  * Static catalog of xAI (Grok) models exposed to OAuth users.

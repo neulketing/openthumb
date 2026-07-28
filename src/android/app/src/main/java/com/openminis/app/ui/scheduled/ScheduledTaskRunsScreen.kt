@@ -1,4 +1,4 @@
-package com.openminis.app.ui.scheduled
+package com.neulketing.openblue.ui.scheduled
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,8 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.openminis.app.R
-import com.openminis.app.scheduled.ScheduledRun
+import com.neulketing.openblue.R
+import com.neulketing.openblue.scheduled.ScheduledRun
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
