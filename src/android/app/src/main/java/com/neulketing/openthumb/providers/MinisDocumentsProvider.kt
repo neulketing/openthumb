@@ -27,7 +27,7 @@ import java.io.FileNotFoundException
  * gets its own cleanup commit, add:
  * ```xml
  * <provider android:name=".providers.MinisDocumentsProvider"
- *     android:authorities="com.openminis.minis.documents"
+ *     android:authorities="com.neulketing.openthumb.documents"
  *     android:exported="true"
  *     android:grantUriPermissions="true"
  *     android:permission="android.permission.MANAGE_DOCUMENTS">
@@ -42,7 +42,7 @@ import java.io.FileNotFoundException
 class MinisDocumentsProvider : DocumentsProvider() {
 
     companion object {
-        const val AUTHORITY = "com.openminis.minis.documents"
+        const val AUTHORITY = "com.neulketing.openthumb.documents"
         private const val ROOT_ID = "minis-root"
         private const val ROOT_DOC_ID = ""        // empty = providerRoot
         private val TOP_LEVEL = listOf("memory", "skills", "shared")
