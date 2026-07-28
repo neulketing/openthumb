@@ -5,20 +5,32 @@
 # unreachable from the host, so we forward one host port per device and talk to
 # all of them at once. adb is the only dependency besides curl and python3.
 #
-#   openthumb-fleet devices              list attached devices running OpenThumb
-#   openthumb-fleet status               one status line per device
-#   openthumb-fleet call <method> [json] raw JSON-RPC against every device
-#   openthumb-fleet prompt "<text>"      send a prompt to every device's agent
-#   openthumb-fleet cancel               stop in-flight runs
+#   openthumb-fleet devices               list attached devices running OpenThumb
+#   openthumb-fleet status                one status line per device
+#   openthumb-fleet health                rpc reachability + sandbox + battery per device
+#   openthumb-fleet call <method> [json]  raw JSON-RPC against every device
+#   openthumb-fleet prompt "<text>"       send a prompt, print each device's sessionId
+#   openthumb-fleet run "<text>"          prompt and WAIT per device; results land in
+#                                         $OPENTHUMB_FLEET_DIR/results/
+#   openthumb-fleet collect <sessionId>   poll every device until the session stops
+#   openthumb-fleet enqueue "<text>"      append a job to the queue
+#   openthumb-fleet jobs                  list queued jobs
+#   openthumb-fleet drain                 run queued jobs one at a time (see `run`)
+#   openthumb-fleet cancel                stop in-flight runs
 #
 # Env: OPENTHUMB_PKG (default com.neulketing.openthumb)
 #      OPENTHUMB_BASE_PORT (default 15321) — host ports are BASE+index
 #      OPENTHUMB_TIMEOUT (default 30, seconds per call)
+#      OPENTHUMB_WAIT_TIMEOUT (default 600, seconds for run/collect waits)
+#      OPENTHUMB_FLEET_DIR (default ~/.openthumb/fleet) — queue + results
 set -uo pipefail
 
 PKG="${OPENTHUMB_PKG:-com.neulketing.openthumb}"
 BASE_PORT="${OPENTHUMB_BASE_PORT:-15321}"
 DEVICE_PORT=5321
+FLEET_DIR="${OPENTHUMB_FLEET_DIR:-$HOME/.openthumb/fleet}"
+QUEUE="$FLEET_DIR/queue.jsonl"
+RESULTS_DIR="$FLEET_DIR/results"
 
 command -v adb >/dev/null || { echo "openthumb-fleet: adb not found" >&2; exit 1; }
 
@@ -93,7 +105,117 @@ fleet_each() {
   [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
 }
 
-usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; }
+# Health line per device: RPC reachability, appInfo, battery level/plugged.
+# Battery comes from dumpsys over adb (no RPC needed), so a down debug server
+# still yields a useful line.
+fleet_health() {
+  local index=0 found=0 serial port resp batt
+  while read -r serial; do
+    [ -n "$serial" ] || continue
+    found=1
+    batt=$(adb -s "$serial" shell dumpsys battery </dev/null 2>/dev/null | tr -d '\r')
+    local level plugged
+    level=$(printf '%s\n' "$batt" | awk -F': ' '/^\s*level:/ {print $2; exit}')
+    plugged=$(printf '%s\n' "$batt" | awk -F': ' '/^\s*plugged:/ {print $2; exit}')
+    local power="battery ${level:-?}%"
+    [ "${plugged:-0}" != "0" ] && power="$power, charging"
+    if ! port=$(ensure_forward "$serial" "$index"); then
+      printf '%-24s rpc=down  %s (adb forward failed)\n' "$serial" "$power"
+      index=$((index + 1)); continue
+    fi
+    resp=$(rpc "$port" debug.appInfo)
+    if [ -z "$resp" ]; then
+      printf '%-24s rpc=down  %s (app stopped, or release build)\n' "$serial" "$power"
+    else
+      printf '%-24s rpc=ok    %s %s\n' "$serial" "$power" "$(printf '%s\n' "$resp" | format_status)"
+    fi
+    index=$((index + 1))
+  done < <(fleet_serials)
+  [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
+}
+
+# chat.prompt on every device with wait=true, one result file per device under
+# results/<jobId>-<serial>.json, plus a one-line summary on stdout. $1 = prompt
+# text, $2 = job id used in result filenames.
+fleet_run() {
+  local text_json job_id="$2"
+  text_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1")
+  mkdir -p "$RESULTS_DIR"
+  local index=0 found=0 serial port resp outfile
+  while read -r serial; do
+    [ -n "$serial" ] || continue
+    found=1
+    if ! port=$(ensure_forward "$serial" "$index"); then
+      printf '%-24s ERROR    adb forward failed\n' "$serial"
+      index=$((index + 1)); continue
+    fi
+    resp=$(OPENTHUMB_TIMEOUT="${OPENTHUMB_WAIT_TIMEOUT:-600}" \
+      rpc "$port" chat.prompt "{\"prompt\":$text_json,\"wait\":true,\"waitTimeout\":${OPENTHUMB_WAIT_TIMEOUT:-600}}")
+    if [ -z "$resp" ]; then
+      printf '%-24s OFFLINE  no debug server (app stopped, or release build)\n' "$serial"
+    else
+      outfile="$RESULTS_DIR/${job_id}-${serial}.json"
+      printf '%s\n' "$resp" > "$outfile"
+      printf '%-24s %s\n' "$serial" "$(printf '%s\n' "$resp" | python3 -c '
+import json,sys
+try:
+    r = json.load(sys.stdin)
+except Exception:
+    print("BAD RESPONSE"); sys.exit()
+if "error" in r:
+    print("ERROR    %s" % r["error"].get("message","?")); sys.exit()
+res = r.get("result", {})
+text = (res.get("responseText") or "").replace("\n"," ")[:80]
+print("%-8s %s" % (res.get("status","?"), text))
+')"
+      printf '         → %s\n' "$outfile"
+    fi
+    index=$((index + 1))
+  done < <(fleet_serials)
+  [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
+}
+
+# Poll chat.session.status on every device until isRunning flips false.
+fleet_collect() {
+  local sid="$1" deadline=$((SECONDS + ${OPENTHUMB_WAIT_TIMEOUT:-600}))
+  local pending
+  pending=$(fleet_serials)
+  [ -n "$pending" ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
+  local index=0 serial port resp running
+  while [ $SECONDS -lt $deadline ]; do
+    local still=0
+    index=0
+    while read -r serial; do
+      [ -n "$serial" ] || continue
+      port=$(ensure_forward "$serial" "$index") || { index=$((index + 1)); continue; }
+      resp=$(rpc "$port" chat.session.status "{\"sessionId\":\"$sid\"}")
+      running=$(printf '%s\n' "$resp" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin).get("result",{}).get("isRunning"))
+except Exception: print("?")
+' 2>/dev/null)
+      if [ "$running" = "True" ]; then
+        still=1
+      else
+        printf '%-24s %s\n' "$serial" "$(printf '%s\n' "$resp" | python3 -c '
+import json,sys
+try:
+    r = json.load(sys.stdin).get("result",{})
+except Exception:
+    print("BAD RESPONSE"); sys.exit()
+print("done  %s" % (r.get("lastMessage") or "")[:80])
+')"
+      fi
+      index=$((index + 1))
+    done <<< "$pending"
+    [ "$still" -eq 0 ] && return 0
+    sleep 3
+  done
+  echo "openthumb-fleet: collect timed out — session still running somewhere" >&2
+  return 1
+}
+
+usage() { sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; }
 
 case "${1:-}" in
   devices)
@@ -102,15 +224,74 @@ case "${1:-}" in
     echo "$n device(s) with $PKG" >&2
     ;;
   status) fleet_each debug.appInfo '' status ;;
+  health) fleet_health ;;
   call)
     [ $# -ge 2 ] || { echo "usage: openthumb-fleet call <method> [params-json]" >&2; exit 1; }
     fleet_each "$2" "${3:-}"
     ;;
   prompt)
     [ $# -ge 2 ] || { echo "usage: openthumb-fleet prompt \"<text>\"" >&2; exit 1; }
-    # wait=false so the fleet runs concurrently; poll with `call chat.session.status`.
+    # wait=false so the fleet runs concurrently; harvest with `collect <sessionId>`.
     text=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$2")
-    fleet_each chat.prompt "{\"text\":$text,\"wait\":false}"
+    fleet_each chat.prompt "{\"prompt\":$text,\"wait\":false}" |
+      python3 -c '
+import json,sys
+for line in sys.stdin:
+    serial, _, rest = line.strip().partition(" ")
+    try:
+        r = json.loads(rest)
+        sid = r.get("result",{}).get("sessionId") or r.get("error",{}).get("message","?")
+    except Exception:
+        sid = rest
+    print("%-24s %s" % (serial, sid))
+'
+    ;;
+  run)
+    [ $# -ge 2 ] || { echo "usage: openthumb-fleet run \"<text>\"" >&2; exit 1; }
+    fleet_run "$2" "$(date +%Y%m%d-%H%M%S)"
+    ;;
+  collect)
+    [ $# -ge 2 ] || { echo "usage: openthumb-fleet collect <sessionId>" >&2; exit 1; }
+    fleet_collect "$2"
+    ;;
+  enqueue)
+    [ $# -ge 2 ] || { echo "usage: openthumb-fleet enqueue \"<text>\"" >&2; exit 1; }
+    mkdir -p "$FLEET_DIR"
+    python3 -c '
+import json,sys,time,uuid
+job = {"id": uuid.uuid4().hex[:8], "prompt": sys.argv[1], "enqueuedAt": int(time.time())}
+with open(sys.argv[2], "a") as f: f.write(json.dumps(job) + "\n")
+print("enqueued %s" % job["id"])
+' "$2" "$QUEUE"
+    ;;
+  jobs)
+    [ -f "$QUEUE" ] || { echo "(queue empty)"; exit 0; }
+    python3 -c '
+import json,sys,time
+for line in open(sys.argv[1]):
+    line = line.strip()
+    if not line: continue
+    j = json.loads(line)
+    print("%s  %s  %s" % (j["id"], time.strftime("%Y-%m-%d %H:%M", time.localtime(j["enqueuedAt"])), j["prompt"]))
+' "$QUEUE"
+    ;;
+  drain)
+    [ -f "$QUEUE" ] || { echo "(queue empty)"; exit 0; }
+    tmp="$QUEUE.draining"
+    mv "$QUEUE" "$tmp"
+    touch "$QUEUE"
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      job=$(printf '%s\n' "$line" | python3 -c 'import json,sys; j=json.loads(sys.stdin.read()); print(j["id"]); print(j["prompt"])')
+      jid=$(printf '%s\n' "$job" | sed -n 1p)
+      jprompt=$(printf '%s\n' "$job" | sed -n 2p)
+      echo "── job $jid: $jprompt"
+      if ! fleet_run "$jprompt" "$jid"; then
+        echo "openthumb-fleet: job $jid failed — re-queued" >&2
+        printf '%s\n' "$line" >> "$QUEUE"
+      fi
+    done < "$tmp"
+    rm -f "$tmp"
     ;;
   cancel) fleet_each chat.session.cancel ;;
   ""|-h|--help|help) usage ;;

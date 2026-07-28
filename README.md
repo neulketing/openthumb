@@ -97,10 +97,22 @@ per device via `adb` and fans calls out across all of them.
 ```sh
 tools/openthumb-fleet devices          # attached devices that have the app
 tools/openthumb-fleet status           # android/sdk/sandbox per device
+tools/openthumb-fleet health           # rpc reachability + battery per device
 tools/openthumb-fleet prompt "..."     # same prompt to every agent, concurrently
+tools/openthumb-fleet run "..."        # prompt and wait; one result JSON per device
+tools/openthumb-fleet collect <sid>    # poll every device until a session stops
+tools/openthumb-fleet enqueue "..."    # queue a job for later
+tools/openthumb-fleet jobs             # list the queue
+tools/openthumb-fleet drain            # run queued jobs one at a time
 tools/openthumb-fleet call <method>    # any RPC method, fleet-wide
 tools/openthumb-fleet cancel           # stop in-flight runs
 ```
+
+`run` and `drain` collect results into `~/.openthumb/fleet/results/` (one
+`<jobId>-<serial>.json` per device, including failure statuses), so an
+overnight batch leaves an auditable trail instead of scrollback. The queue
+lives beside it as plain JSONL — jobs that fail to reach the fleet are
+re-queued, results are never lost silently.
 
 `call` takes any method the app exposes — ask a device for the list with
 `call rpc.discover`. Dependencies: `adb`, `curl`, `python3`. No install step,
