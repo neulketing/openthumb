@@ -48,6 +48,7 @@ unmodified.
 | **fork** | [Android 8/9 startup crash fix](#android-8-and-9-support) |
 | **fork** | CI that actually builds the APK and runs `lintDebug` (upstream has none) |
 | **fork** | [`scripts/rebrand.sh`](scripts/rebrand.sh) — reproducible package rename, JNI symbols included |
+| **fork** | [Privacy policy](PRIVACY.md) (nothing collected) · [distribution channels](docs/distribution.md) |
 
 ---
 

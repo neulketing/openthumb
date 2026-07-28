@@ -1,0 +1,15 @@
+OpenThumb is an on-device AI agent: leading models (Claude, GPT, Gemini and
+more, via your own API keys) driving a real computer that lives on your phone —
+a sandboxed Alpine Linux shell, browser automation, extensible skills and
+persistent memory.
+
+It is a GPL-3.0 fork of OpenMinis (github.com/OpenMinis/OpenMinis), which does
+almost all of the heavy lifting. OpenThumb adds what upstream does not target:
+
+• Fleet orchestration — drive many devices from one host over the built-in
+  JSON-RPC server with the openthumb-fleet tool.
+• Android 8/9 support — fixes a startup crash affecting all API 26–28 devices.
+• CI-built, reproducible releases.
+
+No analytics, no telemetry, no accounts. Your keys and conversations stay on
+the device and go only to the model provider you configure.
