@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OpenThumb — your phone, running itself</title>
 <meta name="description" content="An on-device AI agent for Android with a real Linux shell that keeps working when you are not looking: notification triggers, scheduled runs, and fleet orchestration. Free and open source, GPL-3.0.">
 <link rel="canonical" href="https://neulketing.github.io/openthumb/">
@@ -16,7 +16,7 @@
 <style>
   :root {
     --paper:#faf9f5; --panel:#fffefb; --ink:#1f1d1a; --dim:#6b665e;
-    --line:#e6e2d8; --accent:#c9683a; --accent-soft:#f0e4dc;
+    --line:#e6e2d8; --accent:#c9683a; --accent-soft:#f3e7df;
     --serif:ui-serif,"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -24,100 +24,144 @@
   }
   @media (prefers-color-scheme: dark) {
     :root { --paper:#171613; --panel:#1e1c18; --ink:#f0ede6; --dim:#9c958a;
-            --line:#2e2b25; --accent:#e08a5c; --accent-soft:#2a231d; }
+            --line:#2e2b25; --accent:#e08a5c; --accent-soft:#2b241e; }
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html { scroll-behavior:smooth; }
   body { background:var(--paper); color:var(--ink); font:16px/1.65 var(--sans);
          -webkit-font-smoothing:antialiased; overflow-x:hidden; }
-  .wrap { max-width:var(--max); margin:0 auto; padding:0 32px; }
+  .wrap { max-width:var(--max); margin:0 auto; padding-left:32px; padding-right:32px; }
   a { color:inherit; }
-  .accent { color:var(--accent); }
 
-  /* nav */
-  nav { position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--paper) 86%,transparent);
+  /* ── scroll progress ─────────────────────────────── */
+  .prog { position:fixed; top:0; left:0; height:2px; width:100%; transform-origin:0 50%;
+          transform:scaleX(0); background:var(--accent); z-index:50; }
+
+  /* ── nav ─────────────────────────────────────────── */
+  nav { position:sticky; top:0; z-index:30; background:color-mix(in srgb,var(--paper) 84%,transparent);
         backdrop-filter:saturate(180%) blur(14px); }
-  nav .wrap { display:flex; align-items:center; gap:26px; height:72px; }
-  .mark { display:flex; align-items:center; gap:10px; font-family:var(--serif);
-          font-size:1.22rem; letter-spacing:-.01em; }
+  nav .wrap { display:flex; align-items:center; gap:26px; height:70px; }
+  .mark { display:flex; align-items:center; gap:10px; font-family:var(--serif); font-size:1.2rem; }
   nav .sp { flex:1; }
   nav a.lnk { color:var(--dim); text-decoration:none; font-size:.9rem; }
   nav a.lnk:hover { color:var(--ink); }
   .pill { border:1px solid var(--line); border-radius:999px; padding:8px 17px;
           font-size:.86rem; font-weight:600; text-decoration:none; }
   .pill:hover { border-color:var(--dim); }
-  @media (max-width:760px){ .hide-sm{ display:none; } }
+  @media (max-width:800px){ .hide-sm{ display:none; } }
 
-  /* hero */
-  header.wrap { padding:74px 32px 104px; }
-  .hero { display:grid; gap:64px; grid-template-columns:1.05fr .95fr; align-items:center; }
-  @media (max-width:940px){ .hero{ grid-template-columns:1fr; gap:52px; } }
+  /* ── reveal primitive ────────────────────────────── */
+  .rv { opacity:0; transform:translateY(22px); transition:opacity .8s cubic-bezier(.2,.7,.3,1),
+        transform .8s cubic-bezier(.2,.7,.3,1); }
+  .rv.in { opacity:1; transform:none; }
+  .rv.d1{transition-delay:.08s} .rv.d2{transition-delay:.16s} .rv.d3{transition-delay:.24s}
+  .rv.d4{transition-delay:.32s} .rv.d5{transition-delay:.40s}
+
+  /* ── hero ────────────────────────────────────────── */
+  header.wrap { padding-top:76px; padding-bottom:40px; }
   .kicker { display:inline-flex; align-items:center; gap:9px; font-size:.79rem; color:var(--dim);
-            letter-spacing:.06em; text-transform:uppercase; margin-bottom:28px; }
-  .kicker i { width:6px; height:6px; border-radius:50%; background:var(--accent); display:block; }
+            letter-spacing:.06em; text-transform:uppercase; margin-bottom:26px; }
+  .kicker i { width:6px; height:6px; border-radius:50%; background:var(--accent);
+              display:block; animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
   h1 { font-family:var(--serif); font-weight:400; letter-spacing:-.02em;
-       font-size:clamp(2.9rem,5.6vw,4.5rem); line-height:1.03; }
+       font-size:clamp(3rem,7vw,5.4rem); line-height:1.02; }
   h1 em { font-style:italic; color:var(--accent); }
-  .lede { color:var(--dim); font-size:1.14rem; margin:26px 0 36px; max-width:31em; }
+  .lede { color:var(--dim); font-size:1.16rem; margin:26px 0 36px; max-width:30em; }
   .cta { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
-  .btn { display:inline-flex; align-items:center; gap:9px; padding:14px 24px; border-radius:999px;
-         font-weight:600; font-size:.95rem; text-decoration:none; border:1px solid transparent; }
+  .btn { display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:999px;
+         font-weight:600; font-size:.95rem; text-decoration:none; border:1px solid transparent;
+         transition:transform .25s, opacity .25s, border-color .25s; }
+  .btn:hover { transform:translateY(-2px); }
   .btn.pri { background:var(--ink); color:var(--paper); }
-  .btn.pri:hover { opacity:.86; }
   .btn.sec { border-color:var(--line); }
   .btn.sec:hover { border-color:var(--dim); }
   .soon { font-size:.86rem; color:var(--dim); }
+  .scrollhint { display:flex; align-items:center; gap:10px; margin-top:64px;
+                font-size:.76rem; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+  .scrollhint span { display:block; width:36px; height:1px; background:var(--line); position:relative;
+                     overflow:hidden; }
+  .scrollhint span::after { content:""; position:absolute; inset:0; background:var(--accent);
+    transform:translateX(-100%); animation:sweep 2.2s ease-in-out infinite; }
+  @keyframes sweep { 0%{transform:translateX(-100%)} 60%,100%{transform:translateX(100%)} }
 
-  /* phone illustration */
-  .stage { position:relative; display:flex; justify-content:center; }
-  .phone { width:100%; max-width:330px; border:1px solid var(--line); border-radius:34px;
-           background:var(--panel); padding:16px 14px 20px; box-shadow:0 24px 60px -30px rgba(0,0,0,.35); }
+  /* ── the pinned story ────────────────────────────── */
+  .story { position:relative; }
+  .story .track { height:420vh; }
+  .story .pin { position:sticky; top:0; height:100vh; display:grid; place-items:center; }
+  .stage { width:100%; max-width:var(--max); margin:0 auto; padding:0 32px;
+           display:grid; grid-template-columns:1fr 340px; gap:64px; align-items:center; }
+  @media (max-width:900px){ .stage{ grid-template-columns:1fr; gap:36px; }
+                            .story .track{ height:380vh; } }
+  .beat { grid-column:1; grid-row:1; opacity:0; transform:translateY(18px);
+          transition:opacity .5s ease, transform .5s ease; pointer-events:none; }
+  .beat.on { opacity:1; transform:none; pointer-events:auto; }
+  .beat .n { font-family:var(--serif); color:var(--accent); font-size:1.05rem; margin-bottom:14px; }
+  .beat h2 { font-family:var(--serif); font-weight:400; letter-spacing:-.02em; line-height:1.12;
+             font-size:clamp(1.9rem,3.8vw,3rem); }
+  .beat p { color:var(--dim); margin-top:16px; max-width:28em; font-size:1.02rem; }
+
+  .phoneCol { grid-column:2; grid-row:1; display:flex; justify-content:center; }
+  @media (max-width:900px){ .phoneCol{ grid-column:1; grid-row:2; } }
+  .phone { width:100%; max-width:330px; border:1px solid var(--line); border-radius:36px;
+           background:var(--panel); padding:16px 14px 20px;
+           box-shadow:0 30px 70px -34px rgba(0,0,0,.4); }
   .notch { width:78px; height:5px; border-radius:99px; background:var(--line); margin:2px auto 18px; }
-  .bubble { border:1px solid var(--line); border-radius:16px; padding:13px 15px; margin-bottom:11px;
+  .step { opacity:0; transform:translateY(10px) scale(.98);
+          transition:opacity .45s ease, transform .45s cubic-bezier(.2,.7,.3,1); }
+  .step.on { opacity:1; transform:none; }
+  .bubble { border:1px solid var(--line); border-radius:16px; padding:13px 15px;
             background:var(--paper); }
-  .bubble .from { font-size:.72rem; color:var(--dim); letter-spacing:.05em;
+  .bubble .from { font-size:.71rem; color:var(--dim); letter-spacing:.05em;
                   text-transform:uppercase; margin-bottom:5px; }
   .bubble .msg { font-size:.9rem; }
-  .arrowline { display:flex; align-items:center; gap:9px; margin:14px 2px 12px; color:var(--dim);
-               font-size:.74rem; letter-spacing:.05em; text-transform:uppercase; }
-  .arrowline::before, .arrowline::after { content:""; height:1px; background:var(--line); flex:1; }
+  .rule { display:flex; align-items:center; gap:9px; margin:14px 2px; color:var(--accent);
+          font-size:.72rem; letter-spacing:.07em; text-transform:uppercase; font-weight:700; }
+  .rule::before, .rule::after { content:""; height:1px; background:var(--line); flex:1; }
   .agent { border:1px solid var(--accent-soft); background:var(--accent-soft);
            border-radius:16px; padding:14px 15px; }
-  .agent .who { display:flex; align-items:center; gap:7px; font-size:.75rem;
-                color:var(--accent); font-weight:700; margin-bottom:8px; }
-  .agent .step { font-size:.86rem; color:var(--dim); padding-left:16px; position:relative; margin-top:6px; }
-  .agent .step::before { content:""; position:absolute; left:0; top:8px; width:6px; height:6px;
-                         border-radius:50%; background:var(--accent); opacity:.55; }
-  .caption { text-align:center; font-size:.76rem; color:var(--dim); margin-top:16px; }
+  .agent .who { display:flex; align-items:center; gap:7px; font-size:.74rem;
+                color:var(--accent); font-weight:700; margin-bottom:10px; }
+  .agent .who svg { animation:spin 5s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg) } }
+  .agent .li { font-size:.86rem; color:var(--dim); padding-left:17px; position:relative; margin-top:8px; }
+  .agent .li::before { content:""; position:absolute; left:0; top:7px; width:6px; height:6px;
+                       border-radius:50%; background:var(--accent); opacity:.6; }
+  .cap { text-align:center; font-size:.75rem; color:var(--dim); margin-top:16px; }
 
-  /* sections */
-  section.wrap { padding:96px 32px; position:relative; }
+  /* ── sections ────────────────────────────────────── */
+  section.wrap { padding-top:104px; padding-bottom:104px; position:relative; }
   section::before { content:""; position:absolute; top:0; left:50%; width:100vw;
                     transform:translateX(-50%); border-top:1px solid var(--line); }
-  .h2 { font-family:var(--serif); font-weight:400; font-size:clamp(1.9rem,3.4vw,2.6rem);
-        letter-spacing:-.02em; line-height:1.15; }
+  .h2 { font-family:var(--serif); font-weight:400; font-size:clamp(1.9rem,3.6vw,2.7rem);
+        letter-spacing:-.02em; line-height:1.14; }
   .sub { color:var(--dim); margin-top:14px; max-width:34em; font-size:1.02rem; }
-  .grid { display:grid; gap:1px; margin-top:52px; background:var(--line);
+  .grid { display:grid; gap:1px; margin-top:54px; background:var(--line);
           border:1px solid var(--line); border-radius:18px; overflow:hidden;
           grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
-  .cell { background:var(--panel); padding:30px 26px; }
+  .cell { background:var(--panel); padding:30px 26px; transition:background .3s; }
+  .cell:hover { background:var(--paper); }
   .cell h3 { font-size:1.02rem; font-weight:650; margin:16px 0 8px; }
   .cell p { color:var(--dim); font-size:.93rem; }
   code { font:12.5px var(--mono); background:var(--accent-soft); padding:2px 6px; border-radius:5px; }
 
-  /* terminal */
   .term { margin-top:48px; border:1px solid var(--line); border-radius:16px;
           background:var(--panel); overflow:hidden; }
   .term .bar { display:flex; align-items:center; gap:7px; padding:13px 17px;
                border-bottom:1px solid var(--line); }
   .term .bar i { width:10px; height:10px; border-radius:50%; background:var(--line); display:block; }
   .term .bar span { margin-left:9px; font-size:.77rem; color:var(--dim); }
-  .term pre { margin:0; padding:22px; overflow-x:auto; font:12.8px/1.8 var(--mono); }
-  .term .p { color:var(--accent); }
-  .term .c { color:var(--dim); }
+  .term pre { margin:0; padding:22px; overflow-x:auto; font:12.8px/1.85 var(--mono); }
+  .term .ln { display:block; opacity:0; transform:translateY(4px);
+              transition:opacity .4s ease, transform .4s ease; }
+  .term.in .ln { opacity:1; transform:none; }
+  .term.in .ln:nth-child(1){transition-delay:.05s} .term.in .ln:nth-child(2){transition-delay:.18s}
+  .term.in .ln:nth-child(3){transition-delay:.31s} .term.in .ln:nth-child(4){transition-delay:.44s}
+  .term.in .ln:nth-child(5){transition-delay:.57s} .term.in .ln:nth-child(6){transition-delay:.70s}
+  .term.in .ln:nth-child(7){transition-delay:.83s} .term.in .ln:nth-child(8){transition-delay:.96s}
+  .p { color:var(--accent); } .c { color:var(--dim); }
 
-  /* steps */
-  ol.steps { list-style:none; counter-reset:s; display:grid; gap:34px; margin-top:52px;
+  ol.steps { list-style:none; counter-reset:s; display:grid; gap:36px; margin-top:54px;
              grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
   ol.steps li { counter-increment:s; }
   ol.steps li::before { content:"0" counter(s); font-family:var(--serif); font-size:1.5rem;
@@ -137,9 +181,22 @@
   footer a { text-decoration:none; }
   footer a:hover { color:var(--ink); }
   footer .sp { flex:1; }
+
+  @media (prefers-reduced-motion:reduce) {
+    html { scroll-behavior:auto; }
+    .rv, .beat, .step, .term .ln { opacity:1 !important; transform:none !important;
+                                   transition:none !important; }
+    .kicker i, .scrollhint span::after, .agent .who svg { animation:none !important; }
+    .story .track { height:auto; }
+    .story .pin { position:static; height:auto; padding:60px 0; }
+    .beat { grid-row:auto; grid-column:1; margin-bottom:40px; }
+    .phoneCol { grid-row:auto; grid-column:1; }
+  }
 </style>
 </head>
 <body>
+
+<div class="prog" id="prog"></div>
 
 <nav>
   <div class="wrap">
@@ -163,122 +220,152 @@
 </nav>
 
 <header class="wrap">
-  <div class="hero">
-    <div>
-      <span class="kicker"><i></i> Android · GPL-3.0 · no telemetry</span>
-      <h1>Your phone,<br><em>running itself.</em></h1>
-      <p class="lede">An on-device AI agent with a real Linux shell — one that keeps working
-      when you are not looking. It wakes on the notifications you choose, runs on a
-      schedule, and a whole rack of phones can be driven from a single host.</p>
-      <div class="cta">
-        <a class="btn pri" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
-        <a class="btn sec" href="https://github.com/neulketing/openthumb">Read the source</a>
-        <span class="soon">Google Play — coming soon</span>
-      </div>
-    </div>
+  <span class="kicker rv"><i></i> Android · GPL-3.0 · no telemetry</span>
+  <h1 class="rv d1">Your phone,<br><em>running itself.</em></h1>
+  <p class="lede rv d2">An on-device AI agent with a real Linux shell — one that keeps
+  working when you are not looking. It wakes on the notifications you choose, runs on a
+  schedule, and a whole rack of phones can be driven from a single host.</p>
+  <div class="cta rv d3">
+    <a class="btn pri" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
+    <a class="btn sec" href="https://github.com/neulketing/openthumb">Read the source</a>
+    <span class="soon">Google Play — coming soon</span>
+  </div>
+  <div class="scrollhint rv d4"><span></span> Scroll to watch it work</div>
+</header>
 
-    <div>
+<!-- ── pinned scroll story ── -->
+<div class="story" id="story">
+  <div class="track">
+    <div class="pin">
       <div class="stage">
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="bubble">
-            <div class="from">Messages · 09:14</div>
-            <div class="msg">Can you send over yesterday's numbers before the standup?</div>
-          </div>
-          <div class="arrowline">rule matched</div>
-          <div class="agent">
-            <div class="who">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
-              OpenThumb · unattended
+        <div class="beat" data-beat="0">
+          <div class="n">01</div>
+          <h2>Something arrives<br>while you are away.</h2>
+          <p>A message, an alert, an order — whatever you told it to watch for. The phone
+          is face-down on a desk and nobody is holding it.</p>
+        </div>
+        <div class="beat" data-beat="1">
+          <div class="n">02</div>
+          <h2>Your rule matches.</h2>
+          <p>An app, a phrase, a cooldown. The agent wakes on the notifications you chose
+          and ignores the rest — including its own, so it can never trigger itself.</p>
+        </div>
+        <div class="beat" data-beat="2">
+          <div class="n">03</div>
+          <h2>It gets to work,<br>unattended.</h2>
+          <p>A real Alpine Linux shell on the device. It opens files, runs scripts and
+          drives other apps through accessibility — the same taps you would have made.</p>
+        </div>
+        <div class="beat" data-beat="3">
+          <div class="n">04</div>
+          <h2>You come back<br>to it already done.</h2>
+          <p>Anything that leaves the device waits for your tap. The work happened
+          without you; the decision stayed with you.</p>
+        </div>
+
+        <div class="phoneCol">
+          <div>
+            <div class="phone">
+              <div class="notch"></div>
+              <div class="step" data-step="0">
+                <div class="bubble">
+                  <div class="from">Messages · 09:14</div>
+                  <div class="msg">Can you send over yesterday's numbers before the standup?</div>
+                </div>
+              </div>
+              <div class="step" data-step="1"><div class="rule">rule matched</div></div>
+              <div class="step" data-step="2">
+                <div class="agent">
+                  <div class="who">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+                    OpenThumb · unattended
+                  </div>
+                  <div class="li step" data-step="2">Opened the sandbox shell</div>
+                  <div class="li step" data-step="3">Pulled yesterday's export, built the summary</div>
+                  <div class="li step" data-step="4">Drafted the reply — waiting for your tap to send</div>
+                </div>
+              </div>
             </div>
-            <div class="step">Opened the sandbox shell</div>
-            <div class="step">Pulled yesterday's export, built the summary</div>
-            <div class="step">Drafted the reply — waiting for your tap to send</div>
+            <p class="cap">Illustration of a trigger rule firing — not a screenshot.</p>
           </div>
         </div>
       </div>
-      <p class="caption">Illustration of a trigger rule firing — not a screenshot.</p>
     </div>
   </div>
-</header>
+</div>
 
 <section id="autonomy" class="wrap">
-  <h2 class="h2">The agent that keeps going<br>when you put the phone down.</h2>
-  <p class="sub">Upstream builds a great agent you talk to. OpenThumb adds the part that runs
-  when nobody is talking to it.</p>
+  <h2 class="h2 rv">The agent that keeps going<br>when you put the phone down.</h2>
+  <p class="sub rv d1">Upstream builds a great agent you talk to. OpenThumb adds the part
+  that runs when nobody is talking to it.</p>
   <div class="grid">
-    <div class="cell">
+    <div class="cell rv">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
       <h3>Notification triggers</h3>
       <p>A message lands, the agent wakes and handles it. Per-app rules with text matching,
       cooldowns and loop protection. No tap required.</p>
     </div>
-    <div class="cell">
+    <div class="cell rv d1">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
       <h3>Scheduled runs</h3>
       <p>Prompts that fire on a clock — morning briefings, inbox sweeps, whatever you
       script. Survives reboots and runs headless.</p>
     </div>
-    <div class="cell">
+    <div class="cell rv d2">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
       <h3>A real Linux shell</h3>
       <p>Sandboxed Alpine Linux on the phone itself. The agent installs packages, runs
       scripts and works with real files.</p>
     </div>
-    <div class="cell">
+    <div class="cell rv">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
       <h3>Full device hands</h3>
       <p>Screen control through accessibility, plus notifications, clipboard and alarms.
       You grant the permissions, the agent does the work.</p>
     </div>
-    <div class="cell">
+    <div class="cell rv d1">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       <h3>Nothing collected</h3>
       <p>No analytics, no telemetry, no accounts, no server of ours. Keys and chats go only
       to the provider you configure.
       <a href="https://github.com/neulketing/openthumb/blob/main/PRIVACY.md" style="color:var(--accent);text-decoration:none;">Privacy</a></p>
     </div>
-    <div class="cell">
+    <div class="cell rv d2">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>
       <h3>Bring your own model</h3>
-      <p>Claude, GPT, Gemini or another provider, under your own API key. Nothing is
-      billed through us, because there is no us in the loop.</p>
+      <p>Claude, GPT, Gemini or another provider, under your own API key. Nothing is billed
+      through us, because there is no us in the loop.</p>
     </div>
   </div>
 </section>
 
 <section id="fleet" class="wrap">
-  <h2 class="h2">One host. Many phones.</h2>
-  <p class="sub">Every build serves JSON-RPC on device-local <code>127.0.0.1:5321</code>.
+  <h2 class="h2 rv">One host. Many phones.</h2>
+  <p class="sub rv d1">Every build serves JSON-RPC on device-local <code>127.0.0.1:5321</code>.
   <code>openthumb-fleet</code> forwards a host port per device over adb and fans one prompt
   out across all of them.</p>
-  <div class="term">
+  <div class="term rv d2" id="term">
     <div class="bar"><i></i><i></i><i></i><span>three Galaxy Note8s, Android 9</span></div>
-<pre><span class="p">$</span> openthumb-fleet status
-REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
-REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
-REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1
-
-<span class="p">$</span> openthumb-fleet prompt <span class="c">"summarise today's notifications"</span>
-<span class="c"># every device, concurrently</span></pre>
+<pre><span class="ln"><span class="p">$</span> openthumb-fleet status</span><span class="ln">REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1</span><span class="ln"> </span><span class="ln"><span class="p">$</span> openthumb-fleet prompt <span class="c">"summarise today's notifications"</span></span><span class="ln"><span class="c"># every device, concurrently</span></span></pre>
   </div>
 </section>
 
 <section id="start" class="wrap">
-  <h2 class="h2">Three steps to a phone<br>that works on its own.</h2>
+  <h2 class="h2 rv">Three steps to a phone<br>that works on its own.</h2>
   <ol class="steps">
-    <li><b>Install and bring a model</b><span>Sideload the APK and add your own API key.
-      Claude, GPT, Gemini or another provider — your key, your account.</span></li>
-    <li><b>Grant what it needs</b><span>Accessibility for screen control, notification access
-      for triggers. Each one is explained in the app before you are asked.</span></li>
-    <li><b>Write a rule</b><span>"When a message from this app arrives, do that."
-      From then on the phone acts without you.</span></li>
+    <li class="rv"><b>Install and bring a model</b><span>Sideload the APK and add your own
+      API key. Claude, GPT, Gemini or another provider — your key, your account.</span></li>
+    <li class="rv d1"><b>Grant what it needs</b><span>Accessibility for screen control,
+      notification access for triggers. Each one is explained in the app before you are
+      asked.</span></li>
+    <li class="rv d2"><b>Write a rule</b><span>"When a message from this app arrives, do
+      that." From then on the phone acts without you.</span></li>
   </ol>
 </section>
 
 <section class="wrap">
-  <h2 class="h2">Standing on OpenMinis</h2>
-  <div class="note">
+  <h2 class="h2 rv">Standing on OpenMinis</h2>
+  <div class="note rv d1">
     OpenThumb is a GPL-3.0 fork of <a href="https://github.com/OpenMinis/OpenMinis">OpenMinis</a>,
     and <strong>nearly all of the app is their work.</strong> If you want one great
     conversational agent on your own phone — better documented, actively released, on the
@@ -300,6 +387,58 @@ REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1
     <span>© 2026 neulketing · not affiliated with OpenMinis</span>
   </div>
 </footer>
+
+<script>
+(function () {
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // reveal-on-enter
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.15 });
+  document.querySelectorAll('.rv, #term').forEach(function (n) { io.observe(n); });
+
+  if (reduce) return;   // everything below is motion-only
+
+  var story = document.getElementById('story');
+  var beats = [].slice.call(document.querySelectorAll('.beat'));
+  var steps = [].slice.call(document.querySelectorAll('.step'));
+  var prog  = document.getElementById('prog');
+
+  // Beat b becomes active over its slice of the pinned track; each step turns on
+  // at its own point and stays on, so the phone fills up as you descend.
+  var STEP_AT = [0.06, 0.30, 0.46, 0.60, 0.74];
+  var ticking = false;
+
+  function frame() {
+    ticking = false;
+
+    var docH = document.documentElement.scrollHeight - innerHeight;
+    prog.style.transform = 'scaleX(' + (docH > 0 ? scrollY / docH : 0) + ')';
+
+    var r = story.getBoundingClientRect();
+    var span = r.height - innerHeight;
+    if (span <= 0) return;
+    var t = Math.min(1, Math.max(0, -r.top / span));
+
+    var idx = Math.min(beats.length - 1, Math.floor(t * beats.length));
+    beats.forEach(function (b, i) { b.classList.toggle('on', i === idx); });
+    steps.forEach(function (s) {
+      var k = +s.dataset.step;
+      s.classList.toggle('on', t >= (STEP_AT[k] !== undefined ? STEP_AT[k] : 1));
+    });
+  }
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+
+  addEventListener('scroll', onScroll, { passive: true });
+  addEventListener('resize', onScroll);
+  frame();
+})();
+</script>
 
 </body>
 </html>
