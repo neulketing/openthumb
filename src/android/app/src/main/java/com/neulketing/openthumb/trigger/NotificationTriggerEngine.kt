@@ -76,7 +76,11 @@ object NotificationTriggerEngine {
         if (title.isBlank() && text.isBlank()) return
 
         val store = NotificationTriggerStore(context)
-        if (store.isQuietNow(System.currentTimeMillis())) return     // quiet hours
+        val nowMs = System.currentTimeMillis()
+        if (store.isQuietNow(nowMs)) {                              // quiet hours
+            recordStats(context, pkg, null, "quiet_hours", sbn.postTime, nowMs)
+            return
+        }
         val candidates = store.all().filter {
             NotificationTriggerRule.matches(it, pkg, title, text)
         }
@@ -88,7 +92,7 @@ object NotificationTriggerEngine {
                 AppLogger.warning(TAG, "rule ${rule.id} matched but $MAX_CONCURRENT_RUNS runs in flight — dropped")
                 continue
             }
-            dispatch(context, claimed, pkg, title, text)
+            dispatch(context, claimed, pkg, title, text, sbn.postTime)
         }
     }
 
@@ -108,6 +112,49 @@ object NotificationTriggerEngine {
             pkg = TEST_PACKAGE,
             title = "Test notification",
             text = "This is a manual test of rule \"${rule.label}\".",
+            postedAtMs = System.currentTimeMillis(),
+        )
+    }
+
+    /**
+     * Stats instrumentation (docs/specs/stats-schema.md): structure only,
+     * local file only. The source app's Play-store category is read from
+     * PackageManager; anything unknown becomes "other".
+     */
+    private fun recordStats(
+        context: Context,
+        pkg: String,
+        rule: NotificationTriggerRule?,
+        outcome: String,
+        postedAtMs: Long,
+        nowMs: Long,
+    ) {
+        val category = runCatching {
+            when (context.packageManager.getApplicationInfo(pkg, 0).category) {
+                android.content.pm.ApplicationInfo.CATEGORY_GAME -> "game"
+                android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> "audio"
+                android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> "video"
+                android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> "image"
+                android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> "social"
+                android.content.pm.ApplicationInfo.CATEGORY_NEWS -> "news"
+                android.content.pm.ApplicationInfo.CATEGORY_MAPS -> "maps"
+                android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> "productivity"
+                else -> "other"
+            }
+        }.getOrDefault("other")
+        val ruleKind = rule?.let { com.neulketing.openthumb.trigger.stats.StatsEvent.ruleKindOf(it) } ?: "any"
+        com.neulketing.openthumb.trigger.stats.StatsSink(
+            java.io.File(context.filesDir, "stats"),
+        ).append(
+            com.neulketing.openthumb.trigger.stats.StatsEvent.triggerRun(
+                ruleKind = ruleKind,
+                appCategory = category,
+                outcome = outcome,
+                latencyBucket = com.neulketing.openthumb.trigger.stats.StatsEvent.durationBucket(
+                    (nowMs - postedAtMs).coerceAtLeast(0),
+                ),
+                nowMs = nowMs,
+            ),
         )
     }
 
@@ -136,6 +183,7 @@ object NotificationTriggerEngine {
         pkg: String,
         title: String,
         text: String,
+        postedAtMs: Long,
     ) {
         val prompt = NotificationTriggerRule.renderPrompt(rule, pkg, title, text)
         // Synthetic task: id is namespaced so ScheduledTaskManager.markFired
@@ -158,6 +206,8 @@ object NotificationTriggerEngine {
                 ok = ScheduledAgentRunner.run(context, task, waitForCompletion = true) != null
             } finally {
                 inFlight.decrementAndGet()
+                val doneMs = System.currentTimeMillis()
+                recordStats(context, pkg, rule, if (ok) "fired" else "launch_failed", postedAtMs, doneMs)
                 NotificationTriggerRunStore(context).append(
                     NotificationTriggerRun(
                         ruleId = rule.id,

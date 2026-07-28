@@ -36,6 +36,13 @@ Conversations, memory, skills and the Linux sandbox all live in app-private
 storage. Uninstalling the app deletes them. There is nothing to request a copy
 of and nothing for us to delete, because we never had it.
 
+The app also keeps a small local file of *structured* run statistics (e.g.
+"an accessibility-category notification rule fired at 2pm, duration bucket
+5–30s") — never notification or chat content — capped at 1 MB and deleted
+with the app. It is written for an optional, not-yet-existing sync feature
+and is sent nowhere. The exact fields are fixed in
+`docs/specs/stats-schema.md`.
+
 ## Contact
 
 neulketing@gmail.com — or open an issue at
