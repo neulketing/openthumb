@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenThumb — your phone, running itself</title>
+<meta name="description" content="OpenThumb turns an Android phone into an autonomous AI agent: a real Linux shell, notification-driven and scheduled runs, and fleet orchestration from one host. Free, open source, GPL-3.0.">
+<style>
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --card: #161b22;
+    --line: #21262d; --g1: #3DDC84; --g2: #8A2BE2;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #ffffff; --fg: #24292f; --muted: #57606a; --card: #f6f8fa; --line: #d0d7de; }
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.65 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+  header { padding: 96px 0 64px; text-align: center; }
+  .logo { width: 340px; max-width: 90%; height: auto; }
+  h1.tag { font-size: 1.6rem; font-weight: 800; margin: 28px 0 12px; }
+  .sub { color: var(--muted); max-width: 620px; margin: 0 auto 36px; }
+  .grad { background: linear-gradient(100deg, var(--g1), var(--g2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .cta { display: inline-block; margin: 6px; padding: 12px 22px; border-radius: 10px;
+    font-weight: 700; text-decoration: none; }
+  .cta.primary { background: linear-gradient(100deg, var(--g1), var(--g2)); color: #fff; }
+  .cta.ghost { border: 1px solid var(--line); color: var(--fg); }
+  .cta.soon { border: 1px dashed var(--line); color: var(--muted); cursor: default; }
+  section { padding: 40px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.3rem; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .card h3 { font-size: 1rem; margin-bottom: 8px; }
+  .card p { color: var(--muted); font-size: .92rem; }
+  .card .ic { display: block; margin-bottom: 12px; }
+  pre { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; overflow-x: auto; font-size: .85rem; line-height: 1.5; color: var(--fg); }
+  .up { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--muted); font-size: .95rem; }
+  .up a, section a { color: var(--g1); text-decoration: none; }
+  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: .88rem; text-align: center; }
+  footer a { color: var(--muted); margin: 0 10px; }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <svg class="logo" viewBox="0 0 700 240" role="img" aria-label="OpenThumb">
+    <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3DDC84"/><stop offset="1" stop-color="#8A2BE2"/>
+    </linearGradient></defs>
+    <g fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="52" cy="120" r="15"/><path d="M67 120 H108"/>
+      <path d="M108 120 C142 120 142 63 176 63"/><path d="M108 120 H176"/>
+      <path d="M108 120 C142 120 142 177 176 177"/>
+      <rect x="176" y="35" width="36" height="56" rx="9"/>
+      <rect x="176" y="92" width="36" height="56" rx="9"/>
+      <rect x="176" y="149" width="36" height="56" rx="9"/>
+    </g>
+    <text x="248" y="144" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="68" font-weight="800" letter-spacing="-2">
+      <tspan fill="currentColor">Open</tspan><tspan fill="url(#g)">Thumb</tspan>
+    </text>
+  </svg>
+  <h1 class="tag">Your phone, <span class="grad">running itself.</span></h1>
+  <p class="sub">An on-device AI agent with a real Linux shell — that keeps working
+  when you are not looking. Notification-driven runs, scheduled runs, and a whole
+  fleet drivable from one host. Free and open source.</p>
+  <div>
+    <a class="cta primary" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
+    <a class="cta ghost" href="https://github.com/neulketing/openthumb">GitHub</a>
+    <span class="cta soon">Google Play — coming soon</span>
+  </div>
+</header>
+
+<section class="wrap">
+  <h2>What makes it <span class="grad">autonomous</span></h2>
+  <div class="grid">
+    <div class="card">
+      <svg class="ic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <h3>Notification triggers</h3>
+      <p>A message lands, the agent wakes and handles it — per-app rules with
+      text matching, cooldowns, and loop protection. No tap required.</p>
+    </div>
+    <div class="card">
+      <svg class="ic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <h3>Scheduled runs</h3>
+      <p>Prompts that fire on a clock — daily briefings, inbox sweeps, whatever
+      you script. Survives reboots, runs headless with a completion note.</p>
+    </div>
+    <div class="card">
+      <svg class="ic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <h3>A real Linux shell</h3>
+      <p>Sandboxed Alpine Linux on the phone itself. The agent installs
+      packages, runs scripts, and works with real files.</p>
+    </div>
+    <div class="card">
+      <svg class="ic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      <h3>Full device hands</h3>
+      <p>Screen control via accessibility, notifications, clipboard, alarms —
+      you grant the permissions, the agent does the work.</p>
+    </div>
+    <div class="card">
+      <svg class="ic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2"/><rect x="12" y="3" width="7" height="5" rx="1.5"/><rect x="12" y="9.5" width="7" height="5" rx="1.5"/><rect x="12" y="16" width="7" height="5" rx="1.5"/><path d="M7 12h5M12 12v-6M12 12v6"/></svg>
+      <h3>Fleet orchestration</h3>
+      <p>Drive many phones from one host over adb + JSON-RPC with
+      <code>openthumb-fleet</code>: one prompt, every device, concurrently.</p>
+    </div>
+    <div class="card">
+      <svg class="ic" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h3>Nothing collected</h3>
+      <p>No analytics, no telemetry, no accounts, no server. Your keys and
+      chats go only to the model provider you configure.
+      <a href="https://github.com/neulketing/openthumb/blob/main/PRIVACY.md">Privacy</a></p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>The fleet, for real</h2>
+  <pre>$ openthumb-fleet status
+REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
+REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
+REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1
+
+$ openthumb-fleet prompt "summarise today's notifications"</pre>
+  <p style="color:var(--muted);font-size:.9rem;">Real output from Galaxy Note8s on
+  Android 9 — devices the upstream app crashes on. OpenThumb fixed that,
+  and ships CI so it stays fixed.</p>
+</section>
+
+<section class="wrap">
+  <h2>Standing on OpenMinis</h2>
+  <div class="up">
+    OpenThumb is a GPL-3.0 fork of
+    <a href="https://github.com/OpenMinis/OpenMinis">OpenMinis</a>, and nearly
+    all of the app is their work. If you want one great conversational agent on
+    your own phone — better documented, actively released, on the App Store —
+    use OpenMinis. OpenThumb exists for the part upstream does not target:
+    phones that act on their own, alone or as a fleet.
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/neulketing/openthumb">GitHub</a>
+    <a href="https://github.com/neulketing/openthumb/blob/main/PRIVACY.md">Privacy</a>
+    <a href="https://github.com/neulketing/openthumb/blob/main/LICENSE">GPL-3.0</a>
+    <a href="mailto:neulketing@gmail.com">Contact</a>
+    <div style="margin-top:10px;">© 2026 neulketing · OpenThumb is not affiliated with OpenMinis</div>
+  </div>
+</footer>
+
+</body>
+</html>
