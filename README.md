@@ -59,7 +59,7 @@ unmodified.
 
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2_notification-triggers.png" width="30%" alt="Notification trigger rules">
 <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3_trigger-rule-editor.png" width="30%" alt="Trigger rule editor">
-<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4_settings.png" width="30%" alt="Settings">
+<img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7_settings.png" width="30%" alt="Settings">
 
 </div>
 
