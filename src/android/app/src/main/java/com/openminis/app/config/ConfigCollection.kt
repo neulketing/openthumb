@@ -1,4 +1,4 @@
-package com.neulketing.openblue.config
+package com.neulketing.openthumb.config
 
 /**
  * A dynamically-keyed group of fields, e.g. one ProviderInstance per id,

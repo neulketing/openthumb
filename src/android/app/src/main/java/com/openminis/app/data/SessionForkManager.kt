@@ -1,9 +1,9 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
 import android.content.Context
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.SkillRepository
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.SkillRepository
+import com.neulketing.openthumb.logging.AppLogger
 import java.io.File
 
 /**

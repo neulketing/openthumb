@@ -1,14 +1,14 @@
-package com.neulketing.openblue.ui.components
+package com.neulketing.openthumb.ui.components
 
 import androidx.compose.runtime.Composable
-import com.neulketing.openblue.ui.preview.WebPreviewBottomSheet
-import com.neulketing.openblue.ui.preview.rememberWebViewHolder
+import com.neulketing.openthumb.ui.preview.WebPreviewBottomSheet
+import com.neulketing.openthumb.ui.preview.rememberWebViewHolder
 
 /**
  * Bottom-sheet web preview for a URL tapped inside chat markdown.
  *
  * Thin wrapper around [WebPreviewBottomSheet]: callers that don't manage
- * their own [com.neulketing.openblue.ui.preview.WebViewHolder] (most chat-side
+ * their own [com.neulketing.openthumb.ui.preview.WebViewHolder] (most chat-side
  * link taps) get the same toolbar / sheet UX as the in-chat HTML preview
  * by going through this helper.
  *

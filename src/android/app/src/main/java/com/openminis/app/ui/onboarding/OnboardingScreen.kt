@@ -1,6 +1,6 @@
-package com.neulketing.openblue.ui.onboarding
+package com.neulketing.openthumb.ui.onboarding
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,13 +42,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Multi-step onboarding flow shown on first launch.
@@ -174,7 +174,7 @@ private fun ApiKeyStep(
                             id = "${selectedType.name}_onboarding",
                             label = selectedType.displayName,
                             providerType = selectedType,
-                            credentialType = com.neulketing.openblue.data.model.ProviderCredential.apiKey,
+                            credentialType = com.neulketing.openthumb.data.model.ProviderCredential.apiKey,
                         )
                         providerRepository.addInstance(instance)
                         providerRepository.saveApiKey(instance.id, apiKey.trim())

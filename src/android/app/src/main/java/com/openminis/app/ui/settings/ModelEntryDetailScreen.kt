@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,14 +22,14 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.model.ModelOverrides
-import com.neulketing.openblue.data.model.normalizeModalityName
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.components.RowLabel
-import com.neulketing.openblue.ui.components.SectionTextField
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.data.model.ModelOverrides
+import com.neulketing.openthumb.data.model.normalizeModalityName
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.components.RowLabel
+import com.neulketing.openthumb.ui.components.SectionTextField
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Detail / edit screen for a single ModelEntry. T210: brought to iOS
@@ -319,7 +319,7 @@ fun ModelEntryDetailScreen(
     }
 
     if (showQuickTest) {
-        com.neulketing.openblue.ui.components.QuickTestSheet(
+        com.neulketing.openthumb.ui.components.QuickTestSheet(
             entry = entry,
             providerRepository = providerRepository,
             onDismiss = { showQuickTest = false },

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.shared
+package com.neulketing.openthumb.shared
 
 import android.icu.text.BreakIterator
 import java.util.Locale

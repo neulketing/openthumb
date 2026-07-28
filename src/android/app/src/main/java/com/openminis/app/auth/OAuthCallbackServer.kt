@@ -1,4 +1,4 @@
-package com.neulketing.openblue.auth
+package com.neulketing.openthumb.auth
 
 import android.util.Log
 import java.io.BufferedReader

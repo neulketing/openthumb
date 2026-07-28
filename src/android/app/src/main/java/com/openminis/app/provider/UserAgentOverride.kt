@@ -1,6 +1,6 @@
-package com.neulketing.openblue.provider
+package com.neulketing.openthumb.provider
 
-import com.neulketing.openblue.BuildConfig
+import com.neulketing.openthumb.BuildConfig
 import okhttp3.Request
 
 /**

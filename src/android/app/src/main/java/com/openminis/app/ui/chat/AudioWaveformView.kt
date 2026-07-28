@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween

@@ -1,6 +1,6 @@
-package com.neulketing.openblue.provider.voice
+package com.neulketing.openthumb.provider.voice
 
-import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMModel
 import org.json.JSONObject
 
 /**

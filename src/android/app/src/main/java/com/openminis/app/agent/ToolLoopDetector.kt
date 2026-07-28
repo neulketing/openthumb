@@ -1,6 +1,6 @@
-package com.neulketing.openblue.agent
+package com.neulketing.openthumb.agent
 
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest

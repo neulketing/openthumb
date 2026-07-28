@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.model
+package com.neulketing.openthumb.data.model
 
 sealed class LLMError(message: String, cause: Throwable? = null) : Exception(message, cause) {
     class InvalidApiKey(val detail: String = "") : LLMError(if (detail.isBlank()) "Invalid API key" else "Invalid API key: $detail")

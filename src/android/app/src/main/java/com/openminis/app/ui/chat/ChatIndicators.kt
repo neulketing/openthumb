@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -28,8 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.theme.ChatColors
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.theme.ChatColors
 
 // [T-android-split-chat] Self-contained "thinking / streaming" dot indicators
 // extracted verbatim from ChatScreen.kt. `internal` so the chat package can
@@ -95,7 +95,7 @@ internal fun TypingIndicator() {
     // that's updated on save (SoulSettingsScreen) and at app start
     // (MinisApp.onCreate via refreshCache); collectAsState makes Compose
     // recompose the indicator immediately when it changes.
-    val soulMeta by com.neulketing.openblue.agent.SoulStore.cachedMetadata.collectAsState()
+    val soulMeta by com.neulketing.openthumb.agent.SoulStore.cachedMetadata.collectAsState()
     val soulName = soulMeta.name.trim().ifEmpty { "Minis" }
 
     Row(

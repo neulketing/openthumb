@@ -1,8 +1,8 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.AppIconRepository
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.AppIconRepository
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import android.content.Context
 import android.content.SharedPreferences

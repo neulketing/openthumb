@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.util
+package com.neulketing.openthumb.ui.util
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString

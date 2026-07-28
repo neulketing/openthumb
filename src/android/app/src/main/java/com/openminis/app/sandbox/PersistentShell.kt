@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 import android.content.Context
 import android.util.Log
@@ -109,7 +109,7 @@ class PersistentShell(
 
         cmd.add("/bin/sh")
 
-        val debugOffload = com.neulketing.openblue.BuildConfig.DEBUG
+        val debugOffload = com.neulketing.openthumb.BuildConfig.DEBUG
 
         val processBuilder = ProcessBuilder(cmd)
         // In debug builds we want proot's native_offload stderr logs in

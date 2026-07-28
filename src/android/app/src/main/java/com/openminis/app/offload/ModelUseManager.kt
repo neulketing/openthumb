@@ -1,7 +1,7 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ProviderInstance
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -59,7 +59,7 @@ object ModelUseManager {
         // Enrich at read time — entries persisted before the modalities field
         // existed won't have inputModalities/outputModalities populated, so
         // look them up from the bundled models.dev registry on the fly.
-        val enrichedModel = com.neulketing.openblue.provider.ModelsDevApi.enrichModel(entry.model)
+        val enrichedModel = com.neulketing.openthumb.provider.ModelsDevApi.enrichModel(entry.model)
         val modalities = JSONArray()
         val inputs = enrichedModel.inputModalities.orEmpty()
         val outputs = enrichedModel.outputModalities.orEmpty()

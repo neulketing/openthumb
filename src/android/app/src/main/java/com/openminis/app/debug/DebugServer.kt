@@ -1,4 +1,4 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
 import android.content.Context
 import android.util.Log
@@ -64,7 +64,7 @@ class DebugServer(
      * [T-android-debugserver-auth] Per-install token required from
      * non-loopback clients. Generated once, persisted in filesDir so the
      * developer can read it with:
-     *   adb shell run-as com.neulketing.openblue cat files/debug_server_token
+     *   adb shell run-as com.neulketing.openthumb cat files/debug_server_token
      * Also logged at startup (logcat is adb-only — not readable remotely).
      */
     private val authToken: String by lazy {
@@ -179,7 +179,7 @@ class DebugServer(
                 val isLoopback = s.inetAddress?.isLoopbackAddress == true
                 if (!isAuthorized(isLoopback, providedToken, authToken)) {
                     Log.w(TAG, "401 unauthorized ${if (isLoopback) "loopback" else s.inetAddress?.hostAddress ?: "?"} (missing/wrong token)")
-                    sendResponse(writer, 401, rpcHandler.errorJSON(-32000, "Unauthorized — send X-Minis-Token (see `adb shell run-as com.neulketing.openblue cat files/debug_server_token`)"))
+                    sendResponse(writer, 401, rpcHandler.errorJSON(-32000, "Unauthorized — send X-Minis-Token (see `adb shell run-as com.neulketing.openthumb cat files/debug_server_token`)"))
                     return
                 }
 

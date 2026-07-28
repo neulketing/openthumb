@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat.voice
+package com.neulketing.openthumb.ui.chat.voice
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -62,11 +62,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.speech.RecognitionState
-import com.neulketing.openblue.speech.SpeechRecognitionManager
-import com.neulketing.openblue.ui.theme.ChatColors
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.speech.RecognitionState
+import com.neulketing.openthumb.speech.SpeechRecognitionManager
+import com.neulketing.openthumb.ui.theme.ChatColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -105,7 +105,7 @@ import androidx.compose.animation.core.LinearEasing
 /**
  * Voice-mode runtime state (mirrors iOS VoiceModePreference).
  *
- * Distinct from [com.neulketing.openblue.ui.chat.ComposerInputModePrefs], which is a
+ * Distinct from [com.neulketing.openthumb.ui.chat.ComposerInputModePrefs], which is a
  * different concern: that one records which composer mode the user PREFERS
  * (written on send, currently read by nobody since auto-enter-voice was removed
  * in T-android-remove-auto-enter-voice). This object is the LIVE state of the
@@ -177,8 +177,8 @@ fun InlineVoiceInputPanel(
     // for AI correction, built from the chat's current messages. Mirrors iOS
     // InlineVoiceInputView's `conversationContext` closure. Defaults to EMPTY so
     // the legacy/standalone construction still compiles and runs.
-    conversationContextProvider: () -> com.neulketing.openblue.speech.correction.ConversationContext = {
-        com.neulketing.openblue.speech.correction.ConversationContext.EMPTY
+    conversationContextProvider: () -> com.neulketing.openthumb.speech.correction.ConversationContext = {
+        com.neulketing.openthumb.speech.correction.ConversationContext.EMPTY
     },
 ) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -214,7 +214,7 @@ fun InlineVoiceInputPanel(
         editSnapshot = null
         isEditing = false
         if (before != null) {
-            com.neulketing.openblue.speech.correction.VoiceCorrection.captureTranscriptEdit(
+            com.neulketing.openthumb.speech.correction.VoiceCorrection.captureTranscriptEdit(
                 context = panelContext,
                 before = before,
                 after = transcript,
@@ -263,7 +263,7 @@ fun InlineVoiceInputPanel(
     fun runCorrection() {
         val text = transcript.trim()
         if (text.isEmpty() || isCorrecting) return
-        val engine = com.neulketing.openblue.speech.correction.VoiceCorrection.engine(panelContext)
+        val engine = com.neulketing.openthumb.speech.correction.VoiceCorrection.engine(panelContext)
         if (engine == null) {
             android.widget.Toast.makeText(
                 panelContext,
@@ -280,7 +280,7 @@ fun InlineVoiceInputPanel(
             // conversation already established. Built off the UI thread.
             val convoContext = withContext(Dispatchers.Default) {
                 runCatching { conversationContextProvider() }
-                    .getOrDefault(com.neulketing.openblue.speech.correction.ConversationContext.EMPTY)
+                    .getOrDefault(com.neulketing.openthumb.speech.correction.ConversationContext.EMPTY)
             }
             val suggestion = engine.correct(text, context = convoContext)
             isCorrecting = false
@@ -290,7 +290,7 @@ fun InlineVoiceInputPanel(
                     // Applying a correction the user ASKED for is itself the
                     // acceptance signal; requiring a second confirming tap is
                     // why iOS measured an acceptance rate of zero.
-                    com.neulketing.openblue.speech.correction.VoiceCorrection
+                    com.neulketing.openthumb.speech.correction.VoiceCorrection
                         .captureSuggestionAccepted(
                             panelContext,
                             suggestion.original,
@@ -327,7 +327,7 @@ fun InlineVoiceInputPanel(
         val engineId = if (choice.isSystem) "system" else "provider"
         SpeechRecognitionManager.selectEngine(engineId)
         (SpeechRecognitionManager.availableEngines()
-            .firstOrNull { it.id == "system" } as? com.neulketing.openblue.speech.SystemSpeechRecognitionEngine)
+            .firstOrNull { it.id == "system" } as? com.neulketing.openthumb.speech.SystemSpeechRecognitionEngine)
             ?.preferOffline = (choice.systemPreferOffline == true)
         captureBase = transcript
         transcribeError = null
@@ -343,8 +343,8 @@ fun InlineVoiceInputPanel(
             },
             onError = { error, message ->
                 when (error) {
-                    com.neulketing.openblue.speech.RecognitionError.NO_MATCH -> {}
-                    com.neulketing.openblue.speech.RecognitionError.PERMISSION_DENIED ->
+                    com.neulketing.openthumb.speech.RecognitionError.NO_MATCH -> {}
+                    com.neulketing.openthumb.speech.RecognitionError.PERMISSION_DENIED ->
                         permissionDenied = true
                     else -> transcribeError = message ?: error.name
                 }
@@ -381,7 +381,7 @@ fun InlineVoiceInputPanel(
         // the user is still reaching for the mic. The first segment call costs
         // seconds (~5MB dictionary + HMM model); paying it here rather than on
         // the first capture keeps correction from feeling broken.
-        com.neulketing.openblue.speech.correction.VoiceCorrection.warmUp(panelContext)
+        com.neulketing.openthumb.speech.correction.VoiceCorrection.warmUp(panelContext)
         // Seed the transcript from whatever was typed (text→voice carry).
         transcript = inputText
         if (VoiceModePrefs.enteredFromText) {
@@ -473,9 +473,9 @@ fun InlineVoiceInputPanel(
                     text = { Text(stringResource(R.string.voice_correction_consent_body)) },
                     confirmButton = {
                         androidx.compose.material3.TextButton(onClick = {
-                            com.neulketing.openblue.speech.correction.VoiceCorrectionConsent
+                            com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent
                                 .setEnabled(panelContext, true)
-                            com.neulketing.openblue.speech.correction.VoiceCorrectionConsent
+                            com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent
                                 .setPrompted(panelContext, true)
                             showCorrectionConsent = false
                             runCorrection()
@@ -485,7 +485,7 @@ fun InlineVoiceInputPanel(
                     },
                     dismissButton = {
                         androidx.compose.material3.TextButton(onClick = {
-                            com.neulketing.openblue.speech.correction.VoiceCorrectionConsent
+                            com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent
                                 .setPrompted(panelContext, true)
                             showCorrectionConsent = false
                             runCorrection()
@@ -521,7 +521,7 @@ fun InlineVoiceInputPanel(
                             // afterwards it runs directly. The correction itself
                             // runs regardless of the answer — consent governs
                             // STORING data, not using the feature.
-                            if (!com.neulketing.openblue.speech.correction.VoiceCorrectionConsent
+                            if (!com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent
                                     .hasPrompted(panelContext)
                             ) {
                                 showCorrectionConsent = true

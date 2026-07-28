@@ -1,6 +1,6 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
-import com.neulketing.openblue.BuildConfig
+import com.neulketing.openthumb.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
 

@@ -1,11 +1,11 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
 import android.content.ComponentName
 import android.content.Context
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

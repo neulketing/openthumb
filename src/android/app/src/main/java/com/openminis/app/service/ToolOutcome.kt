@@ -1,4 +1,4 @@
-package com.neulketing.openblue.service
+package com.neulketing.openthumb.service
 
 /**
  * T-overlay-glyph-typed-outcome: typed outcome of a completed tool call.

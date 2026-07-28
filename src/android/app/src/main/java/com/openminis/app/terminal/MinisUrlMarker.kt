@@ -1,4 +1,4 @@
-package com.neulketing.openblue.terminal
+package com.neulketing.openthumb.terminal
 
 /**
  * Parses the OSC 1337 `MinisOpenURL` escape sequence emitted by the rootfs

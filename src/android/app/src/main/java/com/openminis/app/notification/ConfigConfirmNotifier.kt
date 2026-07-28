@@ -1,4 +1,4 @@
-package com.neulketing.openblue.notification
+package com.neulketing.openthumb.notification
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,11 +9,11 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import com.neulketing.openblue.MainActivity
-import com.neulketing.openblue.R
-import com.neulketing.openblue.config.confirm.PendingConfigChange
-import com.neulketing.openblue.data.repository.BackgroundSettingsRepository
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.MainActivity
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.config.confirm.PendingConfigChange
+import com.neulketing.openthumb.data.repository.BackgroundSettingsRepository
+import com.neulketing.openthumb.logging.AppLogger
 
 /**
  * [T-android-config-confirm-timeout] Posts a local notification when a

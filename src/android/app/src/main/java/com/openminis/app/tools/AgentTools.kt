@@ -1,8 +1,8 @@
-package com.neulketing.openblue.tools
+package com.neulketing.openthumb.tools
 
-import com.neulketing.openblue.browser.BrowserAction
-import com.neulketing.openblue.data.model.AgentToolDefinition
-import com.neulketing.openblue.data.model.AgentToolParam
+import com.neulketing.openthumb.browser.BrowserAction
+import com.neulketing.openthumb.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.AgentToolParam
 
 /**
  * Central registry of all agent tool definitions.

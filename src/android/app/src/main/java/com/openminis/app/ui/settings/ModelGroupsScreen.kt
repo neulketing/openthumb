@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -71,17 +71,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.RoutingStrategy
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisOutlinedButton
-import com.neulketing.openblue.ui.components.MinisTextButton
-import com.neulketing.openblue.ui.components.SectionCard
-import com.neulketing.openblue.ui.components.SectionDesign
-import com.neulketing.openblue.ui.components.SectionDivider
-import com.neulketing.openblue.ui.components.SectionFooter
-import com.neulketing.openblue.ui.components.SectionHeader
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.RoutingStrategy
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisOutlinedButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.SectionCard
+import com.neulketing.openthumb.ui.components.SectionDesign
+import com.neulketing.openthumb.ui.components.SectionDivider
+import com.neulketing.openthumb.ui.components.SectionFooter
+import com.neulketing.openthumb.ui.components.SectionHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -437,7 +437,7 @@ private fun GroupDropdown(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun LazyListScope.agentLoopModelsSectionItems(
     providerRepository: ProviderRepository,
-    config: com.neulketing.openblue.data.model.ProviderConfig,
+    config: com.neulketing.openthumb.data.model.ProviderConfig,
     reorderState: ReorderableLazyListState,
     onAddModelsTap: () -> Unit,
     onAddGroupsTap: () -> Unit,
@@ -757,7 +757,7 @@ private val GROUP_MODALITY_PRIORITY: List<GroupModalityMarker> = listOf(
  */
 private fun groupTopModalities(
     group: ModelGroup,
-    config: com.neulketing.openblue.data.model.ProviderConfig,
+    config: com.neulketing.openthumb.data.model.ProviderConfig,
 ): List<GroupModalityMarker> {
     val inputs = mutableSetOf<String>()
     val outputs = mutableSetOf<String>()
@@ -804,7 +804,7 @@ private fun GroupModalityIcon(marker: GroupModalityMarker) {
 @Composable
 private fun GroupRow(
     group: ModelGroup,
-    config: com.neulketing.openblue.data.model.ProviderConfig,
+    config: com.neulketing.openthumb.data.model.ProviderConfig,
     onClick: () -> Unit,
 ) {
     val memberNames = group.memberEntryIds.mapNotNull { entryId ->

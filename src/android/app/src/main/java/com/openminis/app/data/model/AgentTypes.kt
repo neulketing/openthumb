@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.model
+package com.neulketing.openthumb.data.model
 
 import org.json.JSONObject
 

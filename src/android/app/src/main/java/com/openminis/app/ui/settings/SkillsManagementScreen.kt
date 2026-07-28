@@ -1,8 +1,8 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import android.net.Uri
 import android.widget.Toast
@@ -59,7 +59,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import com.neulketing.openblue.ui.components.DialogTextField
+import com.neulketing.openthumb.ui.components.DialogTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
@@ -87,8 +87,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.repository.SkillRepository
-import com.neulketing.openblue.ui.markdown.MarkdownText
+import com.neulketing.openthumb.data.repository.SkillRepository
+import com.neulketing.openthumb.ui.markdown.MarkdownText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -169,7 +169,7 @@ fun SkillsManagementScreen(
                         contentDescription = stringResource(R.string.filebrowser_sort_by),
                     )
                 }
-                com.neulketing.openblue.ui.components.MinisMenu(
+                com.neulketing.openthumb.ui.components.MinisMenu(
                     expanded = sortMenuExpanded,
                     onDismissRequest = { sortMenuExpanded = false },
                 ) {

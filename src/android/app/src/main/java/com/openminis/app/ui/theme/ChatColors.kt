@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.theme
+package com.neulketing.openthumb.ui.theme
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable

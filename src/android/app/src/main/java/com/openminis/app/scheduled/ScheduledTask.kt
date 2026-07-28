@@ -1,4 +1,4 @@
-package com.neulketing.openblue.scheduled
+package com.neulketing.openthumb.scheduled
 
 import org.json.JSONArray
 import org.json.JSONObject

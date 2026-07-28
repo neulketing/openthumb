@@ -1,4 +1,4 @@
-package com.neulketing.openblue.accessibility
+package com.neulketing.openthumb.accessibility
 
 import android.view.accessibility.AccessibilityNodeInfo
 import java.util.concurrent.ConcurrentHashMap

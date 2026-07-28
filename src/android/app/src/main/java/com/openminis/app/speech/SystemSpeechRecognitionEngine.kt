@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech
+package com.neulketing.openthumb.speech
 
 import android.Manifest
 import android.content.BroadcastReceiver

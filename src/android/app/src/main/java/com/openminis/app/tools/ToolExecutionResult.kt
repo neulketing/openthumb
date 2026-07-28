@@ -1,4 +1,4 @@
-package com.neulketing.openblue.tools
+package com.neulketing.openthumb.tools
 
 data class ToolExecutionResult(
     val output: String,

@@ -1,8 +1,8 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.neulketing.openblue.data.db.ChatDao
+import com.neulketing.openthumb.data.db.ChatDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

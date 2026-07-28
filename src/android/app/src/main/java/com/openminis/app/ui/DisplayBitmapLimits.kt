@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui
+package com.neulketing.openthumb.ui
 
 import coil.request.ImageRequest
 import coil.size.Precision
@@ -32,7 +32,7 @@ import coil.size.Precision
  * removes the OOM risk that a decode-then-downscale approach would keep.
  *
  * This is a DISPLAY-side guard only. It is unrelated to
- * [com.neulketing.openblue.provider.ImageBudget], which caps bytes sent to LLM
+ * [com.neulketing.openthumb.provider.ImageBudget], which caps bytes sent to LLM
  * providers on the network path.
  */
 object DisplayBitmapLimits {

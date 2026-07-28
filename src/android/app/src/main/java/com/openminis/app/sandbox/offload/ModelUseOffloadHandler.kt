@@ -1,18 +1,18 @@
-package com.neulketing.openblue.sandbox.offload
+package com.neulketing.openthumb.sandbox.offload
 
 import android.content.Context
 import android.util.Base64
 import android.util.Log
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.provider.ProviderFactory
-import com.neulketing.openblue.provider.safeOptString
-import com.neulketing.openblue.sandbox.NativeOffloadHandler
-import com.neulketing.openblue.sandbox.NativeOffloadRequest
-import com.neulketing.openblue.sandbox.NativeOffloadResult
-import com.neulketing.openblue.sandbox.PRootKernel
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.provider.ProviderFactory
+import com.neulketing.openthumb.provider.safeOptString
+import com.neulketing.openthumb.sandbox.NativeOffloadHandler
+import com.neulketing.openthumb.sandbox.NativeOffloadRequest
+import com.neulketing.openthumb.sandbox.NativeOffloadResult
+import com.neulketing.openthumb.sandbox.PRootKernel
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -277,7 +277,7 @@ class ModelUseOffloadHandler(
         // chat/completions + responses paths only. Other provider types would
         // drop the audio at their own serialization layer — fail loudly here
         // instead. Mirrors iOS ModelUseOffloadBridge.
-        if (hasAudioInput && provider !is com.neulketing.openblue.provider.openai.OpenAIProvider) {
+        if (hasAudioInput && provider !is com.neulketing.openthumb.provider.openai.OpenAIProvider) {
             return NativeOffloadResult(
                 2,
                 JSONObject().put("error", "audio_input_unsupported_provider")
@@ -298,7 +298,7 @@ class ModelUseOffloadHandler(
         // iOS ModelUseOffloadBridge passthrough branch.
         val ptSpec = parsePassthroughEnvelope(inputText)
         if (ptSpec.active) {
-            val openAI = provider as? com.neulketing.openblue.provider.openai.OpenAIProvider
+            val openAI = provider as? com.neulketing.openthumb.provider.openai.OpenAIProvider
                 ?: return NativeOffloadResult(
                     2,
                     JSONObject().put("error", "passthrough_unsupported")
@@ -334,7 +334,7 @@ class ModelUseOffloadHandler(
         // are attached to the final result JSON. Mirrors iOS performRun.
         val callWarnings = ptSpec.warnings.toMutableList()
         val appliedExtras = JSONObject()
-        (provider as? com.neulketing.openblue.provider.openai.OpenAIProvider)?.let { openAI ->
+        (provider as? com.neulketing.openthumb.provider.openai.OpenAIProvider)?.let { openAI ->
             val chatExtra = parseChatExtraBody(inputText, callWarnings)
             if (chatExtra.isNotEmpty()) {
                 openAI.chatExtraBody = chatExtra
@@ -490,7 +490,7 @@ class ModelUseOffloadHandler(
         val n: Int = 1,
         val size: String? = null,
         val quality: String? = null,
-        val endpointOverride: com.neulketing.openblue.data.model.ImageEndpointMode? = null,
+        val endpointOverride: com.neulketing.openthumb.data.model.ImageEndpointMode? = null,
     )
 
     private fun parseImageGenConfig(inputJson: String): ImageGenConfig {
@@ -525,11 +525,11 @@ class ModelUseOffloadHandler(
             }
         }
         val endpoint = when (rawEndpoint.lowercase()) {
-            "auto" -> com.neulketing.openblue.data.model.ImageEndpointMode.auto
+            "auto" -> com.neulketing.openthumb.data.model.ImageEndpointMode.auto
             "images_generations", "images-generations", "images-gen" ->
-                com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations
+                com.neulketing.openthumb.data.model.ImageEndpointMode.imagesGenerations
             "chat_completions", "chat-completions", "chat" ->
-                com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions
+                com.neulketing.openthumb.data.model.ImageEndpointMode.chatCompletions
             else -> null
         }
         return ImageGenConfig(prompt, n, size, quality, endpoint)
@@ -880,7 +880,7 @@ class ModelUseOffloadHandler(
     private fun performRawPassthrough(
         spec: PassthroughSpec,
         entry: ModelEntry,
-        openAI: com.neulketing.openblue.provider.openai.OpenAIProvider,
+        openAI: com.neulketing.openthumb.provider.openai.OpenAIProvider,
         systemPrompt: String?,
         messages: List<LLMMessage>,
         maxTokens: Int,
@@ -1032,8 +1032,8 @@ class ModelUseOffloadHandler(
      */
     private fun tryImageGenerationRoute(
         entry: ModelEntry,
-        instance: com.neulketing.openblue.data.model.ProviderInstance,
-        provider: com.neulketing.openblue.provider.LLMProvider,
+        instance: com.neulketing.openthumb.data.model.ProviderInstance,
+        provider: com.neulketing.openthumb.provider.LLMProvider,
         inputJson: String,
         fallbackPromptMessages: List<ParsedMessage>,
         hasInputImages: Boolean,
@@ -1044,12 +1044,12 @@ class ModelUseOffloadHandler(
     ): NativeOffloadResult? {
         val outputs = entry.model.outputModalities.orEmpty()
         val wantsImageOutput = "image" in outputs
-        val openAI = provider as? com.neulketing.openblue.provider.openai.OpenAIProvider
+        val openAI = provider as? com.neulketing.openthumb.provider.openai.OpenAIProvider
         // Only OpenAI-compatible API-key instances with an image-output model.
         if (!wantsImageOutput || openAI == null) return null
         val pType = instance.providerType
         if (pType != ProviderType.openAI && pType != ProviderType.openRouter && pType != ProviderType.xAI) return null
-        if (instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth) return null
+        if (instance.credentialType == com.neulketing.openthumb.data.model.ProviderCredential.oauth) return null
 
         val cfg = parseImageGenConfig(inputJson)
         val prompt = cfg.prompt
@@ -1114,8 +1114,8 @@ class ModelUseOffloadHandler(
 
         val effectiveMode = when {
             cfg.endpointOverride != null -> cfg.endpointOverride
-            isPureImageGenerator -> com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations
-            instance.imageEndpointMode == com.neulketing.openblue.data.model.ImageEndpointMode.auto &&
+            isPureImageGenerator -> com.neulketing.openthumb.data.model.ImageEndpointMode.imagesGenerations
+            instance.imageEndpointMode == com.neulketing.openthumb.data.model.ImageEndpointMode.auto &&
                 instance.imageEndpointResolved != null -> instance.imageEndpointResolved!!
             else -> instance.imageEndpointMode
         }
@@ -1127,11 +1127,11 @@ class ModelUseOffloadHandler(
         )
 
         // chatCompletions → no image route; fall through to normal sendMessage.
-        if (effectiveMode == com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions) return null
+        if (effectiveMode == com.neulketing.openthumb.data.model.ImageEndpointMode.chatCompletions) return null
 
         // imagesGenerations (forced/cached/pure) → call directly; a failure here
         // is terminal (no silent fallback) so the caller sees the real error.
-        if (effectiveMode == com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations) {
+        if (effectiveMode == com.neulketing.openthumb.data.model.ImageEndpointMode.imagesGenerations) {
             val response = try {
                 runBlocking { openAI.generateImage(prompt, cfg.n, cfg.size, cfg.quality) }
             } catch (e: Throwable) {
@@ -1153,17 +1153,17 @@ class ModelUseOffloadHandler(
         val response = try {
             runBlocking { openAI.generateImage(prompt, cfg.n, cfg.size, cfg.quality) }.also {
                 providerRepository.setImageEndpointResolved(
-                    instance.id, com.neulketing.openblue.data.model.ImageEndpointMode.imagesGenerations,
+                    instance.id, com.neulketing.openthumb.data.model.ImageEndpointMode.imagesGenerations,
                 )
             }
         } catch (e: Throwable) {
             val msg = e.message ?: ""
-            val routeMissing = (e is com.neulketing.openblue.data.model.LLMError.ProviderError ||
-                e is com.neulketing.openblue.data.model.LLMError.InvalidApiKey) && looksLikeEndpointMissing(msg)
+            val routeMissing = (e is com.neulketing.openthumb.data.model.LLMError.ProviderError ||
+                e is com.neulketing.openthumb.data.model.LLMError.InvalidApiKey) && looksLikeEndpointMissing(msg)
             if (routeMissing) {
                 Log.i(TAG, "[ModelUseRoute] auto probe → route missing (${msg.take(120)}) — caching chat_completions, falling back")
                 providerRepository.setImageEndpointResolved(
-                    instance.id, com.neulketing.openblue.data.model.ImageEndpointMode.chatCompletions,
+                    instance.id, com.neulketing.openthumb.data.model.ImageEndpointMode.chatCompletions,
                 )
                 return null // fall through to chat path
             }
@@ -1189,7 +1189,7 @@ class ModelUseOffloadHandler(
      */
     private fun writeImageResult(
         entry: ModelEntry,
-        response: com.neulketing.openblue.data.model.LLMResponse,
+        response: com.neulketing.openthumb.data.model.LLMResponse,
         outputPath: String?,
         outputExt: String,
         endpointUsed: String,
@@ -1409,7 +1409,7 @@ class ModelUseOffloadHandler(
         providerRepository.instance(entry.providerInstanceId)?.label.orEmpty()
 
     private fun entryDict(entry: ModelEntry): JSONObject =
-        com.neulketing.openblue.offload.ModelUseManager.entryDict(
+        com.neulketing.openthumb.offload.ModelUseManager.entryDict(
             entry,
             providerRepository.instance(entry.providerInstanceId),
         )

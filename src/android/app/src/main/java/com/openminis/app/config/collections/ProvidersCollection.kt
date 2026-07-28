@@ -1,19 +1,19 @@
-package com.neulketing.openblue.config.collections
+package com.neulketing.openthumb.config.collections
 
-import com.neulketing.openblue.config.ConfigCollection
-import com.neulketing.openblue.config.ConfigError
-import com.neulketing.openblue.config.ConfigField
-import com.neulketing.openblue.config.ConfigRisk
-import com.neulketing.openblue.config.ConfigSchema
-import com.neulketing.openblue.config.ConfigValue
-import com.neulketing.openblue.config.fields.ClosureField
-import com.neulketing.openblue.config.fields.HiddenField
-import com.neulketing.openblue.config.fields.ReadOnlyField
-import com.neulketing.openblue.data.model.ProviderCredential
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.repository.EnvVarRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openthumb.config.ConfigCollection
+import com.neulketing.openthumb.config.ConfigError
+import com.neulketing.openthumb.config.ConfigField
+import com.neulketing.openthumb.config.ConfigRisk
+import com.neulketing.openthumb.config.ConfigSchema
+import com.neulketing.openthumb.config.ConfigValue
+import com.neulketing.openthumb.config.fields.ClosureField
+import com.neulketing.openthumb.config.fields.HiddenField
+import com.neulketing.openthumb.config.fields.ReadOnlyField
+import com.neulketing.openthumb.data.model.ProviderCredential
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.repository.EnvVarRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
 
 /**
  * Exposes `ProviderInstance` fields under `providers.<id>.…`. Mirrors

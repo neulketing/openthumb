@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import android.content.Context
 import android.content.Intent
@@ -26,13 +26,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.accessibility.MinisAccessibilityService
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.offload.OffloadPermissionManager
-import com.neulketing.openblue.offload.ShizukuManager
-import com.neulketing.openblue.ui.components.MinisMenu
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.accessibility.MinisAccessibilityService
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.offload.OffloadPermissionManager
+import com.neulketing.openthumb.offload.ShizukuManager
+import com.neulketing.openthumb.ui.components.MinisMenu
+import com.neulketing.openthumb.ui.components.MinisTextButton
 import kotlinx.coroutines.delay
 
 @Composable
@@ -53,7 +53,7 @@ fun OffloadPermissionScreen(
 
     var showResetConfirm by remember { mutableStateOf(false) }
 
-    val configEnabled by com.neulketing.openblue.config.MinisConfigPermissionStore.enabled.collectAsState()
+    val configEnabled by com.neulketing.openthumb.config.MinisConfigPermissionStore.enabled.collectAsState()
 
     val context = LocalContext.current
 
@@ -86,7 +86,7 @@ fun OffloadPermissionScreen(
                 title = stringResource(R.string.perm_allow_minis_config),
                 checked = configEnabled,
                 onCheckedChange = {
-                    com.neulketing.openblue.config.MinisConfigPermissionStore.setEnabled(it)
+                    com.neulketing.openthumb.config.MinisConfigPermissionStore.setEnabled(it)
                 },
                 showDivider = false,
             )
@@ -155,7 +155,7 @@ fun OffloadPermissionScreen(
             confirmButton = {
                 MinisTextButton(onClick = {
                     OffloadPermissionManager.resetAll()
-                    com.neulketing.openblue.config.MinisConfigPermissionStore.setEnabled(true)
+                    com.neulketing.openthumb.config.MinisConfigPermissionStore.setEnabled(true)
                     AppLogger.info("PermissionsScreen", "user confirmed Reset All — all tool permissions cleared, minis-config switch reset to default")
                     showResetConfirm = false
                 }) {

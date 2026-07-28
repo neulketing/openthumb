@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 import android.net.LocalServerSocket
 import android.net.LocalSocket

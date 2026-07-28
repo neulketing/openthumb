@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,10 +30,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.ui.theme.ChatColors
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.ui.theme.ChatColors
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Stateless detail body composables used by [SessionMemorySheet] when a row

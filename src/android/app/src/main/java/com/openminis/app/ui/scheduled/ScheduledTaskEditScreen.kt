@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.scheduled
+package com.neulketing.openthumb.ui.scheduled
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,10 +61,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.scheduled.ScheduledRepeatMode
-import com.neulketing.openblue.scheduled.ScheduledTargetMode
-import com.neulketing.openblue.scheduled.ScheduledTask
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.scheduled.ScheduledRepeatMode
+import com.neulketing.openthumb.scheduled.ScheduledTargetMode
+import com.neulketing.openthumb.scheduled.ScheduledTask
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -573,10 +573,10 @@ private fun EditFormBody(
         // entry). The picker doesn't surface a "default model" option — we
         // model that as null binding via the row's onClear action above.
         val cfg by vm.providerRepository.config.collectAsState()
-        val entryById: (String) -> com.neulketing.openblue.data.model.ModelEntry? = { id ->
+        val entryById: (String) -> com.neulketing.openthumb.data.model.ModelEntry? = { id ->
             cfg.modelEntries.firstOrNull { it.id == id }
         }
-        val groupById: (String) -> com.neulketing.openblue.data.model.ModelGroup? = { id ->
+        val groupById: (String) -> com.neulketing.openthumb.data.model.ModelGroup? = { id ->
             cfg.modelGroups.firstOrNull { it.id == id }
         }
         // Pre-highlight the user's prior pick when re-opening the sheet:
@@ -602,7 +602,7 @@ private fun EditFormBody(
                 parsed.optString("entryId").takeIf { it.isNotEmpty() }
             } else null
         }
-        com.neulketing.openblue.ui.chat.ModelPickerSheet(
+        com.neulketing.openthumb.ui.chat.ModelPickerSheet(
             groups = cfg.modelGroups,
             selectedGroupId = preselectGroupId,
             activeEntryId = preselectEntryId,

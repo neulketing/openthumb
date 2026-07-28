@@ -1,10 +1,10 @@
-package com.neulketing.openblue.config.audit
+package com.neulketing.openthumb.config.audit
 
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

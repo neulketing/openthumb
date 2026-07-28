@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.db
+package com.neulketing.openthumb.data.db
 
 import androidx.room.Dao
 import androidx.room.Insert

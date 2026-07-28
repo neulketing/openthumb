@@ -1,4 +1,4 @@
-package com.neulketing.openblue.webapp
+package com.neulketing.openthumb.webapp
 
 import java.io.File
 

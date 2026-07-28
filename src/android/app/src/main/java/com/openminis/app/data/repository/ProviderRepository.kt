@@ -1,37 +1,37 @@
-package com.neulketing.openblue.data.repository
+package com.neulketing.openthumb.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
-import com.neulketing.openblue.data.db.ProviderConfigDao
-import com.neulketing.openblue.data.db.ProviderConfigMetaKeys
-import com.neulketing.openblue.data.db.ProviderConfigSnapshot
-import com.neulketing.openblue.data.db.ProviderDatabase
-import com.neulketing.openblue.data.db.compositeEntryKey
-import com.neulketing.openblue.data.db.toProviderConfig
-import com.neulketing.openblue.data.db.toSnapshot
-import com.neulketing.openblue.data.model.ImageEndpointMode
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ModelOverrides
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ProviderConfig
-import com.neulketing.openblue.data.model.ProviderCredential
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.model.RoutingStrategy
-import com.neulketing.openblue.data.model.SystemVoiceIds
-import com.neulketing.openblue.data.model.VoiceProviderTemplate
-import com.neulketing.openblue.data.model.hasAudioInput
-import com.neulketing.openblue.data.model.hasAudioOutput
-import com.neulketing.openblue.data.model.hasVoiceModality
-import com.neulketing.openblue.data.model.isVoiceTemplateSeedShape
-import com.neulketing.openblue.data.model.withInferredVoiceModality
-import com.neulketing.openblue.provider.ModelsDevApi
-import com.neulketing.openblue.provider.anthropic.AnthropicModelsApi
-import com.neulketing.openblue.provider.gemini.GeminiModelsApi
-import com.neulketing.openblue.provider.openai.OpenAIModelsApi
-import com.neulketing.openblue.provider.openrouter.OpenRouterModelsApi
+import com.neulketing.openthumb.data.db.ProviderConfigDao
+import com.neulketing.openthumb.data.db.ProviderConfigMetaKeys
+import com.neulketing.openthumb.data.db.ProviderConfigSnapshot
+import com.neulketing.openthumb.data.db.ProviderDatabase
+import com.neulketing.openthumb.data.db.compositeEntryKey
+import com.neulketing.openthumb.data.db.toProviderConfig
+import com.neulketing.openthumb.data.db.toSnapshot
+import com.neulketing.openthumb.data.model.ImageEndpointMode
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ModelOverrides
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ProviderConfig
+import com.neulketing.openthumb.data.model.ProviderCredential
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.model.RoutingStrategy
+import com.neulketing.openthumb.data.model.SystemVoiceIds
+import com.neulketing.openthumb.data.model.VoiceProviderTemplate
+import com.neulketing.openthumb.data.model.hasAudioInput
+import com.neulketing.openthumb.data.model.hasAudioOutput
+import com.neulketing.openthumb.data.model.hasVoiceModality
+import com.neulketing.openthumb.data.model.isVoiceTemplateSeedShape
+import com.neulketing.openthumb.data.model.withInferredVoiceModality
+import com.neulketing.openthumb.provider.ModelsDevApi
+import com.neulketing.openthumb.provider.anthropic.AnthropicModelsApi
+import com.neulketing.openthumb.provider.gemini.GeminiModelsApi
+import com.neulketing.openthumb.provider.openai.OpenAIModelsApi
+import com.neulketing.openthumb.provider.openrouter.OpenRouterModelsApi
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,7 +142,7 @@ class ProviderRepository(private val context: Context) {
         // T-android-keystore-aead-fail: route through the self-healing
         // factory so a corrupted master key on Samsung One UI / Android
         // 16 doesn't crash the app at first read.
-        com.neulketing.openblue.util.EncryptedPrefsFactory.safeCreate(context, "provider_secrets")
+        com.neulketing.openthumb.util.EncryptedPrefsFactory.safeCreate(context, "provider_secrets")
     }
 
     // [T-android-startup-config-stall] #753: loadConfig() does a synchronous
@@ -1503,7 +1503,7 @@ class ProviderRepository(private val context: Context) {
         val config = _config.value
         val candidates = config.instances.filter { inst ->
             inst.isEnabled && hasVoiceModels(inst.id) && !isVoiceShadowDisabled(inst.id) &&
-                com.neulketing.openblue.provider.voice.VoiceProviderFactory.supports(inst, loadApiKey(inst.id))
+                com.neulketing.openthumb.provider.voice.VoiceProviderFactory.supports(inst, loadApiKey(inst.id))
         }
         val byKey = candidates.groupBy { inst ->
             normalizedShadowKey(inst.customBaseURL).ifEmpty { "id:${inst.id}" }
@@ -1555,9 +1555,9 @@ class ProviderRepository(private val context: Context) {
         var apiKey = loadApiKey(instance.id)
 
         // For OAuth providers, try to refresh the token before using it (mirrors iOS validAccessToken)
-        if (instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth && apiKey != null) {
+        if (instance.credentialType == com.neulketing.openthumb.data.model.ProviderCredential.oauth && apiKey != null) {
             try {
-                val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                 val freshToken = manager?.validAccessToken()
                 if (freshToken != null && freshToken != apiKey) {
                     saveApiKey(instance.id, freshToken)
@@ -1595,7 +1595,7 @@ class ProviderRepository(private val context: Context) {
                 when (instance.providerType) {
                     ProviderType.anthropic -> AnthropicModelsApi.fetchModels(
                         apiKey, baseURL,
-                        isOAuth = instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth,
+                        isOAuth = instance.credentialType == com.neulketing.openthumb.data.model.ProviderCredential.oauth,
                         // [T-provider-custom-user-agent] models-list UA override.
                         customUserAgent = instance.customUserAgent,
                     )
@@ -1608,7 +1608,7 @@ class ProviderRepository(private val context: Context) {
                     // For API-key users we still call the same static list; if
                     // xAI later exposes a dynamic /v1/models endpoint this is
                     // the place to swap in OpenAI-compatible fetch.
-                    ProviderType.xAI -> com.neulketing.openblue.provider.xai.XAIModelsApi.fetchModelsOAuth()
+                    ProviderType.xAI -> com.neulketing.openthumb.provider.xai.XAIModelsApi.fetchModelsOAuth()
                     // [T-kimi-oauth] Kimi Code: unlike Codex OAuth, the Kimi
                     // OAuth token CAN call the models endpoint — real fetch
                     // from GET /coding/v1/models (OpenAI-compatible shape).
@@ -1616,7 +1616,7 @@ class ProviderRepository(private val context: Context) {
                     // live list replaces the minimal built-in fallback.
                     ProviderType.kimiCode -> OpenAIModelsApi.fetchModels(
                         apiKey,
-                        baseURL ?: "${com.neulketing.openblue.auth.KimiDeviceFlow.CODING_API_BASE}/v1",
+                        baseURL ?: "${com.neulketing.openthumb.auth.KimiDeviceFlow.CODING_API_BASE}/v1",
                         customUserAgent = instance.customUserAgent,
                     )
                 }
@@ -1741,7 +1741,7 @@ class ProviderRepository(private val context: Context) {
             ProviderType.openAI -> "https://api.openai.com/v1"
             ProviderType.openRouter -> "https://openrouter.ai/api/v1"
             ProviderType.xAI -> "https://api.x.ai/v1"
-            ProviderType.kimiCode -> "${com.neulketing.openblue.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
+            ProviderType.kimiCode -> "${com.neulketing.openthumb.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
         }
     }
 
@@ -1769,12 +1769,12 @@ class ProviderRepository(private val context: Context) {
      */
     private fun oauthManagerFor(
         instance: ProviderInstance,
-    ): com.neulketing.openblue.auth.OAuthManager? = when (instance.providerType) {
-        ProviderType.anthropic -> com.neulketing.openblue.auth.ClaudeOAuthManager(context, instance.id)
-        ProviderType.openAI -> com.neulketing.openblue.auth.OpenAIOAuthManager(context, instance.id)
-        ProviderType.xAI -> com.neulketing.openblue.auth.XAIOAuthManager(context, instance.id)
-        ProviderType.gemini -> com.neulketing.openblue.auth.GeminiOAuthManager(context, instance.id)
-        ProviderType.kimiCode -> com.neulketing.openblue.auth.KimiOAuthManager(context, instance.id)
+    ): com.neulketing.openthumb.auth.OAuthManager? = when (instance.providerType) {
+        ProviderType.anthropic -> com.neulketing.openthumb.auth.ClaudeOAuthManager(context, instance.id)
+        ProviderType.openAI -> com.neulketing.openthumb.auth.OpenAIOAuthManager(context, instance.id)
+        ProviderType.xAI -> com.neulketing.openthumb.auth.XAIOAuthManager(context, instance.id)
+        ProviderType.gemini -> com.neulketing.openthumb.auth.GeminiOAuthManager(context, instance.id)
+        ProviderType.kimiCode -> com.neulketing.openthumb.auth.KimiOAuthManager(context, instance.id)
         else -> null
     }
 
@@ -1868,7 +1868,7 @@ class ProviderRepository(private val context: Context) {
             // Stored per-instance via OAuthManager; only present for OAuth providers
             // where the user pasted a static token via the Manual Bearer Token UI.
             run {
-                val mgr = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                val mgr = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                 val manual = mgr?.loadManualBearerToken()
                 if (!manual.isNullOrEmpty()) {
                     put("manualOAuthToken", Base64.encodeToString(manual.toByteArray(), Base64.NO_WRAP))
@@ -1976,7 +1976,7 @@ class ProviderRepository(private val context: Context) {
             } catch (_: Exception) {
                 manualTokenValue
             }
-            val mgr = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+            val mgr = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
             mgr?.saveManualBearerToken(manualToken)
         }
 

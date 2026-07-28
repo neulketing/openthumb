@@ -1,4 +1,4 @@
-package com.neulketing.openblue.service
+package com.neulketing.openthumb.service
 
 import android.content.Context
 import android.util.Log
@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Singleton that tracks two independent kinds of "session is alive":
  *
- *  - `activeSessions`: at least one [com.neulketing.openblue.ui.chat.ChatViewModel.streamJob]
+ *  - `activeSessions`: at least one [com.neulketing.openthumb.ui.chat.ChatViewModel.streamJob]
  *    is in flight (LLM call, tool execution).
  *  - `presentSessions` (T166): the user is sitting on a chat screen
  *    with the composer mounted, regardless of whether a stream is
@@ -62,7 +62,7 @@ object SessionActivityTracker {
      * static per-tool label ("Browser", "Shell", …) so users see the
      * actual intent of the call rather than just the tool kind.
      *
-     * Populated from the dispatch loop in [com.neulketing.openblue.ui.chat.ChatViewModel]
+     * Populated from the dispatch loop in [com.neulketing.openthumb.ui.chat.ChatViewModel]
      * by reading the `tool_title` arg uniformly for ALL tools — so
      * browser_use (which has no per-tool status override) surfaces the
      * title alongside shell_execute and friends.
@@ -165,7 +165,7 @@ object SessionActivityTracker {
 
     /**
      * T50: per-session stream-cancel callbacks. Each ChatViewModel
-     * registers its own [com.neulketing.openblue.ui.chat.ChatViewModel.cancelStream]
+     * registers its own [com.neulketing.openthumb.ui.chat.ChatViewModel.cancelStream]
      * here when [setActive] is called and unregisters in [setInactive].
      * The foreground service's notification "Stop" action calls
      * [cancelAllActiveStreams] which iterates this map — without it the
@@ -187,7 +187,7 @@ object SessionActivityTracker {
 
     /**
      * T180-bg-notif: completion listener. Wired in MinisApp.onCreate to
-     * a [com.neulketing.openblue.notification.BackgroundTaskNotifier] so when
+     * a [com.neulketing.openthumb.notification.BackgroundTaskNotifier] so when
      * an agent loop ends while the app is backgrounded, the user gets a
      * tap-to-open-session notification — mirrors iOS
      * `BackgroundKeepAliveManager.postBackgroundTaskNotification` (L274).
@@ -546,16 +546,16 @@ object SessionActivityTracker {
                     tool
                 } else if (ctx != null) {
                     if (activeCount == 1) {
-                        ctx.getString(com.neulketing.openblue.R.string.notif_one_task_running)
+                        ctx.getString(com.neulketing.openthumb.R.string.notif_one_task_running)
                     } else {
-                        ctx.getString(com.neulketing.openblue.R.string.notif_n_tasks_running, activeCount)
+                        ctx.getString(com.neulketing.openthumb.R.string.notif_n_tasks_running, activeCount)
                     }
                 } else {
                     if (activeCount == 1) "1 task running" else "$activeCount tasks running"
                 }
             }
             _presentSessions.value.isNotEmpty() ->
-                ctx?.getString(com.neulketing.openblue.R.string.notif_in_session) ?: "In session"
+                ctx?.getString(com.neulketing.openthumb.R.string.notif_in_session) ?: "In session"
             else -> "Idle"
         }
     }

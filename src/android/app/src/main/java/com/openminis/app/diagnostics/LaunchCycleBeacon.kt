@@ -1,7 +1,7 @@
-package com.neulketing.openblue.diagnostics
+package com.neulketing.openthumb.diagnostics
 
 import android.content.Context
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import java.io.File
 
 /**

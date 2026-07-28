@@ -1,7 +1,7 @@
-package com.neulketing.openblue.diagnostics
+package com.neulketing.openthumb.diagnostics
 
 import android.os.Debug
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 
 /**
  * [T-android-stream-pipeline-incremental] Per-streaming-turn render-pipeline

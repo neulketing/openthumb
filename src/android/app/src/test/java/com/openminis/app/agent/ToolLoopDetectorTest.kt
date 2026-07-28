@@ -1,4 +1,4 @@
-package com.neulketing.openblue.agent
+package com.neulketing.openthumb.agent
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

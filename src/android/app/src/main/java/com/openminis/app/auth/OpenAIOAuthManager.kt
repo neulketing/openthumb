@@ -1,9 +1,9 @@
-package com.neulketing.openblue.auth
+package com.neulketing.openthumb.auth
 
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -33,7 +33,7 @@ class OpenAIOAuthManager(context: Context, instanceId: String) : OAuthManager(co
          * Static helper: perform full login flow and save the access token.
          * Returns the access token. Mirrors ClaudeOAuthManager.login().
          */
-        suspend fun login(context: Context, instanceId: String, providerRepository: com.neulketing.openblue.data.repository.ProviderRepository): String {
+        suspend fun login(context: Context, instanceId: String, providerRepository: com.neulketing.openthumb.data.repository.ProviderRepository): String {
             val manager = OpenAIOAuthManager(context, instanceId)
             val token = manager.performLogin(context)
             providerRepository.saveApiKey(instanceId, token)

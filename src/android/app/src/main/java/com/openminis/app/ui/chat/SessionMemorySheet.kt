@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,15 +38,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Context
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.ui.settings.SettingsSection
-import com.neulketing.openblue.ui.settings.SettingsValueRow
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.ui.settings.SettingsSection
+import com.neulketing.openthumb.ui.settings.SettingsValueRow
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Bottom sheet showing memory state for the current session.
@@ -163,7 +163,7 @@ fun SessionMemorySheet(
                             // so refresh the cache manually to keep readers
                             // in sync after an in-sheet edit.
                             if (m.name == "SOUL.md") {
-                                com.neulketing.openblue.agent.SoulStore.refreshCache(context)
+                                com.neulketing.openthumb.agent.SoulStore.refreshCache(context)
                             }
                             mode = MemorySheetMode.AutoFile(m.name, editedContent, m.editable)
                             isEditing = false

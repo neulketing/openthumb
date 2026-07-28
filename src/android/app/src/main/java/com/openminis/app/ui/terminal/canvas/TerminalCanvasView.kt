@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.terminal.canvas
+package com.neulketing.openthumb.ui.terminal.canvas
 
 import android.graphics.Paint
 import android.graphics.Typeface
@@ -25,12 +25,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.ui.terminal.emulator.CursorShape
-import com.neulketing.openblue.ui.terminal.emulator.TerminalCell
-import com.neulketing.openblue.ui.terminal.emulator.TerminalColor
-import com.neulketing.openblue.ui.terminal.emulator.TerminalEmulator
-import com.neulketing.openblue.ui.terminal.emulator.TerminalPalette
-import com.neulketing.openblue.ui.terminal.emulator.TextAttributes
+import com.neulketing.openthumb.ui.terminal.emulator.CursorShape
+import com.neulketing.openthumb.ui.terminal.emulator.TerminalCell
+import com.neulketing.openthumb.ui.terminal.emulator.TerminalColor
+import com.neulketing.openthumb.ui.terminal.emulator.TerminalEmulator
+import com.neulketing.openthumb.ui.terminal.emulator.TerminalPalette
+import com.neulketing.openthumb.ui.terminal.emulator.TextAttributes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -59,7 +59,7 @@ fun TerminalCanvasView(
     // same on every device. `Typeface.MONOSPACE` aliases to whatever the
     // OEM ships (Droid Sans Mono / Roboto Mono / vendor custom), and
     // those each measure characters slightly differently.
-    val terminalTypeface = com.neulketing.openblue.ui.terminal.rememberJetBrainsMonoTypeface()
+    val terminalTypeface = com.neulketing.openthumb.ui.terminal.rememberJetBrainsMonoTypeface()
     val paint = remember(fontSizePx, terminalTypeface) {
         Paint().apply {
             typeface = terminalTypeface

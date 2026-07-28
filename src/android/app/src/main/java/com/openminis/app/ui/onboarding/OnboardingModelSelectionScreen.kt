@@ -1,9 +1,9 @@
-package com.neulketing.openblue.ui.onboarding
+package com.neulketing.openthumb.ui.onboarding
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,8 +50,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.repository.ProviderRepository
 
 /**
  * Onboarding step 2: pick 1-3 models from configured providers

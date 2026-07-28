@@ -1,4 +1,4 @@
-package com.neulketing.openblue.providers
+package com.neulketing.openthumb.providers
 
 import android.database.Cursor
 import android.database.MatrixCursor

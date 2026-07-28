@@ -1,6 +1,6 @@
-package com.neulketing.openblue.ui.sandbox
+package com.neulketing.openthumb.ui.sandbox
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -69,7 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,7 +82,7 @@ fun FileBrowserScreen(
     var deleteTarget by remember { mutableStateOf<FileItem?>(null) }
     // T-pwa-3: long-press → "Add to Home Screen" sheet, hosted at screen
     // scope so the dropdown can dismiss before the bottom-sheet appears.
-    var webAppSheetSource by remember { mutableStateOf<com.neulketing.openblue.webapp.WebAppSource.HostFile?>(null) }
+    var webAppSheetSource by remember { mutableStateOf<com.neulketing.openthumb.webapp.WebAppSource.HostFile?>(null) }
 
     // When navigated into a subdirectory, the top-bar back button and the
     // system back gesture both pop one directory level first. The
@@ -223,7 +223,7 @@ fun FileBrowserScreen(
     // outlives the row that triggered it (rows scroll out of composition
     // and the menu dismisses before the sheet animates in).
     webAppSheetSource?.let { src ->
-        com.neulketing.openblue.webapp.AddToHomeSheet(
+        com.neulketing.openthumb.webapp.AddToHomeSheet(
             source = src,
             onDismiss = { webAppSheetSource = null },
         )
@@ -283,7 +283,7 @@ private fun FileItemRow(
     currentLinuxPath: String?,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onAddToHome: (com.neulketing.openblue.webapp.WebAppSource.HostFile) -> Unit,
+    onAddToHome: (com.neulketing.openthumb.webapp.WebAppSource.HostFile) -> Unit,
 ) {
     // T-pwa-3: long-press menu for .html / .htm files whose host path
     // sits under a recognised PRoot bind mount (`/var/minis/shared` or
@@ -391,7 +391,7 @@ private fun FileItemRow(
     // WebApp entry point (TODO webapp-hidden).
     run {
         val context = LocalContext.current
-        com.neulketing.openblue.ui.components.MinisMenu(
+        com.neulketing.openthumb.ui.components.MinisMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
         ) {
@@ -427,11 +427,11 @@ private fun FileItemRow(
                 },
                 onClick = {
                     menuExpanded = false
-                    val triple = com.neulketing.openblue.webapp.WebAppPathResolver.inferScope(item.file)
+                    val triple = com.neulketing.openthumb.webapp.WebAppPathResolver.inferScope(item.file)
                     if (triple != null) {
                         val (scope, ctx, linuxPath) = triple
                         onAddToHome(
-                            com.neulketing.openblue.webapp.WebAppSource.HostFile(
+                            com.neulketing.openthumb.webapp.WebAppSource.HostFile(
                                 file = item.file,
                                 fileName = item.name,
                                 pathScope = scope,
@@ -467,7 +467,7 @@ private fun MoreMenu(
         IconButton(onClick = { expanded = true }) {
             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.filebrowser_more_action))
         }
-        com.neulketing.openblue.ui.components.MinisMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        com.neulketing.openthumb.ui.components.MinisMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             // Display options — sort key choices first so the most
             // frequent toggle (sort) is the closest tap.
             for (key in FileSortKey.entries) {

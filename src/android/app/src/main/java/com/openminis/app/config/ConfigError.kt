@@ -1,4 +1,4 @@
-package com.neulketing.openblue.config
+package com.neulketing.openthumb.config
 
 /**
  * Failure modes a [ConfigField] operation may surface. Matches iOS

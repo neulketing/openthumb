@@ -1,8 +1,8 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 
 /**
  * [T-android-voice-correction] Decides which mined terms are worth storing as

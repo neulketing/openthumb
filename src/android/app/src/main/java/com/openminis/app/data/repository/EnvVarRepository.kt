@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.repository
+package com.neulketing.openthumb.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -43,7 +43,7 @@ class EnvVarRepository(private val context: Context) {
 
     private val encryptedPrefs: SharedPreferences by lazy {
         // T-android-keystore-aead-fail: self-healing wrapper.
-        com.neulketing.openblue.util.EncryptedPrefsFactory.safeCreate(context, ENCRYPTED_PREFS_NAME)
+        com.neulketing.openthumb.util.EncryptedPrefsFactory.safeCreate(context, ENCRYPTED_PREFS_NAME)
     }
 
     private val metadataFile: File

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.share
+package com.neulketing.openthumb.share
 
 import org.json.JSONArray
 import org.json.JSONObject

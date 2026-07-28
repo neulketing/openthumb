@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.components
+package com.neulketing.openthumb.ui.components
 
 import android.view.WindowManager
 import android.widget.Toast
@@ -46,7 +46,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.sessions
+package com.neulketing.openthumb.ui.sessions
 
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
@@ -80,9 +80,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.neulketing.openblue.ui.components.MinisAlertDialog
-import com.neulketing.openblue.ui.components.MinisMenu
-import com.neulketing.openblue.ui.components.MinisMenuDivider
+import com.neulketing.openthumb.ui.components.MinisAlertDialog
+import com.neulketing.openthumb.ui.components.MinisMenu
+import com.neulketing.openthumb.ui.components.MinisMenuDivider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -112,7 +112,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Size
-import com.neulketing.openblue.service.SessionActivityTracker
+import com.neulketing.openthumb.service.SessionActivityTracker
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,19 +136,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.db.ChatSessionEntity
-import com.neulketing.openblue.ui.theme.ChatColors
-import com.neulketing.openblue.ui.theme.minisFabColor
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.db.ChatSessionEntity
+import com.neulketing.openthumb.ui.theme.ChatColors
+import com.neulketing.openthumb.ui.theme.minisFabColor
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Date
 import java.util.concurrent.TimeUnit
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 // FAB color — use shared theme values
 
@@ -347,7 +347,7 @@ fun SessionListScreen(
     var editSession by remember { mutableStateOf<ChatSessionEntity?>(null) }
     var showBrowserSheet by remember { mutableStateOf(false) }
     var showBrowserSettings by remember { mutableStateOf(false) }
-    val browserTabPool = remember { com.neulketing.openblue.browser.BrowserTabPool(context) }
+    val browserTabPool = remember { com.neulketing.openthumb.browser.BrowserTabPool(context) }
 
     val groupedSessions = remember(sessions) { groupSessionsByDate(sessions) }
 
@@ -380,7 +380,7 @@ fun SessionListScreen(
     // badge reflects what's actually active — disabled tasks don't contribute,
     // and with none enabled the count is 0 (badge hidden by the >0 gate below).
     val scheduledTaskCount by remember {
-        com.neulketing.openblue.scheduled.ScheduledTaskStore(context).observe()
+        com.neulketing.openthumb.scheduled.ScheduledTaskStore(context).observe()
             .map { list -> list.count { it.enabled } }
     }.collectAsState(initial = 0)
 
@@ -731,7 +731,7 @@ fun SessionListScreen(
 
     // Browser sheet
     if (showBrowserSheet) {
-        com.neulketing.openblue.ui.browser.BrowserSheet(
+        com.neulketing.openthumb.ui.browser.BrowserSheet(
             tabPool = browserTabPool,
             onDismiss = { showBrowserSheet = false },
         )
@@ -739,7 +739,7 @@ fun SessionListScreen(
 
     // Browser Settings sheet
     if (showBrowserSettings) {
-        com.neulketing.openblue.ui.browser.BrowserSettingsSheet(
+        com.neulketing.openthumb.ui.browser.BrowserSettingsSheet(
             tabPool = browserTabPool,
             onDismiss = { showBrowserSettings = false },
         )
@@ -760,7 +760,7 @@ private fun DualFabRow(
     hasSessions: Boolean,
     onNewChat: () -> Unit,
     onNewChatWithGroup: (String) -> Unit,
-    modelGroups: List<com.neulketing.openblue.data.model.ModelGroup>,
+    modelGroups: List<com.neulketing.openthumb.data.model.ModelGroup>,
     onSearchToggle: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchDismiss: () -> Unit,
@@ -1297,7 +1297,7 @@ private fun SessionRow(
                     Modifier.pointerInput(Unit) {
                         detectTapGestures(
                             onTap = {
-                                com.neulketing.openblue.diagnostics.PerfLongCtx.click(session.id)
+                                com.neulketing.openthumb.diagnostics.PerfLongCtx.click(session.id)
                                 onClick()
                             },
                             onLongPress = { offset -> onLongClick(offset) },
@@ -1305,7 +1305,7 @@ private fun SessionRow(
                     }
                 } else {
                     Modifier.clickable {
-                        com.neulketing.openblue.diagnostics.PerfLongCtx.click(session.id)
+                        com.neulketing.openthumb.diagnostics.PerfLongCtx.click(session.id)
                         onClick()
                     }
                 }
@@ -1325,7 +1325,7 @@ private fun SessionRow(
         // — null for the common case. Renders as an overlay in the icon's
         // bottom-right corner, mirroring where iOS's iCloud badge sits so
         // future ICLOUD_SYNCING uses the same anchor.
-        val badgeMap by com.neulketing.openblue.service.SessionBadgeStore.byId.collectAsState()
+        val badgeMap by com.neulketing.openthumb.service.SessionBadgeStore.byId.collectAsState()
         val badgeHead = badgeMap[session.id]?.firstOrNull()
         Box(
             modifier = Modifier.size(44.dp),
@@ -1470,11 +1470,11 @@ private fun SpinningRing(
  */
 @Composable
 private fun SessionBadgeOverlay(
-    state: com.neulketing.openblue.service.SessionBadgeStore.SessionBadgeState,
+    state: com.neulketing.openthumb.service.SessionBadgeStore.SessionBadgeState,
     modifier: Modifier = Modifier,
 ) {
     when (state) {
-        com.neulketing.openblue.service.SessionBadgeStore.SessionBadgeState.PAUSED -> {
+        com.neulketing.openthumb.service.SessionBadgeStore.SessionBadgeState.PAUSED -> {
             Box(
                 modifier = modifier
                     .offset(x = 2.dp, y = 2.dp)
@@ -1502,7 +1502,7 @@ private fun SessionBadgeOverlay(
                 )
             }
         }
-        com.neulketing.openblue.service.SessionBadgeStore.SessionBadgeState.ICLOUD_SYNCING -> {
+        com.neulketing.openthumb.service.SessionBadgeStore.SessionBadgeState.ICLOUD_SYNCING -> {
             // Reserved for the upcoming iCloud-equivalent sync surface;
             // not produced yet. Render nothing rather than a placeholder
             // so a stray persisted entry from a future build doesn't
@@ -1847,7 +1847,7 @@ internal fun SessionEditSheet(
  * [Intent.EXTRA_TEXT]. Hundreds of messages caused jank, "ghost" frames
  * and OOM crashes — see linked feedback.
  *
- * Now: hand off to [com.neulketing.openblue.share.ChatExporter] which paginates
+ * Now: hand off to [com.neulketing.openthumb.share.ChatExporter] which paginates
  * (50 rows / batch) on [kotlinx.coroutines.Dispatchers.IO], streams to a
  * staging file under `cacheDir/export-staging/`, then zips into
  * `cacheDir/shared/` and hands the resulting [android.net.Uri] to the
@@ -1863,7 +1863,7 @@ private fun exportSession(
 ) {
     scope.launch {
         try {
-            val (uri, _) = com.neulketing.openblue.share.ChatExporter.exportToZip(
+            val (uri, _) = com.neulketing.openthumb.share.ChatExporter.exportToZip(
                 context = context,
                 session = session,
                 repository = chatRepository,

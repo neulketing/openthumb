@@ -1,14 +1,14 @@
-package com.neulketing.openblue.sandbox.offload
+package com.neulketing.openthumb.sandbox.offload
 
 import android.util.Log
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.browser.BrowserAction
-import com.neulketing.openblue.browser.BrowserActionInput
-import com.neulketing.openblue.browser.BrowserActionResult
-import com.neulketing.openblue.sandbox.NativeOffloadHandler
-import com.neulketing.openblue.sandbox.NativeOffloadRequest
-import com.neulketing.openblue.sandbox.NativeOffloadResult
-import com.neulketing.openblue.sandbox.PRootKernel
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.browser.BrowserAction
+import com.neulketing.openthumb.browser.BrowserActionInput
+import com.neulketing.openthumb.browser.BrowserActionResult
+import com.neulketing.openthumb.sandbox.NativeOffloadHandler
+import com.neulketing.openthumb.sandbox.NativeOffloadRequest
+import com.neulketing.openthumb.sandbox.NativeOffloadResult
+import com.neulketing.openthumb.sandbox.PRootKernel
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -79,7 +79,7 @@ class BrowserUseOffloadHandler(private val app: MinisApp) : NativeOffloadHandler
         // overlay capsule + FGS notification show what the agent is
         // actually doing — "browser_use: navigate https://example.com"
         // instead of the static "Running: browser_use".
-        com.neulketing.openblue.service.SessionActivityTracker.updateToolStatus(
+        com.neulketing.openthumb.service.SessionActivityTracker.updateToolStatus(
             statusForBrowserAction(actionName, inputJson),
         )
 

@@ -1,10 +1,10 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import java.net.URI
 
 /**

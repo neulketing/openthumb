@@ -1,4 +1,4 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 import org.json.JSONArray
 import org.json.JSONObject

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.shared
+package com.neulketing.openthumb.shared
 
 /**
  * [T-android-voice-correction] Lightweight punctuation-based sentence
@@ -11,7 +11,7 @@ package com.neulketing.openblue.shared
  * single definition is deliberate: a second, slightly different set elsewhere
  * would silently misalign sentences between the two.
  *
- * NOTE this is a different set from [com.neulketing.openblue.speech.ReadAloudPlayer]'s
+ * NOTE this is a different set from [com.neulketing.openthumb.speech.ReadAloudPlayer]'s
  * TTS chunking terminators, which deliberately includes `\n` (a line break is a
  * natural place to breathe) and excludes `；`/`…`. These two are not
  * interchangeable; do not merge them.

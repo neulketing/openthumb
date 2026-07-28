@@ -1,7 +1,7 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import android.util.Log
-import com.neulketing.openblue.shared.SentenceSplitter
+import com.neulketing.openthumb.shared.SentenceSplitter
 
 /**
  * [T-android-voice-correction] Scores how "rare" a term is, i.e. how likely a

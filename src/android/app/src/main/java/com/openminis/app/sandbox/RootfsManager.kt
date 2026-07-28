@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 import android.content.Context
 import android.net.ConnectivityManager

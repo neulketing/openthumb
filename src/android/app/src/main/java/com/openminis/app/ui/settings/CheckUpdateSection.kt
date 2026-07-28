@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import android.content.Intent
 import android.net.Uri
@@ -40,12 +40,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.ClickableText
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.UpdateChecker
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.UpdateChecker
 import kotlinx.coroutines.launch
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Settings section that talks to [UpdateChecker] to surface a "Check for

@@ -1,10 +1,10 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import rikka.shizuku.Shizuku
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean

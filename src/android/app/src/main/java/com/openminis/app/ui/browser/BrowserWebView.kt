@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.browser
+package com.neulketing.openthumb.ui.browser
 
 import android.annotation.SuppressLint
 import android.view.MotionEvent

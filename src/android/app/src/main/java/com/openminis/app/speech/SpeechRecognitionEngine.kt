@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech
+package com.neulketing.openthumb.speech
 
 import java.util.Locale
 

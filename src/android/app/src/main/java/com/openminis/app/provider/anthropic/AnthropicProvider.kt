@@ -1,20 +1,20 @@
-package com.neulketing.openblue.provider.anthropic
+package com.neulketing.openthumb.provider.anthropic
 
 import android.util.Base64
-import com.neulketing.openblue.data.model.AgentContentPart
-import com.neulketing.openblue.data.model.AgentToolDefinition
-import com.neulketing.openblue.data.model.sanitizeToolId
-import com.neulketing.openblue.data.model.LLMError
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.LLMResponse
-import com.neulketing.openblue.data.model.LLMStreamChunk
-import com.neulketing.openblue.data.model.LLMUsage
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.provider.ImageBudget
-import com.neulketing.openblue.provider.LLMProvider
-import com.neulketing.openblue.provider.applyUserAgentOverride
-import com.neulketing.openblue.provider.safeOptString
+import com.neulketing.openthumb.data.model.AgentContentPart
+import com.neulketing.openthumb.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.sanitizeToolId
+import com.neulketing.openthumb.data.model.LLMError
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMResponse
+import com.neulketing.openthumb.data.model.LLMStreamChunk
+import com.neulketing.openthumb.data.model.LLMUsage
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.provider.ImageBudget
+import com.neulketing.openthumb.provider.LLMProvider
+import com.neulketing.openthumb.provider.applyUserAgentOverride
+import com.neulketing.openthumb.provider.safeOptString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
@@ -30,7 +30,7 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
-import com.neulketing.openblue.provider.failOnSilentEmptyCompletion
+import com.neulketing.openthumb.provider.failOnSilentEmptyCompletion
 
 class AnthropicProvider(
     private val apiKey: String,
@@ -78,7 +78,7 @@ class AnthropicProvider(
         .writeTimeout(30, TimeUnit.SECONDS)
         // [T-android-stale-conn-retry-hang] Shared pool — see NetworkMonitor.
         // Network-transition eviction must reach provider connections.
-        .connectionPool(com.neulketing.openblue.network.NetworkMonitor.sharedLLMConnectionPool)
+        .connectionPool(com.neulketing.openthumb.network.NetworkMonitor.sharedLLMConnectionPool)
         .build()
 
     override suspend fun sendMessageClamped(
@@ -150,9 +150,9 @@ class AnthropicProvider(
             // see OpenAIProvider for the full rationale (release users never
             // reach debug.llmRequests, so retaining multi-MB request bodies
             // there is pure OOM risk for zero benefit).
-            if (com.neulketing.openblue.BuildConfig.DEBUG) {
-                com.neulketing.openblue.debug.LLMRequestLog.add(
-                    com.neulketing.openblue.debug.LLMRequestLog.Entry(
+            if (com.neulketing.openthumb.BuildConfig.DEBUG) {
+                com.neulketing.openthumb.debug.LLMRequestLog.add(
+                    com.neulketing.openthumb.debug.LLMRequestLog.Entry(
                         provider = "anthropic",
                         requestURL = request.url.toString(),
                         requestHeaders = headerMap,
@@ -168,9 +168,9 @@ class AnthropicProvider(
         }
 
         // Log successful request (debug builds only — see above)
-        if (com.neulketing.openblue.BuildConfig.DEBUG) {
-            com.neulketing.openblue.debug.LLMRequestLog.add(
-                com.neulketing.openblue.debug.LLMRequestLog.Entry(
+        if (com.neulketing.openthumb.BuildConfig.DEBUG) {
+            com.neulketing.openthumb.debug.LLMRequestLog.add(
+                com.neulketing.openthumb.debug.LLMRequestLog.Entry(
                     provider = "anthropic",
                     requestURL = request.url.toString(),
                     requestHeaders = headerMap,
@@ -285,7 +285,7 @@ class AnthropicProvider(
      *   Returns null when the prompt is null/empty (iOS parity — no empty `system` field).
      */
     internal fun resolveSystemPrompt(userPrompt: String?): JSONArray? {
-        val claudeCodePrefix = com.neulketing.openblue.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
+        val claudeCodePrefix = com.neulketing.openthumb.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
         if (isOAuth) {
             // Strip the prefix if the caller already prepended it; the tail is the real user prompt.
             val tail = when {
@@ -975,7 +975,7 @@ class AnthropicProvider(
         // everywhere else.
         builder.applyUserAgentOverride(
             customUserAgent,
-            defaultUserAgent = if (isOAuth) null else com.neulketing.openblue.provider.MinisUserAgent.DEFAULT,
+            defaultUserAgent = if (isOAuth) null else com.neulketing.openthumb.provider.MinisUserAgent.DEFAULT,
         )
         return builder.build()
     }

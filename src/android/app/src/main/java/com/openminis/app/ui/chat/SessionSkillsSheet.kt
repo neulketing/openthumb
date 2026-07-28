@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,12 +30,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.SkillRepository
-import com.neulketing.openblue.ui.components.DialogTextField
-import com.neulketing.openblue.ui.settings.SettingsSection
-import com.neulketing.openblue.ui.settings.SkillRowItem
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.SkillRepository
+import com.neulketing.openthumb.ui.components.DialogTextField
+import com.neulketing.openthumb.ui.settings.SettingsSection
+import com.neulketing.openthumb.ui.settings.SkillRowItem
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Bottom sheet showing all skills with per-session enable/disable toggles.

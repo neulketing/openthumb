@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,11 +47,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.MountedFoldersStore
-import com.neulketing.openblue.ui.components.SectionTextField
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.MountedFoldersStore
+import com.neulketing.openthumb.ui.components.SectionTextField
 import kotlinx.coroutines.launch
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Detail/edit screen for a single mounted folder. Mirrors iOS

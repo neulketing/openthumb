@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech
+package com.neulketing.openthumb.speech
 
 /**
  * [T-android-tts-intranumber-guard] Streaming sentence extraction for the TTS

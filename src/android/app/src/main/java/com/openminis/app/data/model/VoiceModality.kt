@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.model
+package com.neulketing.openthumb.data.model
 
 /**
  * [T-android-provider-voice] Voice-modality helpers — the Android port of the

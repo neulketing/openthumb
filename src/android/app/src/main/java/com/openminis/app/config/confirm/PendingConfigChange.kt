@@ -1,6 +1,6 @@
-package com.neulketing.openblue.config.confirm
+package com.neulketing.openthumb.config.confirm
 
-import com.neulketing.openblue.config.ConfigRisk
+import com.neulketing.openthumb.config.ConfigRisk
 import java.util.UUID
 
 /**

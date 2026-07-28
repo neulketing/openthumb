@@ -1,7 +1,7 @@
-package com.neulketing.openblue.data.storage
+package com.neulketing.openthumb.data.storage
 
 import android.content.Context
-import com.neulketing.openblue.data.model.MediaRef
+import com.neulketing.openthumb.data.model.MediaRef
 import java.io.File
 import java.io.InputStream
 import java.text.SimpleDateFormat

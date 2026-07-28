@@ -1,9 +1,9 @@
-package com.neulketing.openblue.scheduled
+package com.neulketing.openthumb.scheduled
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

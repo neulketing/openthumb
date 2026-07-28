@@ -1,4 +1,4 @@
-package com.neulketing.openblue.diagnostics
+package com.neulketing.openthumb.diagnostics
 
 import android.content.Context
 import android.os.Handler

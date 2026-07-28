@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.media
+package com.neulketing.openthumb.ui.media
 
 import android.content.Intent
 import android.media.MediaPlayer

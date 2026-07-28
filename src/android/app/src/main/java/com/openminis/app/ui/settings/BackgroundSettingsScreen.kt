@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import android.app.Activity
 import android.content.Intent
@@ -55,9 +55,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.power.PowerOptimizationManager
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.power.PowerOptimizationManager
 
 /**
  * T50 settings screen — surfaces the two pieces of background-keep-alive
@@ -107,7 +107,7 @@ fun BackgroundSettingsScreen(onBack: () -> Unit) {
     // without an app restart.
     var dynamicIslandCapable by remember {
         mutableStateOf(
-            com.neulketing.openblue.service.DynamicIslandSupport.isDynamicIslandCapable(context),
+            com.neulketing.openthumb.service.DynamicIslandSupport.isDynamicIslandCapable(context),
         )
     }
 
@@ -121,7 +121,7 @@ fun BackgroundSettingsScreen(onBack: () -> Unit) {
                     Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
                         Settings.canDrawOverlays(context)
                 dynamicIslandCapable =
-                    com.neulketing.openblue.service.DynamicIslandSupport.isDynamicIslandCapable(context)
+                    com.neulketing.openthumb.service.DynamicIslandSupport.isDynamicIslandCapable(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)

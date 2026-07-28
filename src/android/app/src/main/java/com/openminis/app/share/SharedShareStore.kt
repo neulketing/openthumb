@@ -1,7 +1,7 @@
-package com.neulketing.openblue.share
+package com.neulketing.openthumb.share
 
 import android.content.Context
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import org.json.JSONObject
 import java.io.File
 

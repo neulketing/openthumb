@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.db
+package com.neulketing.openthumb.data.db
 
 /** Raw usage record from joined messages + sessions query. */
 data class UsageRecord(

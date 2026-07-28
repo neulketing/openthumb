@@ -1,11 +1,11 @@
-package com.neulketing.openblue.provider.openrouter
+package com.neulketing.openthumb.provider.openrouter
 
 import android.content.Context
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.normalizeModalities
-import com.neulketing.openblue.provider.ModelsDevApi
-import com.neulketing.openblue.provider.applyUserAgentOverride
-import com.neulketing.openblue.provider.ProviderModelsCache
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.normalizeModalities
+import com.neulketing.openthumb.provider.ModelsDevApi
+import com.neulketing.openthumb.provider.applyUserAgentOverride
+import com.neulketing.openthumb.provider.ProviderModelsCache
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient

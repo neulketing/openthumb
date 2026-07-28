@@ -1,10 +1,10 @@
-package com.neulketing.openblue.share
+package com.neulketing.openthumb.share
 
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import java.io.File
 import java.util.UUID
 
@@ -39,7 +39,7 @@ class ShareReceiverActivity : ComponentActivity() {
 
     // T-n01-andmenu-l10n: pre-Tiramisu locale override (see MainActivity).
     override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.neulketing.openblue.i18n.LocaleWrap.wrap(newBase))
+        super.attachBaseContext(com.neulketing.openthumb.i18n.LocaleWrap.wrap(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -134,13 +134,13 @@ class ShareReceiverActivity : ComponentActivity() {
         items: List<PendingShare.Item>,
     ) {
         android.app.AlertDialog.Builder(this)
-            .setTitle(getString(com.neulketing.openblue.R.string.share_provider_json_title))
-            .setMessage(getString(com.neulketing.openblue.R.string.share_provider_json_message))
-            .setPositiveButton(getString(com.neulketing.openblue.R.string.share_provider_json_import)) { _, _ ->
+            .setTitle(getString(com.neulketing.openthumb.R.string.share_provider_json_title))
+            .setMessage(getString(com.neulketing.openthumb.R.string.share_provider_json_message))
+            .setPositiveButton(getString(com.neulketing.openthumb.R.string.share_provider_json_import)) { _, _ ->
                 importProviderJson(json)
                 finish()
             }
-            .setNegativeButton(getString(com.neulketing.openblue.R.string.share_provider_json_attach)) { _, _ ->
+            .setNegativeButton(getString(com.neulketing.openthumb.R.string.share_provider_json_attach)) { _, _ ->
                 finishWithAttachmentFlow(items)
             }
             .setOnCancelListener {
@@ -153,19 +153,19 @@ class ShareReceiverActivity : ComponentActivity() {
 
     /** Run the existing provider-import logic and toast the outcome. */
     private fun importProviderJson(json: String) {
-        val repo = (applicationContext as? com.neulketing.openblue.MinisApp)?.providerRepository
+        val repo = (applicationContext as? com.neulketing.openthumb.MinisApp)?.providerRepository
         if (repo == null) {
             AppLogger.warning(TAG, "providerRepository unavailable; cannot import")
-            toast(getString(com.neulketing.openblue.R.string.share_provider_json_import_failed))
+            toast(getString(com.neulketing.openthumb.R.string.share_provider_json_import_failed))
             return
         }
         val label = repo.importInstanceJSON(json)
         if (label != null) {
             AppLogger.info(TAG, "imported provider \"$label\" from shared JSON")
-            toast(getString(com.neulketing.openblue.R.string.share_provider_json_imported, label))
+            toast(getString(com.neulketing.openthumb.R.string.share_provider_json_imported, label))
         } else {
             AppLogger.warning(TAG, "importInstanceJSON returned null")
-            toast(getString(com.neulketing.openblue.R.string.share_provider_json_import_failed))
+            toast(getString(com.neulketing.openthumb.R.string.share_provider_json_import_failed))
         }
     }
 
@@ -259,7 +259,7 @@ class ShareReceiverActivity : ComponentActivity() {
     private fun shortId(): String = UUID.randomUUID().toString().take(8)
 
     private fun launchMainActivity() {
-        val mainIntent = Intent(this, Class.forName("com.neulketing.openblue.MainActivity")).apply {
+        val mainIntent = Intent(this, Class.forName("com.neulketing.openthumb.MainActivity")).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra("shared_content", true)
         }

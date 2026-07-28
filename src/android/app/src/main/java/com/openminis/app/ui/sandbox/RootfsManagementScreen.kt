@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.sandbox
+package com.neulketing.openthumb.ui.sandbox
 
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import android.text.format.Formatter
 import androidx.compose.foundation.background
@@ -53,8 +53,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.neulketing.openblue.ui.components.SettingsRowDivider
-import com.neulketing.openblue.ui.components.SettingsSection
+import com.neulketing.openthumb.ui.components.SettingsRowDivider
+import com.neulketing.openthumb.ui.components.SettingsSection
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

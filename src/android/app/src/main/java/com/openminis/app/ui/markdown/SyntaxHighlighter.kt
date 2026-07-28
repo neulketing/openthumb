@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.markdown
+package com.neulketing.openthumb.ui.markdown
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString

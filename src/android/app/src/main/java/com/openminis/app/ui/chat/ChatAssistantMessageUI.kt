@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 // [T-android-split-chat] Assistant-message + tool-pill + thinking rendering
 // extracted verbatim from ChatScreen.kt: AssistantHeader, AssistantMessageView,
@@ -136,14 +136,14 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.FileMentionIndex
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.ui.components.MinisAlertDialog
-import com.neulketing.openblue.ui.settings.autoExpandThinkingEnabled
-import com.neulketing.openblue.ui.components.MinisMenu
-import com.neulketing.openblue.ui.components.MinisMenuDivider
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.FileMentionIndex
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.ui.components.MinisAlertDialog
+import com.neulketing.openthumb.ui.settings.autoExpandThinkingEnabled
+import com.neulketing.openthumb.ui.components.MinisMenu
+import com.neulketing.openthumb.ui.components.MinisMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -254,26 +254,26 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openthumb.offload.OffloadPermissionManager
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ProviderConfig
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.model.RoutingStrategy
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.browser.BrowserSheet
-import com.neulketing.openblue.ui.theme.ChatColors
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ProviderConfig
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.model.RoutingStrategy
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.browser.BrowserSheet
+import com.neulketing.openthumb.ui.theme.ChatColors
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 @Composable
 internal fun AssistantHeader() {
@@ -283,8 +283,8 @@ internal fun AssistantHeader() {
     // canonical sparkle (iOS: sparkles SF Symbol + gradient). Only the
     // `name` field is user-customizable — defaults to "Minis" when
     // SOUL.md is missing the field or set to the default value.
-    val soulMeta by com.neulketing.openblue.agent.SoulStore.cachedMetadata.collectAsState()
-    val displayName = soulMeta.name.ifBlank { com.neulketing.openblue.agent.SoulMetadata.DEFAULT.name }
+    val soulMeta by com.neulketing.openthumb.agent.SoulStore.cachedMetadata.collectAsState()
+    val displayName = soulMeta.name.ifBlank { com.neulketing.openthumb.agent.SoulMetadata.DEFAULT.name }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -352,7 +352,7 @@ internal fun AssistantMessageView(message: ChatMessage, onRetry: (() -> Unit)? =
                     // gate stays here so any future re-introduction
                     // doesn't silently bring back the always-render bug.
                     val effectiveLevel = message.thinkingLevel
-                        ?: com.neulketing.openblue.data.model.ThinkingLevel.MEDIUM
+                        ?: com.neulketing.openthumb.data.model.ThinkingLevel.MEDIUM
                     if (effectiveLevel.isEnabled) {
                         // [T-android-thinking-auto-collapse] Stream signal
                         // requires THIS block to be the trailing block of
@@ -622,7 +622,7 @@ internal fun ToolCallPill(
     // top level multiply with the number of pills × recompose rate. Gate
     // behind BuildConfig.DEBUG so production builds skip the string-build
     // entirely, and the rest of release builds don't pay for it.
-    if (com.neulketing.openblue.BuildConfig.DEBUG && false) {
+    if (com.neulketing.openthumb.BuildConfig.DEBUG && false) {
         android.util.Log.d("ToolChain[UI]", "ToolCallPill render: id=${block.id} name=${block.toolName} title=${block.toolTitle} status=${block.toolStatus} contentLen=${block.content.length} argsLen=${block.toolArgs.length}")
     }
 

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

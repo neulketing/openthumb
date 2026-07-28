@@ -1,4 +1,4 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -340,7 +340,7 @@ class BrowserUseManager(
                 // T134: route intent://, market://, tel:, mailto:, … out
                 // of the WebView so they reach the matching app instead of
                 // surfacing as ERR_UNKNOWN_URL_SCHEME.
-                return com.neulketing.openblue.ui.browser.BrowserExternalSchemeHandler
+                return com.neulketing.openthumb.ui.browser.BrowserExternalSchemeHandler
                     .handle(view.context, request.url)
             }
 
@@ -402,7 +402,7 @@ class BrowserUseManager(
             val host = uri.host ?: return null
             val path = uri.path ?: ""
             val linuxPath = "/var/minis/$host$path"
-            val localFile = com.neulketing.openblue.sandbox.PRootKernel.resolveHostPath(linuxPath)
+            val localFile = com.neulketing.openthumb.sandbox.PRootKernel.resolveHostPath(linuxPath)
             if (localFile == null || !localFile.exists() || !localFile.isFile) {
                 return android.webkit.WebResourceResponse("text/plain", "UTF-8", 404, "Not Found",
                     emptyMap(), "File not found: $host$path".byteInputStream())

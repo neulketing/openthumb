@@ -1,7 +1,7 @@
-package com.neulketing.openblue.deeplink
+package com.neulketing.openthumb.deeplink
 
 import android.net.Uri
-import com.neulketing.openblue.ui.navigation.Routes
+import com.neulketing.openthumb.ui.navigation.Routes
 
 /**
  * Parses minis:// deep link URIs into navigation actions.
@@ -71,7 +71,7 @@ sealed class DeepLinkAction {
      * T183: any settings screen reachable by route string. Extends the
      * sealed family so consumers don't have to learn 14 new case types
      * — they `safeNavigate(action.route)` and the route table in
-     * [com.neulketing.openblue.ui.navigation.Routes] does the rest. Routes
+     * [com.neulketing.openthumb.ui.navigation.Routes] does the rest. Routes
      * with arguments (provider detail, model-group detail) carry the
      * already-formatted route ("provider/<id>", "model_group/<id>").
      */

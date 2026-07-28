@@ -1,13 +1,13 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
 import android.content.Context
 import androidx.lifecycle.ViewModelProvider
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.ui.chat.ChatViewModel
-import com.neulketing.openblue.ui.chat.ChatViewModelStore
-import com.neulketing.openblue.ui.chat.InputAttachment
-import com.neulketing.openblue.ui.chat.addAttachment
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.ui.chat.ChatViewModel
+import com.neulketing.openthumb.ui.chat.ChatViewModelStore
+import com.neulketing.openthumb.ui.chat.InputAttachment
+import com.neulketing.openthumb.ui.chat.addAttachment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext

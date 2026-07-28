@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.components
+package com.neulketing.openthumb.ui.components
 
 import android.content.Context
 import android.content.Intent

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.crash
+package com.neulketing.openthumb.crash
 
 import android.app.Activity
 import android.app.AlertDialog
@@ -19,7 +19,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream

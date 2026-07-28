@@ -1,4 +1,4 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 import android.content.Context
 import android.os.Message
@@ -19,7 +19,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import org.json.JSONObject
 import java.io.File
 import java.util.Date

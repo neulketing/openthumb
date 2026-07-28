@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,13 +16,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.components.RowLabel
-import com.neulketing.openblue.ui.components.SectionTextField
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisButton
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.components.RowLabel
+import com.neulketing.openthumb.ui.components.SectionTextField
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisButton
 
 /**
  * Add Custom Model — adopts the SettingsScaffold/SettingsSection toolkit

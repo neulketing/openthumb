@@ -1,9 +1,9 @@
-package com.neulketing.openblue.sandbox.offload
+package com.neulketing.openthumb.sandbox.offload
 
-import com.neulketing.openblue.offload.MediaPlayerManager
-import com.neulketing.openblue.sandbox.NativeOffloadHandler
-import com.neulketing.openblue.sandbox.NativeOffloadRequest
-import com.neulketing.openblue.sandbox.NativeOffloadResult
+import com.neulketing.openthumb.offload.MediaPlayerManager
+import com.neulketing.openthumb.sandbox.NativeOffloadHandler
+import com.neulketing.openthumb.sandbox.NativeOffloadRequest
+import com.neulketing.openthumb.sandbox.NativeOffloadResult
 
 /**
  * android-player — control audio playback.

@@ -1,8 +1,8 @@
-package com.neulketing.openblue.provider.voice
+package com.neulketing.openthumb.provider.voice
 
 import android.util.Log
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
 
 /**
  * [T-android-provider-voice] Maps a configured ProviderInstance to a concrete

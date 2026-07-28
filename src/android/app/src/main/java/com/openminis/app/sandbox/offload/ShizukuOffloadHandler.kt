@@ -1,11 +1,11 @@
-package com.neulketing.openblue.sandbox.offload
+package com.neulketing.openthumb.sandbox.offload
 
 import android.content.Context
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.offload.ShizukuManager
-import com.neulketing.openblue.sandbox.NativeOffloadHandler
-import com.neulketing.openblue.sandbox.NativeOffloadRequest
-import com.neulketing.openblue.sandbox.NativeOffloadResult
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.offload.ShizukuManager
+import com.neulketing.openthumb.sandbox.NativeOffloadHandler
+import com.neulketing.openthumb.sandbox.NativeOffloadRequest
+import com.neulketing.openthumb.sandbox.NativeOffloadResult
 import org.json.JSONArray
 import org.json.JSONObject
 

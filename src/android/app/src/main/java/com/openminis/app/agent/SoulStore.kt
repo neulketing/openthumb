@@ -1,7 +1,7 @@
-package com.neulketing.openblue.agent
+package com.neulketing.openthumb.agent
 
 import android.content.Context
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -426,7 +426,7 @@ object SystemPromptBuilder {
      * append the user-authored personality body from SOUL.md.
      *
      * Two distinct trailing-whitespace contracts so the next concatenated
-     * sentence in [com.neulketing.openblue.ui.chat.ChatViewModel.buildSystemPrompt]
+     * sentence in [com.neulketing.openthumb.ui.chat.ChatViewModel.buildSystemPrompt]
      * glues correctly:
      *   - No personality body → identity sentence with its original
      *     single trailing space (byte-identical to the pre-SOUL prompt).

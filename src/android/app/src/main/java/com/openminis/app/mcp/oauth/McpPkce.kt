@@ -1,4 +1,4 @@
-package com.neulketing.openblue.mcp.oauth
+package com.neulketing.openthumb.mcp.oauth
 
 import java.net.URI
 import java.net.URLEncoder

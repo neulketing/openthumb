@@ -1,4 +1,4 @@
-package com.neulketing.openblue.util
+package com.neulketing.openthumb.util
 
 import android.content.Context
 import android.content.SharedPreferences

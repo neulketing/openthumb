@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.repository
+package com.neulketing.openthumb.data.repository
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
@@ -73,10 +73,10 @@ class MCPRepository(private val context: Context) {
          * [T-android-mcp-oauth] Non-secret Static-OAuth config for an HTTP/SSE
          * server (client id + endpoints + scopes). Null = no OAuth (static
          * headers only). The client secret and issued tokens are NOT here — they
-         * live in [com.neulketing.openblue.mcp.oauth.MCPOAuthStore]. Round-tripped
+         * live in [com.neulketing.openthumb.mcp.oauth.MCPOAuthStore]. Round-tripped
          * verbatim through servers.json.
          */
-        val oauth: com.neulketing.openblue.mcp.oauth.MCPOAuthConfig? = null,
+        val oauth: com.neulketing.openthumb.mcp.oauth.MCPOAuthConfig? = null,
         /** Local-only: when this entry was first written, for recent-add ordering. */
         val createdAt: Long = System.currentTimeMillis(),
     ) {
@@ -205,7 +205,7 @@ class MCPRepository(private val context: Context) {
             args = args,
             env = env,
             startupTimeoutSeconds = parseStartupTimeout(entry),
-            oauth = com.neulketing.openblue.mcp.oauth.MCPOAuthConfig.fromJson(entry.optJSONObject("oauth")),
+            oauth = com.neulketing.openthumb.mcp.oauth.MCPOAuthConfig.fromJson(entry.optJSONObject("oauth")),
             createdAt = createdAt,
         )
     }

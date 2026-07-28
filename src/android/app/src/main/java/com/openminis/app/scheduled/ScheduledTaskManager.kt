@@ -1,4 +1,4 @@
-package com.neulketing.openblue.scheduled
+package com.neulketing.openthumb.scheduled
 
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -7,7 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 
 /**
  * [T-android-scheduled-tasks-design] Schedules / cancels AlarmManager
@@ -60,7 +60,7 @@ class ScheduledTaskManager(private val context: Context) {
 
     /**
      * Re-register every enabled task with AlarmManager. Called from
-     * [com.neulketing.openblue.offload.AlarmReceiver]'s BOOT_COMPLETED branch
+     * [com.neulketing.openthumb.offload.AlarmReceiver]'s BOOT_COMPLETED branch
      * so persisted tasks survive a device reboot.
      */
     fun rescheduleAll() {
@@ -168,7 +168,7 @@ class ScheduledTaskManager(private val context: Context) {
 
     companion object {
         private const val TAG = "ScheduledTaskManager"
-        const val ACTION_FIRE = "com.neulketing.openblue.scheduled.FIRE"
+        const val ACTION_FIRE = "com.neulketing.openthumb.scheduled.FIRE"
         const val EXTRA_TASK_ID = "task_id"
         const val CHANNEL_ID = "minis_scheduled_tasks"
         private const val CHANNEL_NAME = "Scheduled Tasks"

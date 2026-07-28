@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
 /**
  * Pure-logic policy that decides, given a token estimate and the model's

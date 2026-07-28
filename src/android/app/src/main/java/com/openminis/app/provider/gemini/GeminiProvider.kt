@@ -1,19 +1,19 @@
-package com.neulketing.openblue.provider.gemini
+package com.neulketing.openthumb.provider.gemini
 
 import android.util.Base64
-import com.neulketing.openblue.data.model.AgentContentPart
-import com.neulketing.openblue.data.model.AgentToolDefinition
-import com.neulketing.openblue.data.model.LLMError
-import com.neulketing.openblue.provider.applyUserAgentOverride
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.LLMMediaAttachment
-import com.neulketing.openblue.data.model.LLMResponse
-import com.neulketing.openblue.data.model.LLMStreamChunk
-import com.neulketing.openblue.data.model.LLMUsage
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.provider.LLMProvider
-import com.neulketing.openblue.provider.safeOptString
+import com.neulketing.openthumb.data.model.AgentContentPart
+import com.neulketing.openthumb.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.LLMError
+import com.neulketing.openthumb.provider.applyUserAgentOverride
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMMediaAttachment
+import com.neulketing.openthumb.data.model.LLMResponse
+import com.neulketing.openthumb.data.model.LLMStreamChunk
+import com.neulketing.openthumb.data.model.LLMUsage
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.provider.LLMProvider
+import com.neulketing.openthumb.provider.safeOptString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
@@ -29,7 +29,7 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
-import com.neulketing.openblue.provider.failOnSilentEmptyCompletion
+import com.neulketing.openthumb.provider.failOnSilentEmptyCompletion
 
 class GeminiProvider(
     private val apiKey: String,
@@ -44,7 +44,7 @@ class GeminiProvider(
         .writeTimeout(30, TimeUnit.SECONDS)
         // [T-android-stale-conn-retry-hang] Shared pool — see NetworkMonitor.
         // Network-transition eviction must reach provider connections.
-        .connectionPool(com.neulketing.openblue.network.NetworkMonitor.sharedLLMConnectionPool)
+        .connectionPool(com.neulketing.openthumb.network.NetworkMonitor.sharedLLMConnectionPool)
         .build()
 
     override suspend fun sendMessageClamped(

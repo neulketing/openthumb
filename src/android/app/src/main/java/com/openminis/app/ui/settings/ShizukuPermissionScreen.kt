@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -13,9 +13,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.offload.ShizukuBackend
-import com.neulketing.openblue.offload.ShizukuManager
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.offload.ShizukuBackend
+import com.neulketing.openthumb.offload.ShizukuManager
 
 /**
  * T322 / [T-android-privileged-backend]: state-driven Shizuku-protocol

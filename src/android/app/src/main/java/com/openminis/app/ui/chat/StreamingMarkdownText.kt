@@ -1,10 +1,10 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import android.content.Context
 import android.content.Intent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
@@ -101,9 +101,9 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import coil.request.ImageRequest
-import com.neulketing.openblue.ui.DisplayBitmapLimits.limitDisplaySize
-import com.neulketing.openblue.sandbox.PRootKernel
-import com.neulketing.openblue.ui.theme.ChatColors
+import com.neulketing.openthumb.ui.DisplayBitmapLimits.limitDisplaySize
+import com.neulketing.openthumb.sandbox.PRootKernel
+import com.neulketing.openthumb.ui.theme.ChatColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -197,7 +197,7 @@ private data class MdColors(
 @Composable
 @androidx.compose.runtime.ReadOnlyComposable
 private fun currentMdColors(): MdColors {
-    val c = com.neulketing.openblue.ui.theme.LocalChatPalette.current
+    val c = com.neulketing.openthumb.ui.theme.LocalChatPalette.current
     return MdColors(
         text = c.primaryText,
         codeText = c.codeBlockText,
@@ -897,7 +897,7 @@ private fun MarkdownBlockBody(
             }
             coroutineContext.ensureActive()
             parsed = computed
-            com.neulketing.openblue.logging.AppLogger.info(
+            com.neulketing.openthumb.logging.AppLogger.info(
                 "Perf",
                 "[Perf][ColdParse] step=coldParse.offmain chars=${rawText.length} " +
                     "blocks=${computed.size} parseMs=${(System.nanoTime() - tStartNs) / 1_000_000}",
@@ -2093,7 +2093,7 @@ private fun RenderMathDisplay(latex: String) {
  */
 @Composable
 private fun BrokenImagePlaceholder(alt: String?) {
-    val palette = com.neulketing.openblue.ui.theme.LocalChatPalette.current
+    val palette = com.neulketing.openthumb.ui.theme.LocalChatPalette.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -2261,7 +2261,7 @@ private fun RenderMdVideo(block: MdBlock.Video) {
     }
 
     if (showPlayer && file != null) {
-        com.neulketing.openblue.ui.media.MinisFullscreenVideoPlayer(
+        com.neulketing.openthumb.ui.media.MinisFullscreenVideoPlayer(
             file = file,
             onDismiss = { showPlayer = false },
         )
@@ -2752,7 +2752,7 @@ internal object StreamRenderProfiler {
         ticks++
         if (ticks < FLUSH_TICKS) return
         val n = ticks
-        com.neulketing.openblue.logging.AppLogger.info(
+        com.neulketing.openthumb.logging.AppLogger.info(
             "StreamRender",
             "[StreamRender] ticks=$n fragLen=$lastFragLen(max=$maxFragLen) " +
                 "parseMs avg=${"%.1f".format(parseMsSum / n)} max=${"%.1f".format(parseMsMax)}",
@@ -2951,7 +2951,7 @@ private object MarkdownParseCaches {
         } else {
             Thread.currentThread().name
         }
-        com.neulketing.openblue.logging.AppLogger.info(
+        com.neulketing.openthumb.logging.AppLogger.info(
             "JankDiag",
             "[JankDiag] slow markdown parse layer=$layer chars=$chars ms=$ms thread=$thread$extra",
         )

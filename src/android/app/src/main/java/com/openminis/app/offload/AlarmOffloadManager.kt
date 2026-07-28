@@ -1,4 +1,4 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -7,7 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Calendar

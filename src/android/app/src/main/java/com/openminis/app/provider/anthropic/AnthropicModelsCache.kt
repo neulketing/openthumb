@@ -1,7 +1,7 @@
-package com.neulketing.openblue.provider.anthropic
+package com.neulketing.openthumb.provider.anthropic
 
 import android.content.Context
-import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMModel
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString

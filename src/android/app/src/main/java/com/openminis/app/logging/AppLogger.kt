@@ -1,4 +1,4 @@
-package com.neulketing.openblue.logging
+package com.neulketing.openthumb.logging
 
 import android.content.Context
 import android.util.Log

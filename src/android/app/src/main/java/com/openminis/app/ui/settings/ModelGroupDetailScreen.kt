@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,19 +57,19 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
-import com.neulketing.openblue.data.model.FallbackStrategy
-import com.neulketing.openblue.data.model.RoutingStrategy
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.provider.effectiveMaxThinkingLevel
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.data.model.FallbackStrategy
+import com.neulketing.openthumb.data.model.RoutingStrategy
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.provider.effectiveMaxThinkingLevel
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.R
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.MinisOutlinedButton
-import com.neulketing.openblue.ui.components.MinisTextButton
-import com.neulketing.openblue.ui.components.SectionTextField
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.MinisOutlinedButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.SectionTextField
 import kotlin.math.roundToInt
 
 /**
@@ -280,7 +280,7 @@ fun ModelGroupDetailScreen(
                     // default Voice Input/Output members render normally instead
                     // of as stale rows (mirrors iOS system virtual entries).
                     val entry = config.modelEntries.find { it.id == entryId }
-                        ?: com.neulketing.openblue.data.model.SystemVoiceEntries.resolve(entryId)
+                        ?: com.neulketing.openthumb.data.model.SystemVoiceEntries.resolve(entryId)
 
                     if (entry == null) {
                         // Stale member: UUID no longer resolves to any ModelEntry
@@ -361,7 +361,7 @@ fun ModelGroupDetailScreen(
                                         IconButton(onClick = { showMenu = true }) {
                                             Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.model_group_detail_more_options))
                                         }
-                                        com.neulketing.openblue.ui.components.MinisMenu(
+                                        com.neulketing.openthumb.ui.components.MinisMenu(
                                             expanded = showMenu,
                                             onDismissRequest = { showMenu = false },
                                         ) {

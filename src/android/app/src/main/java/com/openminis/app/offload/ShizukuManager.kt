@@ -1,9 +1,9 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
 import android.app.Application
 import android.content.Context
 import android.os.Build
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

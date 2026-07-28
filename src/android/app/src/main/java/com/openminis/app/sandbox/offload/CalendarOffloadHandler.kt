@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox.offload
+package com.neulketing.openthumb.sandbox.offload
 
 import android.Manifest
 import android.content.ContentValues
@@ -6,11 +6,11 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import androidx.core.content.ContextCompat
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.offload.OffloadPermissionManager
-import com.neulketing.openblue.sandbox.NativeOffloadHandler
-import com.neulketing.openblue.sandbox.NativeOffloadRequest
-import com.neulketing.openblue.sandbox.NativeOffloadResult
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.offload.OffloadPermissionManager
+import com.neulketing.openthumb.sandbox.NativeOffloadHandler
+import com.neulketing.openthumb.sandbox.NativeOffloadRequest
+import com.neulketing.openthumb.sandbox.NativeOffloadResult
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject

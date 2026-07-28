@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
 import android.content.Context
 import android.os.Build
@@ -55,5 +55,5 @@ object DeviceIdentity {
     // T-android-keystore-aead-fail: self-healing wrapper handles
     // master-key invalidation on Samsung One UI / Android 16.
     private fun encryptedPrefs(context: Context) =
-        com.neulketing.openblue.util.EncryptedPrefsFactory.safeCreate(context, PREFS_NAME)
+        com.neulketing.openthumb.util.EncryptedPrefsFactory.safeCreate(context, PREFS_NAME)
 }

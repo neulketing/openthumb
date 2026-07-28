@@ -1,4 +1,4 @@
-package com.neulketing.openblue.crash
+package com.neulketing.openthumb.crash
 
 import android.util.Log
 import java.io.File

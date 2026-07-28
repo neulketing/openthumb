@@ -1,4 +1,4 @@
-package com.neulketing.openblue.shared
+package com.neulketing.openthumb.shared
 
 import android.content.Context
 import java.io.File

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
 import android.content.Context
 import android.graphics.BitmapFactory

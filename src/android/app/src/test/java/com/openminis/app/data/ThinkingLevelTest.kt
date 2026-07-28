@@ -1,8 +1,8 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ModelOverrides
-import com.neulketing.openblue.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ModelOverrides
+import com.neulketing.openthumb.data.model.ThinkingLevel
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull

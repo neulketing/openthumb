@@ -1,10 +1,10 @@
-package com.neulketing.openblue.ui.sandbox
+package com.neulketing.openthumb.ui.sandbox
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.neulketing.openblue.sandbox.RootfsInstallState
-import com.neulketing.openblue.sandbox.RootfsManager
+import com.neulketing.openthumb.sandbox.RootfsInstallState
+import com.neulketing.openthumb.sandbox.RootfsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

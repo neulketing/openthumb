@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.preview
+package com.neulketing.openthumb.ui.preview
 
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -64,7 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 
 /**
  * Immersive 90%-tall bottom sheet that hosts a [WebViewHolder] for a
@@ -212,7 +212,7 @@ fun WebPreviewBottomSheet(
                 // the original `if (pinSessionId != null && …)` guard.
                 onPinToHome = if (pinSessionId != null && holder.currentUrl.startsWith("file://") && WEBAPP_PIN_ENTRY_ENABLED) {
                     {
-                        com.neulketing.openblue.ui.preview.WebPreviewShortcut.pin(
+                        com.neulketing.openthumb.ui.preview.WebPreviewShortcut.pin(
                             context = context,
                             sessionId = pinSessionId,
                             url = holder.currentUrl,
@@ -338,7 +338,7 @@ internal fun WebPreviewToolbar(
                 description = stringResource(R.string.webpreview_more),
                 onClick = { menuOpen = true },
             )
-            com.neulketing.openblue.ui.components.MinisMenu(
+            com.neulketing.openthumb.ui.components.MinisMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
             ) {

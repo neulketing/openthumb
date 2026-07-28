@@ -1,4 +1,4 @@
-package com.neulketing.openblue.diagnostics
+package com.neulketing.openthumb.diagnostics
 
 import java.util.concurrent.atomic.AtomicReference
 

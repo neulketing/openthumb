@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import android.content.Context
 import android.text.format.Formatter
@@ -43,8 +43,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.db.ChatDao
-import com.neulketing.openblue.data.db.ChatSessionEntity
+import com.neulketing.openthumb.data.db.ChatDao
+import com.neulketing.openthumb.data.db.ChatSessionEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

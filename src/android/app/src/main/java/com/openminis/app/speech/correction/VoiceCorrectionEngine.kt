@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers

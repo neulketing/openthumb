@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui
+package com.neulketing.openthumb.ui
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -8,7 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
-import com.neulketing.openblue.ui.DisplayBitmapLimits.limitDisplaySize
+import com.neulketing.openthumb.ui.DisplayBitmapLimits.limitDisplaySize
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertTrue

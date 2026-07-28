@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.terminal.canvas
+package com.neulketing.openthumb.ui.terminal.canvas
 
 import android.content.Context
 import android.text.InputType

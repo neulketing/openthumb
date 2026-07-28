@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.repository
+package com.neulketing.openthumb.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences

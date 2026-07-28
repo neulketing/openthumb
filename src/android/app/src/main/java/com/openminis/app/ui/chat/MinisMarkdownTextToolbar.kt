@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import android.content.ClipboardManager
 import android.content.Context
@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 
 /**
  * Replaces the system Copy/Cut/Paste/SelectAll toolbar that a

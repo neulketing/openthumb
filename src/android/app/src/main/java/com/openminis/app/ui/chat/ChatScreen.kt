@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -135,13 +135,13 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Switch
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.FileMentionIndex
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.ui.components.MinisAlertDialog
-import com.neulketing.openblue.ui.components.MinisMenu
-import com.neulketing.openblue.ui.components.MinisMenuDivider
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.FileMentionIndex
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.ui.components.MinisAlertDialog
+import com.neulketing.openthumb.ui.components.MinisMenu
+import com.neulketing.openthumb.ui.components.MinisMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -257,26 +257,26 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openthumb.offload.OffloadPermissionManager
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ProviderConfig
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.model.RoutingStrategy
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.browser.BrowserSheet
-import com.neulketing.openblue.ui.theme.ChatColors
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ProviderConfig
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.model.RoutingStrategy
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.browser.BrowserSheet
+import com.neulketing.openthumb.ui.theme.ChatColors
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 // iOS ChatColors equivalent
 internal val ToolCheckColor = Color(0xFF34C759) // iOS .green
@@ -382,8 +382,8 @@ fun ChatScreen(
     chatRepository: ChatRepository,
     providerRepository: ProviderRepository,
     memoryRepository: MemoryRepository? = null,
-    skillRepository: com.neulketing.openblue.data.repository.SkillRepository? = null,
-    mcpRepository: com.neulketing.openblue.data.repository.MCPRepository? = null,
+    skillRepository: com.neulketing.openthumb.data.repository.SkillRepository? = null,
+    mcpRepository: com.neulketing.openthumb.data.repository.MCPRepository? = null,
     onBack: () -> Unit,
     /** [T-new-chat-menu-entry] "New Chat" from the chat "..." menu: caller
      *  navigates to a fresh draft chat (same funnel as the session list's
@@ -401,7 +401,7 @@ fun ChatScreen(
     onMoveToSession: (sessionId: String) -> Unit = {},
     onBrowseChatFiles: () -> Unit = {},
     /** T150: open FilePreviewScreen for a non-image attachment in a user bubble. */
-    onPreviewAttachment: (com.neulketing.openblue.ui.sandbox.FileItem) -> Unit = {},
+    onPreviewAttachment: (com.neulketing.openthumb.ui.sandbox.FileItem) -> Unit = {},
     /** [T-android-modelpicker-group-edit] Navigate to the Model Groups
      *  management screen — wired to the "Edit" button on the model picker's
      *  Model Groups section header. */
@@ -463,20 +463,20 @@ fun ChatScreen(
                 android.content.pm.PackageManager.PERMISSION_GRANTED
         }
         if (hasPerm()) return@ensure true
-        var result = com.neulketing.openblue.offload.OffloadPermissionManager
+        var result = com.neulketing.openthumb.offload.OffloadPermissionManager
             .requestAndroidPermission(listOf(perm))
-        if (result == com.neulketing.openblue.offload.OffloadPermissionManager
+        if (result == com.neulketing.openthumb.offload.OffloadPermissionManager
                 .AndroidPermissionResult.DENIED &&
-            com.neulketing.openblue.offload.OffloadPermissionManager.pollForPermissionGrant(hasPerm)
+            com.neulketing.openthumb.offload.OffloadPermissionManager.pollForPermissionGrant(hasPerm)
         ) {
-            result = com.neulketing.openblue.offload.OffloadPermissionManager
+            result = com.neulketing.openthumb.offload.OffloadPermissionManager
                 .AndroidPermissionResult.GRANTED
         }
-        if (result == com.neulketing.openblue.offload.OffloadPermissionManager
+        if (result == com.neulketing.openthumb.offload.OffloadPermissionManager
                 .AndroidPermissionResult.DENIED
         ) {
-            result = com.neulketing.openblue.offload.OffloadPermissionManager.requestSettingsGate(
-                com.neulketing.openblue.offload.OffloadPermissionManager.SettingsGateRequest(
+            result = com.neulketing.openthumb.offload.OffloadPermissionManager.requestSettingsGate(
+                com.neulketing.openthumb.offload.OffloadPermissionManager.SettingsGateRequest(
                     id = perm,
                     title = context.getString(R.string.mic_permission_title),
                     message = context.getString(R.string.mic_permission_message),
@@ -488,7 +488,7 @@ fun ChatScreen(
                 check = hasPerm,
             )
         }
-        result == com.neulketing.openblue.offload.OffloadPermissionManager.AndroidPermissionResult.GRANTED
+        result == com.neulketing.openthumb.offload.OffloadPermissionManager.AndroidPermissionResult.GRANTED
     }
     // Hoisted to ChatViewModel so it survives ChatScreen disposal/recomposition
     // across forward navigation (file preview, env vars, etc.); see
@@ -504,19 +504,19 @@ fun ChatScreen(
     // bufferVersion already non-zero on first composition; warm start =
     // version increments while the user is mid-session). Runs on every
     // bufferVersion bump.
-    val shareBufferVersion by com.neulketing.openblue.share.ShareCoordinator.bufferVersion.collectAsState()
+    val shareBufferVersion by com.neulketing.openthumb.share.ShareCoordinator.bufferVersion.collectAsState()
     androidx.compose.runtime.LaunchedEffect(shareBufferVersion) {
         if (shareBufferVersion == 0) return@LaunchedEffect
-        val pending = com.neulketing.openblue.share.ShareCoordinator.consumeBuffer(context)
+        val pending = com.neulketing.openthumb.share.ShareCoordinator.consumeBuffer(context)
             ?: return@LaunchedEffect
-        com.neulketing.openblue.logging.AppLogger.info(
+        com.neulketing.openthumb.logging.AppLogger.info(
             "ChatScreen",
             "[Share] injecting ${pending.items.size} item(s) into chat session=$sessionId",
         )
-        val sharedDir = com.neulketing.openblue.share.SharedShareStore.sharedFileDirectory(context)
+        val sharedDir = com.neulketing.openthumb.share.SharedShareStore.sharedFileDirectory(context)
         for (item in pending.items) {
             when (item.kind) {
-                com.neulketing.openblue.share.PendingShare.Item.Kind.INLINE_TEXT -> {
+                com.neulketing.openthumb.share.PendingShare.Item.Kind.INLINE_TEXT -> {
                     val sep = if (inputText.isNotEmpty()) "\n" else ""
                     val needsTrailingSpace = item.value.startsWith("http://") ||
                         item.value.startsWith("https://")
@@ -525,13 +525,13 @@ fun ChatScreen(
                             if (needsTrailingSpace) " " else "",
                     )
                 }
-                com.neulketing.openblue.share.PendingShare.Item.Kind.ATTACHMENT -> {
+                com.neulketing.openthumb.share.PendingShare.Item.Kind.ATTACHMENT -> {
                     viewModel.addAttachmentFromStagedShare(java.io.File(sharedDir, item.value))
                 }
             }
         }
         viewModel.markShareInjected()
-        com.neulketing.openblue.share.SharedShareStore.cleanSharedFiles(context)
+        com.neulketing.openthumb.share.SharedShareStore.cleanSharedFiles(context)
     }
 
     // T311: publish "this is the active chat" while ChatScreen is composed,
@@ -550,9 +550,9 @@ fun ChatScreen(
         // `[T-HANG-DIAG]` from this file.
         println(
             "[T-HANG-DIAG] ChatScreen MOUNT session=$sessionId hangCount=" +
-                com.neulketing.openblue.diagnostics.HangDetector.currentHangCount(tHangDiagAppContext),
+                com.neulketing.openthumb.diagnostics.HangDetector.currentHangCount(tHangDiagAppContext),
         )
-        com.neulketing.openblue.diagnostics.PerfLongCtx.step(sessionId, "chatScreen.mount")
+        com.neulketing.openthumb.diagnostics.PerfLongCtx.step(sessionId, "chatScreen.mount")
         onDispose {
             println("[T-HANG-DIAG] ChatScreen UNMOUNT session=$sessionId")
             ChatViewModelStore.setActiveSession(null)
@@ -576,7 +576,7 @@ fun ChatScreen(
     // itself is cheap — early-returns when the count is already zero.
     androidx.compose.runtime.LaunchedEffect(sessionId) {
         kotlinx.coroutines.delay(10_000)
-        com.neulketing.openblue.diagnostics.HangDetector.markHealthyTick()
+        com.neulketing.openthumb.diagnostics.HangDetector.markHealthyTick()
     }
 
     // Drain any pending Move-to transfer when entering this session — the
@@ -584,7 +584,7 @@ fun ChatScreen(
     // ChatViewModelStore.pendingTransfer slot before navigating here.
     androidx.compose.runtime.LaunchedEffect(sessionId) {
         val transfer = ChatViewModelStore.consumePendingTransfer() ?: return@LaunchedEffect
-        com.neulketing.openblue.logging.AppLogger.info(
+        com.neulketing.openthumb.logging.AppLogger.info(
             "ChatScreen",
             "[MoveTo] draining transfer into session=$sessionId text=${transfer.inputText.length}ch attachments=${transfer.attachments.size}",
         )
@@ -626,7 +626,7 @@ fun ChatScreen(
         // typed vocabulary: the message is committed, and the builder's own
         // hourly throttle makes the common case a no-op. Consent-gated and
         // fire-and-forget inside.
-        com.neulketing.openblue.speech.correction.VoiceCorrection.mineVocabularyIfNeeded(context)
+        com.neulketing.openthumb.speech.correction.VoiceCorrection.mineVocabularyIfNeeded(context)
     }
     // [T-android-send-no-autoscroll-behind-preview] Timestamp of the most
     // recent USER message append, stamped in LE(messages.size) so it covers
@@ -777,7 +777,7 @@ fun ChatScreen(
         // gate as soon as we hear back from the camera Activity (success,
         // cancel, or system kill). Without this the floating overlay
         // would stay suppressed indefinitely after a single capture.
-        com.neulketing.openblue.service.SessionActivityTracker.setCameraSuppressActive(false)
+        com.neulketing.openthumb.service.SessionActivityTracker.setCameraSuppressActive(false)
         val uri = pendingCameraUri
         val file = pendingCameraFilePath?.let { java.io.File(it) }
         pendingCameraUri = null
@@ -819,13 +819,13 @@ fun ChatScreen(
         // takes foreground, which by #451's rule would otherwise satisfy
         // "Minis backgrounded → show overlay" and the capsule would draw
         // on top of the viewfinder. Cleared in the ActivityResult callback.
-        com.neulketing.openblue.service.SessionActivityTracker.setCameraSuppressActive(true)
+        com.neulketing.openthumb.service.SessionActivityTracker.setCameraSuppressActive(true)
         runCatching { cameraLauncher.launch(intent) }
             .onFailure {
                 AppLogger.warning("Camera", "launch failed: ${it.message}")
                 // Launch never reached the camera Activity — release the
                 // suppress flag here since the result callback won't fire.
-                com.neulketing.openblue.service.SessionActivityTracker.setCameraSuppressActive(false)
+                com.neulketing.openthumb.service.SessionActivityTracker.setCameraSuppressActive(false)
                 pendingCameraUri = null
                 pendingCameraFilePath = null
                 file.delete()
@@ -843,12 +843,12 @@ fun ChatScreen(
     // Voice variant lives next to the MicButton because it needs sttAvailable
     // — camera is always available so it can fire from the top-level scope.
     LaunchedEffect(sessionId) {
-        val pending = com.neulketing.openblue.deeplink.DeepLinkCoordinator
+        val pending = com.neulketing.openthumb.deeplink.DeepLinkCoordinator
             .pendingChatAction.value
-        if (pending == com.neulketing.openblue.deeplink.DeepLinkCoordinator
+        if (pending == com.neulketing.openthumb.deeplink.DeepLinkCoordinator
                 .ChatAction.OPEN_CAMERA
         ) {
-            com.neulketing.openblue.deeplink.DeepLinkCoordinator
+            com.neulketing.openthumb.deeplink.DeepLinkCoordinator
                 .consumePendingChatAction()
             val granted = ContextCompat.checkSelfPermission(
                 context,
@@ -1716,32 +1716,32 @@ fun ChatScreen(
         }
     }
 
-    val appearancePrefs = remember { com.neulketing.openblue.ui.settings.getAppearancePrefs(context) }
-    var messageFontLevel by remember { mutableStateOf(appearancePrefs.getInt(com.neulketing.openblue.ui.settings.KEY_FONT_MESSAGE, 0)) }
-    var chatInputLevel by remember { mutableStateOf(appearancePrefs.getInt(com.neulketing.openblue.ui.settings.KEY_FONT_CHAT_INPUT, 0)) }
-    var toolPreviewEnabled by remember { mutableStateOf(appearancePrefs.getBoolean(com.neulketing.openblue.ui.settings.KEY_TOOL_PREVIEW, true)) }
+    val appearancePrefs = remember { com.neulketing.openthumb.ui.settings.getAppearancePrefs(context) }
+    var messageFontLevel by remember { mutableStateOf(appearancePrefs.getInt(com.neulketing.openthumb.ui.settings.KEY_FONT_MESSAGE, 0)) }
+    var chatInputLevel by remember { mutableStateOf(appearancePrefs.getInt(com.neulketing.openthumb.ui.settings.KEY_FONT_CHAT_INPUT, 0)) }
+    var toolPreviewEnabled by remember { mutableStateOf(appearancePrefs.getBoolean(com.neulketing.openthumb.ui.settings.KEY_TOOL_PREVIEW, true)) }
     // T-chat-title-pill: live-toggled by Settings → Appearance and by
     // `minis-config set appearance.show_chat_title …`. Default ON.
-    var showChatTitlePill by remember { mutableStateOf(appearancePrefs.getBoolean(com.neulketing.openblue.ui.settings.KEY_SHOW_CHAT_TITLE, true)) }
+    var showChatTitlePill by remember { mutableStateOf(appearancePrefs.getBoolean(com.neulketing.openthumb.ui.settings.KEY_SHOW_CHAT_TITLE, true)) }
     // T-chat-title-pill-edit: state for the in-chat edit-title sheet (the
     // exact same SessionEditSheet hosted by the session list home screen,
     // reused via `internal` visibility — no duplicate UI). Populated by an
     // async repo lookup once the user taps the title pill.
-    var editingSession by remember { mutableStateOf<com.neulketing.openblue.data.db.ChatSessionEntity?>(null) }
+    var editingSession by remember { mutableStateOf<com.neulketing.openthumb.data.db.ChatSessionEntity?>(null) }
     DisposableEffect(appearancePrefs) {
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sp, key ->
             when (key) {
-                com.neulketing.openblue.ui.settings.KEY_FONT_MESSAGE -> messageFontLevel = sp.getInt(key, 0)
-                com.neulketing.openblue.ui.settings.KEY_FONT_CHAT_INPUT -> chatInputLevel = sp.getInt(key, 0)
-                com.neulketing.openblue.ui.settings.KEY_TOOL_PREVIEW -> toolPreviewEnabled = sp.getBoolean(key, true)
-                com.neulketing.openblue.ui.settings.KEY_SHOW_CHAT_TITLE -> showChatTitlePill = sp.getBoolean(key, true)
+                com.neulketing.openthumb.ui.settings.KEY_FONT_MESSAGE -> messageFontLevel = sp.getInt(key, 0)
+                com.neulketing.openthumb.ui.settings.KEY_FONT_CHAT_INPUT -> chatInputLevel = sp.getInt(key, 0)
+                com.neulketing.openthumb.ui.settings.KEY_TOOL_PREVIEW -> toolPreviewEnabled = sp.getBoolean(key, true)
+                com.neulketing.openthumb.ui.settings.KEY_SHOW_CHAT_TITLE -> showChatTitlePill = sp.getBoolean(key, true)
             }
         }
         appearancePrefs.registerOnSharedPreferenceChangeListener(listener)
         onDispose { appearancePrefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-    val markdownFontScale = com.neulketing.openblue.ui.settings.fontScaleForLevel(messageFontLevel)
-    val chatInputFontScale = com.neulketing.openblue.ui.settings.fontScaleForLevel(chatInputLevel)
+    val markdownFontScale = com.neulketing.openthumb.ui.settings.fontScaleForLevel(messageFontLevel)
+    val chatInputFontScale = com.neulketing.openthumb.ui.settings.fontScaleForLevel(chatInputLevel)
 
     var previewUrl by remember { mutableStateOf<String?>(null) }
     // T146: dedicated state for the immersive HTML preview path. Holding
@@ -1749,7 +1749,7 @@ fun ChatScreen(
     // states) ensures the same WebView survives the sheet→fullscreen
     // toggle without reloading the page (iOS parity, WebPreviewSheet.swift).
     var htmlPreviewHolder by remember {
-        mutableStateOf<com.neulketing.openblue.ui.preview.WebViewHolder?>(null)
+        mutableStateOf<com.neulketing.openthumb.ui.preview.WebViewHolder?>(null)
     }
     var htmlPreviewFallbackTitle by remember { mutableStateOf("") }
     var htmlPreviewFullscreen by remember { mutableStateOf(false) }
@@ -1763,7 +1763,7 @@ fun ChatScreen(
             val existing = htmlPreviewHolder
             if (existing == null || existing.currentUrl != url) {
                 existing?.destroy()
-                htmlPreviewHolder = com.neulketing.openblue.ui.preview.WebViewHolder(appCtx, url)
+                htmlPreviewHolder = com.neulketing.openthumb.ui.preview.WebViewHolder(appCtx, url)
             }
             htmlPreviewFallbackTitle = title
             htmlPreviewFullscreen = false
@@ -1775,14 +1775,14 @@ fun ChatScreen(
     // holder. Pending state is left untouched when a different chat is on
     // screen so the right ChatScreen instance still consumes it later.
     LaunchedEffect(sessionId) {
-        val pending = com.neulketing.openblue.deeplink.DeepLinkCoordinator
+        val pending = com.neulketing.openthumb.deeplink.DeepLinkCoordinator
             .pendingHtmlPreview.value ?: return@LaunchedEffect
         if (pending.sessionId != sessionId) return@LaunchedEffect
-        com.neulketing.openblue.deeplink.DeepLinkCoordinator.consumePendingHtmlPreview()
+        com.neulketing.openthumb.deeplink.DeepLinkCoordinator.consumePendingHtmlPreview()
         val absPath = "/var/minis" + pending.resourcePath
         val file = java.io.File(absPath)
         if (!file.exists()) {
-            com.neulketing.openblue.logging.AppLogger.warning(
+            com.neulketing.openthumb.logging.AppLogger.warning(
                 "ChatScreen",
                 "pinned HTML preview path missing: $absPath",
             )
@@ -1790,7 +1790,7 @@ fun ChatScreen(
         }
         val url = "file://${file.absolutePath}"
         htmlPreviewHolder?.destroy()
-        htmlPreviewHolder = com.neulketing.openblue.ui.preview.WebViewHolder(appCtx, url)
+        htmlPreviewHolder = com.neulketing.openthumb.ui.preview.WebViewHolder(appCtx, url)
         htmlPreviewFallbackTitle = pending.title
         htmlPreviewFullscreen = true
     }
@@ -1799,7 +1799,7 @@ fun ChatScreen(
     // chip row, message attachments, file-browser dir contents). Single-image
     // taps still work — they pass a 1-item list.
     var previewImageGallery by remember {
-        mutableStateOf<Pair<List<com.neulketing.openblue.ui.components.ImageGalleryItem>, Int>?>(null)
+        mutableStateOf<Pair<List<com.neulketing.openthumb.ui.components.ImageGalleryItem>, Int>?>(null)
     }
     // Video links from chat go through MinisFullscreenVideoPlayer rather than
     // FilePreviewScreen → InlineVideoPlayer. The inline player wraps a bare
@@ -1828,7 +1828,7 @@ fun ChatScreen(
                             // plumbed here (iOS does cross-session
                             // assistant images via fingerprint).
                             previewImageGallery = listOf(
-                                com.neulketing.openblue.ui.components.ImageGalleryItem(
+                                com.neulketing.openthumb.ui.components.ImageGalleryItem(
                                     model = action.item.file,
                                     caption = action.item.name,
                                 ),
@@ -1851,7 +1851,7 @@ fun ChatScreen(
                     }
                 }
                 is ChatLinkAction.ExternalApp ->
-                    com.neulketing.openblue.ui.browser.BrowserExternalSchemeHandler
+                    com.neulketing.openthumb.ui.browser.BrowserExternalSchemeHandler
                         .handle(context, action.url)
                 is ChatLinkAction.Web -> previewUrl = action.url
             }
@@ -1864,9 +1864,9 @@ fun ChatScreen(
     // into `urlClickHandler` routes it exactly like a chat-link tap —
     // http(s)/about → UrlPreviewSheet, minis:// deep links → DeepLinkHandler,
     // minis://<host>/<path> → in-app file preview by extension.
-    val pendingMinisOpenUrl by com.neulketing.openblue.terminal.MinisOpenUrlBroker.pendingUrl
+    val pendingMinisOpenUrl by com.neulketing.openthumb.terminal.MinisOpenUrlBroker.pendingUrl
         .collectAsState()
-    val minisOpenTerminalVisible by com.neulketing.openblue.terminal.MinisOpenUrlBroker.terminalVisible
+    val minisOpenTerminalVisible by com.neulketing.openthumb.terminal.MinisOpenUrlBroker.terminalVisible
         .collectAsState()
     LaunchedEffect(pendingMinisOpenUrl, minisOpenTerminalVisible) {
         val url = pendingMinisOpenUrl ?: return@LaunchedEffect
@@ -1875,7 +1875,7 @@ fun ChatScreen(
         // so we don't try to open a sheet on a covered ChatScreen.
         if (minisOpenTerminalVisible) return@LaunchedEffect
         urlClickHandler(url.toString())
-        com.neulketing.openblue.terminal.MinisOpenUrlBroker.consume()
+        com.neulketing.openthumb.terminal.MinisOpenUrlBroker.consume()
     }
 
     // [T-android-markdown-image-gallery-cross-message] Collect every
@@ -1930,7 +1930,7 @@ fun ChatScreen(
                 // Falls back to the raw URL string when resolution misses —
                 // AsyncImage will route it through MinisImageFetcher anyway.
                 val resolved = resolveMdMediaFile(context, ref.source, sessionId)
-                com.neulketing.openblue.ui.components.ImageGalleryItem(
+                com.neulketing.openthumb.ui.components.ImageGalleryItem(
                     model = resolved ?: ref.source,
                     caption = ref.title,
                 )
@@ -2000,7 +2000,7 @@ fun ChatScreen(
                             // SoulStore.cachedMetadata is the same source the
                             // input placeholder uses (see ~line 3581), so
                             // soul renames in Soul Settings reflect here live.
-                            val topBarSoul by com.neulketing.openblue.agent.SoulStore
+                            val topBarSoul by com.neulketing.openthumb.agent.SoulStore
                                 .cachedMetadata.collectAsState()
                             val displayTitle = when {
                                 showChatTitlePill
@@ -2686,7 +2686,7 @@ fun ChatScreen(
                             val tickStartNs = System.nanoTime()
                             if (stream.isNotEmpty() && !streamWasActive) {
                                 streamWasActive = true
-                                com.neulketing.openblue.diagnostics.StreamPerfMonitor.turnStart(sessionId)
+                                com.neulketing.openthumb.diagnostics.StreamPerfMonitor.turnStart(sessionId)
                             }
                             // First message carrying a live overlay; everything
                             // before it is frozen. Empty stream → whole list is
@@ -2706,7 +2706,7 @@ fun ChatScreen(
                                 // gap to buildFlatChatItems.firstBuild bounds
                                 // the construction cost in isolation.
                                 if (wasEmptyPre && stream.isEmpty()) {
-                                    com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                    com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                         sessionId,
                                         "buildFlatChatItems.start",
                                         "msgCount=${msgs.size}",
@@ -2760,7 +2760,7 @@ fun ChatScreen(
                                             prewarmMarkdown(raws)
                                             val prewarmMs = (System.nanoTime() - tPrewarmNs) / 1_000_000
                                             lastColdPrewarmMs = prewarmMs
-                                            com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                            com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                                 sessionId,
                                                 "coldPrewarm.done",
                                                 "rows=${raws.size} chars=$charSum prewarmMs=$prewarmMs",
@@ -2772,7 +2772,7 @@ fun ChatScreen(
                                 // session (cheap reentry-path marker) or whenever
                                 // build takes >50 ms (i.e. real work).
                                 if ((wasEmptyPre || buildMs >= 50) && stream.isEmpty()) {
-                                    com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                    com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                         sessionId,
                                         if (wasEmptyPre) "buildFlatChatItems.firstBuild"
                                         else "buildFlatChatItems.slow",
@@ -2783,7 +2783,7 @@ fun ChatScreen(
                                     // biggest contributor to cold-open GC
                                     // pressure.
                                     if (rows.size > 3000) {
-                                        com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                        com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                             sessionId,
                                             "buildFlatChatItems.highRowCount",
                                             "rowCount=${rows.size} threshold=3000 msgCount=${msgs.size}",
@@ -2804,7 +2804,7 @@ fun ChatScreen(
                                 }
                             }
                             flatItems = if (liveRows.isEmpty()) frozenRows else frozenRows + liveRows
-                            com.neulketing.openblue.diagnostics.StreamPerfMonitor.tick(
+                            com.neulketing.openthumb.diagnostics.StreamPerfMonitor.tick(
                                 flattenNanos = System.nanoTime() - tickStartNs,
                                 frozenReused = frozenReused,
                                 frozenRows = frozenRows.size,
@@ -2812,14 +2812,14 @@ fun ChatScreen(
                             )
                             if (stream.isEmpty() && streamWasActive) {
                                 streamWasActive = false
-                                com.neulketing.openblue.diagnostics.StreamPerfMonitor.turnEnd()
+                                com.neulketing.openthumb.diagnostics.StreamPerfMonitor.turnEnd()
                             }
                         }
                     } finally {
                         // Effect cancelled (turn-end drain emit / session
                         // switch / screen dispose) — flush the open turn.
                         if (streamWasActive) {
-                            com.neulketing.openblue.diagnostics.StreamPerfMonitor.turnEnd()
+                            com.neulketing.openthumb.diagnostics.StreamPerfMonitor.turnEnd()
                         }
                     }
                 }
@@ -3034,7 +3034,7 @@ fun ChatScreen(
                             listRootCoords = it
                             if (perfFirstLayoutFired.compareAndSet(false, true)) {
                                 val info = listState.layoutInfo
-                                com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                     sessionId,
                                     "lazyColumn.firstLayout",
                                     "totalItems=${info.totalItemsCount} visibleItems=${info.visibleItemsInfo.size} viewport=${info.viewportSize.width}x${info.viewportSize.height}",
@@ -3135,7 +3135,7 @@ fun ChatScreen(
                         // (before measure); onPlaced fires after layout.
                         if (item == flatItems.lastOrNull()) {
                             androidx.compose.runtime.SideEffect {
-                                com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                     sessionId,
                                     "lazyColumn.firstItem.compose",
                                 )
@@ -3148,7 +3148,7 @@ fun ChatScreen(
                         // the wall-time since `lazyColumn.firstLayout` plus
                         // the row's class — gives a "per-N-rows compose
                         // budget" signal without per-row log spam.
-                        com.neulketing.openblue.diagnostics.PerfLongCtx.maybeReportRowComposed(
+                        com.neulketing.openthumb.diagnostics.PerfLongCtx.maybeReportRowComposed(
                             sessionId,
                             item::class.java.simpleName,
                         )
@@ -3192,7 +3192,7 @@ fun ChatScreen(
                                 .then(
                                     if (isNewestItem) {
                                         Modifier.onPlaced {
-                                            com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                                            com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                                                 sessionId,
                                                 "lazyColumn.firstItem.placed",
                                                 "size=${it.size.width}x${it.size.height}",
@@ -3210,15 +3210,15 @@ fun ChatScreen(
                                                     "[JankDiag] coldOpen summary session=$sessionId msgs=${messages.size} rows=${flatItems.size} " +
                                                         "totalChars=$totalChars maxChars=$maxChars prewarmMs=$lastColdPrewarmMs " +
                                                         "sinceMountMs=${System.currentTimeMillis() - screenMountAtMs} " +
-                                                        "hangCount=${com.neulketing.openblue.diagnostics.HangDetector.currentHangCount(context)}",
+                                                        "hangCount=${com.neulketing.openthumb.diagnostics.HangDetector.currentHangCount(context)}",
                                                 )
                                                 // [T-android-content-perf-diag] Per-large-message structural
                                                 // fingerprint so a future hang report maps straight to "which
                                                 // message, what structure" without re-querying the DB. Gated at
                                                 // 5000 chars — small messages never drive a render hang.
                                                 messages.forEachIndexed { idx, m ->
-                                                    if (m.content.length >= com.neulketing.openblue.diagnostics.CONTENT_DIAG_MIN_CHARS) {
-                                                        val s = com.neulketing.openblue.diagnostics.ContentDiag.summarize(m.content)
+                                                    if (m.content.length >= com.neulketing.openthumb.diagnostics.CONTENT_DIAG_MIN_CHARS) {
+                                                        val s = com.neulketing.openthumb.diagnostics.ContentDiag.summarize(m.content)
                                                         AppLogger.info(
                                                             "Perf",
                                                             "[Perf][ContentDiag] session=$sessionId msgIdx=$idx role=${m.role} " +
@@ -3289,7 +3289,7 @@ fun ChatScreen(
                                     val file = uri.path?.let { java.io.File(it) }
                                     if (file != null && file.exists()) {
                                         onPreviewAttachment(
-                                            com.neulketing.openblue.ui.sandbox.FileItem(
+                                            com.neulketing.openthumb.ui.sandbox.FileItem(
                                                 file = file,
                                                 name = name,
                                                 isDirectory = false,
@@ -3755,7 +3755,7 @@ fun ChatScreen(
             // edits from the in-chat pill are visually + behaviourally
             // identical to the home-screen long-press flow.
             editingSession?.let { session ->
-                com.neulketing.openblue.ui.sessions.SessionEditSheet(
+                com.neulketing.openthumb.ui.sessions.SessionEditSheet(
                     session = session,
                     onDismiss = { editingSession = null },
                     onSave = { newTitle, newCategory ->
@@ -4430,7 +4430,7 @@ fun ChatScreen(
                                             val startIdx = imageChips.indexOfFirst { it.id == attachment.id }
                                                 .coerceAtLeast(0)
                                             previewImageGallery = imageChips.map { ic ->
-                                                com.neulketing.openblue.ui.components.ImageGalleryItem(
+                                                com.neulketing.openthumb.ui.components.ImageGalleryItem(
                                                     model = ic.uri,
                                                     caption = ic.fileName,
                                                 )
@@ -4462,7 +4462,7 @@ fun ChatScreen(
                                             } else null
                                             if (asFile != null && asFile.exists()) {
                                                 onPreviewAttachment(
-                                                    com.neulketing.openblue.ui.sandbox.FileItem(
+                                                    com.neulketing.openthumb.ui.sandbox.FileItem(
                                                         file = asFile,
                                                         name = attachment.fileName,
                                                         isDirectory = false,
@@ -4498,7 +4498,7 @@ fun ChatScreen(
                                 // feature not yet validated/complete. Re-enable
                                 // by removing `false &&` from the guard below.
                                 if (false && isHtmlAttachment) {
-                                    com.neulketing.openblue.ui.components.MinisMenu(
+                                    com.neulketing.openthumb.ui.components.MinisMenu(
                                         expanded = webAppMenuExpanded,
                                         onDismissRequest = { webAppMenuExpanded = false },
                                     ) {
@@ -4529,18 +4529,18 @@ fun ChatScreen(
                     // text is already delta-appended into `inputText` by the
                     // mic button's callback, so when recording ends the field
                     // shows the full recognized string automatically.
-                    val recSttState by com.neulketing.openblue.speech.SpeechRecognitionManager
+                    val recSttState by com.neulketing.openthumb.speech.SpeechRecognitionManager
                         .state.collectAsState()
-                    val recIsRecording = recSttState == com.neulketing.openblue.speech.RecognitionState.RECORDING ||
-                        recSttState == com.neulketing.openblue.speech.RecognitionState.STARTING ||
-                        recSttState == com.neulketing.openblue.speech.RecognitionState.FINISHING
+                    val recIsRecording = recSttState == com.neulketing.openthumb.speech.RecognitionState.RECORDING ||
+                        recSttState == com.neulketing.openthumb.speech.RecognitionState.STARTING ||
+                        recSttState == com.neulketing.openthumb.speech.RecognitionState.FINISHING
                     // [T-android-voice-panel] Inline voice mode replaces the text
                     // field with the panel (mirrors iOS inputFieldOrWaveform →
                     // InlineVoiceInputView). The legacy in-composer waveform
                     // branch below only serves captures started OUTSIDE the
                     // panel (none today, kept as a safety net).
-                    if (com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive) {
-                        com.neulketing.openblue.ui.chat.voice.InlineVoiceInputPanel(
+                    if (com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive) {
+                        com.neulketing.openthumb.ui.chat.voice.InlineVoiceInputPanel(
                             providerRepository = providerRepository,
                             inputText = inputText,
                             onInputTextChange = { text ->
@@ -4554,14 +4554,14 @@ fun ChatScreen(
                             // older turns still contribute rare-term grounding;
                             // evaluated lazily at correction time.
                             conversationContextProvider = {
-                                com.neulketing.openblue.speech.correction.VoiceCorrection
+                                com.neulketing.openthumb.speech.correction.VoiceCorrection
                                     .buildConversationContext(context, viewModel.messages.value)
                             },
                         )
                     } else if (recIsRecording) {
-                        val levels by com.neulketing.openblue.speech.SpeechRecognitionManager
+                        val levels by com.neulketing.openthumb.speech.SpeechRecognitionManager
                             .audioLevels.collectAsState()
-                        val partial by com.neulketing.openblue.speech.SpeechRecognitionManager
+                        val partial by com.neulketing.openthumb.speech.SpeechRecognitionManager
                             .recognizedText.collectAsState()
                         Column(
                             modifier = Modifier
@@ -4596,7 +4596,7 @@ fun ChatScreen(
                         // captured at BasicTextField construction) so a
                         // toggle in Settings reflects on the next IME
                         // commit without recomposing the chat tree.
-                        val sendOnEnter = com.neulketing.openblue.ui.settings
+                        val sendOnEnter = com.neulketing.openthumb.ui.settings
                             .returnKeySendsMessage(context)
                         // Shared "Enter pressed → send" body used by BOTH
                         // the hardware-keyboard onKeyEvent path AND the
@@ -4830,7 +4830,7 @@ fun ChatScreen(
                                         // source for the Soul-customized name
                                         // so renames in Soul Settings reflect
                                         // here live.
-                                        val soulName by com.neulketing.openblue.agent.SoulStore
+                                        val soulName by com.neulketing.openthumb.agent.SoulStore
                                             .cachedMetadata.collectAsState()
                                         Text(
                                             stringResource(
@@ -4988,20 +4988,20 @@ fun ChatScreen(
                         // Right: Mic button — only renders when a speech engine
                         // is actually available on this device (handles the
                         // AOSP / HarmonyOS / GMS-free case).
-                        val sttAvailable by com.neulketing.openblue.speech.SpeechRecognitionManager
+                        val sttAvailable by com.neulketing.openthumb.speech.SpeechRecognitionManager
                             .isAvailable.collectAsState()
-                        val sttState by com.neulketing.openblue.speech.SpeechRecognitionManager
+                        val sttState by com.neulketing.openthumb.speech.SpeechRecognitionManager
                             .state.collectAsState()
-                        val sttLocale by com.neulketing.openblue.speech.SpeechRecognitionManager
+                        val sttLocale by com.neulketing.openthumb.speech.SpeechRecognitionManager
                             .locale.collectAsState()
                         var showLangSheet by remember { mutableStateOf(false) }
                         // While recording, a tappable 2-letter language pill
                         // appears to the left of the mic button. Outside a
                         // session the mic button's own badge stays hidden and
                         // the pill is not rendered — matches iOS.
-                        if (sttAvailable && !com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive &&
-                            (sttState == com.neulketing.openblue.speech.RecognitionState.RECORDING ||
-                                sttState == com.neulketing.openblue.speech.RecognitionState.STARTING)
+                        if (sttAvailable && !com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive &&
+                            (sttState == com.neulketing.openthumb.speech.RecognitionState.RECORDING ||
+                                sttState == com.neulketing.openthumb.speech.RecognitionState.STARTING)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -5033,21 +5033,21 @@ fun ChatScreen(
                             // the INLINE VOICE PANEL (mirrors iOS MicButton →
                             // voiceInputActive). Capture start/stop lives inside
                             // the panel; this button only enters/exits the mode.
-                            if (com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive) {
+                            if (com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive) {
                                 // Exit voice → keyboard. Keep the transcript: the
                                 // composer mirrors it (iOS keyboard-text-carry).
-                                if (com.neulketing.openblue.speech.SpeechRecognitionManager.state.value !=
-                                    com.neulketing.openblue.speech.RecognitionState.IDLE
+                                if (com.neulketing.openthumb.speech.SpeechRecognitionManager.state.value !=
+                                    com.neulketing.openthumb.speech.RecognitionState.IDLE
                                 ) {
-                                    com.neulketing.openblue.speech.SpeechRecognitionManager.stopRecording()
+                                    com.neulketing.openthumb.speech.SpeechRecognitionManager.stopRecording()
                                 }
-                                com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive = false
+                                com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive = false
                                 ComposerInputModePrefs.save(context, voice = false)
                                 voiceUsedSinceClear = false
                             } else {
                                 voiceUsedSinceClear = true
-                                com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.enteredFromText = true
-                                com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive = true
+                                com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.enteredFromText = true
+                                com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive = true
                             }
                         }
 
@@ -5057,12 +5057,12 @@ fun ChatScreen(
                         // the chat later does NOT re-trigger.
                         LaunchedEffect(sttAvailable) {
                             if (!sttAvailable) return@LaunchedEffect
-                            val pending = com.neulketing.openblue.deeplink.DeepLinkCoordinator
+                            val pending = com.neulketing.openthumb.deeplink.DeepLinkCoordinator
                                 .pendingChatAction.value
-                            if (pending == com.neulketing.openblue.deeplink.DeepLinkCoordinator
+                            if (pending == com.neulketing.openthumb.deeplink.DeepLinkCoordinator
                                     .ChatAction.START_VOICE
                             ) {
-                                com.neulketing.openblue.deeplink.DeepLinkCoordinator
+                                com.neulketing.openthumb.deeplink.DeepLinkCoordinator
                                     .consumePendingChatAction()
                                 triggerVoiceInput()
                             }
@@ -5080,7 +5080,7 @@ fun ChatScreen(
                         // same bottom row, and both capsules plus their spacers
                         // overflow the constrained width and render overlapped
                         // (iOS af9f3d3e parity).
-                        if (com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive && editingId == null) {
+                        if (com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive && editingId == null) {
                             var readReplies by remember {
                                 mutableStateOf(
                                     context.getSharedPreferences("voice_prefs", android.content.Context.MODE_PRIVATE)
@@ -5093,7 +5093,7 @@ fun ChatScreen(
                             // fallback) instead of always using the on-device
                             // engine, and sanitizes Markdown before speaking.
                             val replyTts = remember {
-                                com.neulketing.openblue.speech.ReadAloudPlayer(context)
+                                com.neulketing.openthumb.speech.ReadAloudPlayer(context)
                             }
                             // The previous bare TextToSpeechManager() was never
                             // shut down, leaking an engine binding on every
@@ -5200,16 +5200,16 @@ fun ChatScreen(
                                 // started streaming, or one still in flight.
                                 val key = lastAssistantId?.hashCode() ?: text.hashCode()
                                 if (spokenUpTo == 0) {
-                                    val alreadySeen = com.neulketing.openblue.ui.chat.voice.VoiceModePrefs
+                                    val alreadySeen = com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs
                                         .lastSpokenAssistantKey == key
                                     if (alreadySeen || !isStreaming) {
                                         // Pre-existing message — mark it seen and stay silent.
-                                        com.neulketing.openblue.ui.chat.voice.VoiceModePrefs
+                                        com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs
                                             .lastSpokenAssistantKey = key
                                         spokenUpTo = text.length
                                         return@LaunchedEffect
                                     }
-                                    com.neulketing.openblue.ui.chat.voice.VoiceModePrefs
+                                    com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs
                                         .lastSpokenAssistantKey = key
                                 }
                                 if (text.length > spokenUpTo) {
@@ -5233,13 +5233,13 @@ fun ChatScreen(
 
                         if (sttAvailable) {
                             MicButton(
-                                isRecording = !com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive &&
-                                    (sttState == com.neulketing.openblue.speech.RecognitionState.RECORDING ||
-                                        sttState == com.neulketing.openblue.speech.RecognitionState.STARTING),
+                                isRecording = !com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive &&
+                                    (sttState == com.neulketing.openthumb.speech.RecognitionState.RECORDING ||
+                                        sttState == com.neulketing.openthumb.speech.RecognitionState.STARTING),
                                 localeBadge = null,
                                 onClick = { triggerVoiceInput() },
                                 onLongClick = { showLangSheet = true },
-                                isVoiceActive = com.neulketing.openblue.ui.chat.voice.VoiceModePrefs.isVoiceActive,
+                                isVoiceActive = com.neulketing.openthumb.ui.chat.voice.VoiceModePrefs.isVoiceActive,
                             )
                         }
 
@@ -5604,7 +5604,7 @@ fun ChatScreen(
 
     // URL preview sheet — shown when a markdown link is tapped
     previewUrl?.let { url ->
-        com.neulketing.openblue.ui.components.UrlPreviewSheet(
+        com.neulketing.openthumb.ui.components.UrlPreviewSheet(
             url = url,
             onDismiss = { previewUrl = null },
         )
@@ -5621,7 +5621,7 @@ fun ChatScreen(
             htmlPreviewFullscreen = false
         }
         if (htmlPreviewFullscreen) {
-            com.neulketing.openblue.ui.preview.WebPreviewFullscreenScreen(
+            com.neulketing.openthumb.ui.preview.WebPreviewFullscreenScreen(
                 holder = holder,
                 fallbackTitle = htmlPreviewFallbackTitle,
                 onCollapseToSheet = {
@@ -5631,7 +5631,7 @@ fun ChatScreen(
                 onDismiss = onFullDismiss,
             )
         } else {
-            com.neulketing.openblue.ui.preview.WebPreviewBottomSheet(
+            com.neulketing.openthumb.ui.preview.WebPreviewBottomSheet(
                 holder = holder,
                 fallbackTitle = htmlPreviewFallbackTitle,
                 pinSessionId = sessionId,
@@ -5657,7 +5657,7 @@ fun ChatScreen(
     // composer chip. Pager-backed so multi-image messages support iOS-
     // style swipe between images. Single-image case is a 1-item list.
     previewImageGallery?.let { (items, startIdx) ->
-        com.neulketing.openblue.ui.components.ImageGalleryViewer(
+        com.neulketing.openthumb.ui.components.ImageGalleryViewer(
             items = items,
             startIndex = startIdx,
             onDismiss = { previewImageGallery = null },
@@ -5669,7 +5669,7 @@ fun ChatScreen(
     // ![](minis://...) syntax so behaviour is consistent regardless of how
     // the LLM emitted the reference.
     previewVideoFile?.let { file ->
-        com.neulketing.openblue.ui.media.MinisFullscreenVideoPlayer(
+        com.neulketing.openthumb.ui.media.MinisFullscreenVideoPlayer(
             file = file,
             onDismiss = { previewVideoFile = null },
         )
@@ -5679,8 +5679,8 @@ fun ChatScreen(
     // outlive the chip that triggered it (the chip Box may scroll out of
     // composition while the sheet is up).
     webAppSheetTarget?.let { target ->
-        com.neulketing.openblue.webapp.AddToHomeSheet(
-            source = com.neulketing.openblue.webapp.WebAppSource.ChatAttachment(
+        com.neulketing.openthumb.webapp.AddToHomeSheet(
+            source = com.neulketing.openthumb.webapp.WebAppSource.ChatAttachment(
                 uri = target.uri,
                 fileName = target.fileName,
                 sessionId = sessionId,
@@ -5754,7 +5754,7 @@ fun ChatScreen(
  */
 @Composable
 private fun ThinkingLevelBadge(
-    level: com.neulketing.openblue.data.model.ThinkingLevel,
+    level: com.neulketing.openthumb.data.model.ThinkingLevel,
     onClick: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -5797,17 +5797,17 @@ private fun ThinkingLevelBadge(
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ThinkingLevelSheet(
-    currentLevel: com.neulketing.openblue.data.model.ThinkingLevel,
-    availableLevels: List<com.neulketing.openblue.data.model.ThinkingLevel>,
-    onSelect: (com.neulketing.openblue.data.model.ThinkingLevel) -> Unit,
+    currentLevel: com.neulketing.openthumb.data.model.ThinkingLevel,
+    availableLevels: List<com.neulketing.openthumb.data.model.ThinkingLevel>,
+    onSelect: (com.neulketing.openthumb.data.model.ThinkingLevel) -> Unit,
     onDismiss: () -> Unit,
 ) {
     // Off is always offered (turns thinking off); availableLevels already
     // excludes Off, so prepend it. De-dup defensively in case a caller ever
     // includes it.
     val rows = remember(availableLevels) {
-        listOf(com.neulketing.openblue.data.model.ThinkingLevel.OFF) +
-            availableLevels.filter { it != com.neulketing.openblue.data.model.ThinkingLevel.OFF }
+        listOf(com.neulketing.openthumb.data.model.ThinkingLevel.OFF) +
+            availableLevels.filter { it != com.neulketing.openthumb.data.model.ThinkingLevel.OFF }
     }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
@@ -5823,7 +5823,7 @@ private fun ThinkingLevelSheet(
             rows.forEach { level ->
                 // "Off selected" = the current level is disabled; otherwise an
                 // exact match.
-                val isSelected = if (level == com.neulketing.openblue.data.model.ThinkingLevel.OFF) {
+                val isSelected = if (level == com.neulketing.openthumb.data.model.ThinkingLevel.OFF) {
                     !currentLevel.isEnabled
                 } else {
                     currentLevel == level
@@ -5839,7 +5839,7 @@ private fun ThinkingLevelSheet(
                         imageVector = Icons.Default.Lightbulb,
                         contentDescription = null,
                         tint = ChatColors.thinking.copy(
-                            alpha = if (level == com.neulketing.openblue.data.model.ThinkingLevel.OFF) 0.4f else 1f,
+                            alpha = if (level == com.neulketing.openthumb.data.model.ThinkingLevel.OFF) 0.4f else 1f,
                         ),
                         modifier = Modifier.size(18.dp),
                     )

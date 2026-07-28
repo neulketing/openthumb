@@ -1,9 +1,9 @@
-package com.neulketing.openblue.config
+package com.neulketing.openthumb.config
 
 import android.content.Context
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.EnvVarRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.EnvVarRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

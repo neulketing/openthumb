@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.repository
+package com.neulketing.openthumb.data.repository
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

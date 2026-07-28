@@ -1,4 +1,4 @@
-package com.neulketing.openblue.service
+package com.neulketing.openthumb.service
 
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
@@ -28,8 +28,8 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.R
 import kotlin.math.abs
 
 /**
@@ -52,7 +52,7 @@ import kotlin.math.abs
  *   - Minis foreground OR no tool running OR user toggle OFF OR no perm → hidden
  *   - otherwise → shown, content updated on each tool-status change
  *
- * Position persists in [com.neulketing.openblue.data.repository.BackgroundSettingsRepository]
+ * Position persists in [com.neulketing.openthumb.data.repository.BackgroundSettingsRepository]
  * across process restarts; first run defaults to the bottom-left corner
  * (10 dp from each edge). Tap dismisses to bring Minis back to the
  * foreground; drag moves the capsule.
@@ -646,7 +646,7 @@ class ToolOverlayController(private val context: Context) {
             val sid = pendingSessionId
             val launchIntent = Intent(
                 context,
-                Class.forName("com.neulketing.openblue.MainActivity"),
+                Class.forName("com.neulketing.openthumb.MainActivity"),
             ).apply {
                 // [T-android-overlay-reply-status-34599] When we have a
                 // tracked session, route the tap through the existing

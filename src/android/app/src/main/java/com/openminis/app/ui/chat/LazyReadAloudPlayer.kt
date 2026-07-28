@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import android.content.Context
-import com.neulketing.openblue.speech.ReadAloudPlayer
+import com.neulketing.openthumb.speech.ReadAloudPlayer
 
 /**
  * [T-android-selection-readaloud] Defers [ReadAloudPlayer] construction until

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.provider.voice
+package com.neulketing.openthumb.provider.voice
 
 import android.util.Base64
 import android.util.Log
@@ -225,7 +225,7 @@ open class VoiceProvider(
      * and must be the fallback. Model NAME is the signal — modality bits can't
      * distinguish a hand-annotated Whisper from a true audio chat model.
      */
-    open fun usesChatBasedASR(model: com.neulketing.openblue.data.model.LLMModel): Boolean {
+    open fun usesChatBasedASR(model: com.neulketing.openthumb.data.model.LLMModel): Boolean {
         val id = model.id.lowercase()
         if (id.contains("omni")) return true
         if (!id.contains("audio")) return false

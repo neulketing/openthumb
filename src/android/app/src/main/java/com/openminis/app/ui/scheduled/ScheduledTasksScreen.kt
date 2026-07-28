@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.scheduled
+package com.neulketing.openthumb.ui.scheduled
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -52,9 +52,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.scheduled.ScheduledRepeatMode
-import com.neulketing.openblue.scheduled.ScheduledTask
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.scheduled.ScheduledRepeatMode
+import com.neulketing.openthumb.scheduled.ScheduledTask
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -246,7 +246,7 @@ private fun ScheduledTaskRow(
 
         // [T-android-scheduled-tasks-run-records] Long-press menu: Edit / Run
         // records / Delete (delete is confirmed by the caller's dialog).
-        com.neulketing.openblue.ui.components.MinisMenu(
+        com.neulketing.openthumb.ui.components.MinisMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },
         ) {

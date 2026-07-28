@@ -1,4 +1,4 @@
-package com.neulketing.openblue.service
+package com.neulketing.openthumb.service
 
 import android.app.NotificationManager
 import android.content.Context

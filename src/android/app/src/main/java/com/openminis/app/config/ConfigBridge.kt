@@ -1,14 +1,14 @@
-package com.neulketing.openblue.config
+package com.neulketing.openthumb.config
 
-import com.neulketing.openblue.config.audit.ConfigAuditActor
-import com.neulketing.openblue.config.audit.ConfigAuditEntry
-import com.neulketing.openblue.config.audit.ConfigAuditLog
-import com.neulketing.openblue.config.audit.ConfigAuditStatus
-import com.neulketing.openblue.config.confirm.ConfigConfirmationGate
-import com.neulketing.openblue.config.confirm.ConfirmOutcome
-import com.neulketing.openblue.config.confirm.PendingConfigChange
-import com.neulketing.openblue.config.confirm.PendingConfigChangeItem
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.config.audit.ConfigAuditActor
+import com.neulketing.openthumb.config.audit.ConfigAuditEntry
+import com.neulketing.openthumb.config.audit.ConfigAuditLog
+import com.neulketing.openthumb.config.audit.ConfigAuditStatus
+import com.neulketing.openthumb.config.confirm.ConfigConfirmationGate
+import com.neulketing.openthumb.config.confirm.ConfirmOutcome
+import com.neulketing.openthumb.config.confirm.PendingConfigChange
+import com.neulketing.openthumb.config.confirm.PendingConfigChangeItem
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
@@ -24,7 +24,7 @@ import java.util.UUID
  * log). Mirrors iOS `ConfigOffloadBridge.swift`.
  *
  * Returns plain [JSONObject] envelopes so the handler just wraps them
- * in [com.neulketing.openblue.sandbox.NativeOffloadResult]. The handler
+ * in [com.neulketing.openthumb.sandbox.NativeOffloadResult]. The handler
  * thread is on a background pool, so write paths block via runBlocking
  * on the gate suspend — matching the iOS semaphore-on-detached-Task
  * pattern.

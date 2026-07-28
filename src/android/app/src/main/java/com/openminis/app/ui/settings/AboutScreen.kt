@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -30,9 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.openExternalUrl
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.openExternalUrl
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {

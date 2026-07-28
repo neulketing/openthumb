@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.browser
+package com.neulketing.openthumb.ui.browser
 
 import android.content.Context
 import android.content.Intent
@@ -41,8 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import com.neulketing.openblue.R
-import com.neulketing.openblue.browser.BrowserTabPool
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.browser.BrowserTabPool
 
 /**
  * [T-android-browser-download-ux] Downloads panel — Android port of iOS

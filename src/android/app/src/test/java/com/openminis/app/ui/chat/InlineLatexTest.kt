@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

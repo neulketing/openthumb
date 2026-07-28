@@ -1,12 +1,12 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.provider.ProviderFactory
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.provider.ProviderFactory
 
 /** Result of one correction attempt. */
 data class CorrectionOutcome(

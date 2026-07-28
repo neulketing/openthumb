@@ -1,8 +1,8 @@
-package com.neulketing.openblue.provider
+package com.neulketing.openthumb.provider
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import java.io.ByteArrayOutputStream
 
 /**

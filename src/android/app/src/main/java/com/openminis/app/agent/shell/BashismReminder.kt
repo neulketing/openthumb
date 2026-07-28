@@ -1,4 +1,4 @@
-package com.neulketing.openblue.agent.shell
+package com.neulketing.openthumb.agent.shell
 
 /**
  * Builds the <system-reminder> appended after a sh tool-result when a script hit

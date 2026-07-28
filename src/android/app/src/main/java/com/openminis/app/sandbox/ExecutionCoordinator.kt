@@ -1,8 +1,8 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 import android.content.Context
 import android.util.Log
-import com.neulketing.openblue.data.repository.EnvVarRepository
+import com.neulketing.openthumb.data.repository.EnvVarRepository
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File

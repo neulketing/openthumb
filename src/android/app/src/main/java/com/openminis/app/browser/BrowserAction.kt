@@ -1,4 +1,4 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 /**
  * All browser actions available to the agent, mirroring iOS BrowserAction.

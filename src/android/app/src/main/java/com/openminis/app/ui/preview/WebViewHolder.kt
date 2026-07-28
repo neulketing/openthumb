@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.preview
+package com.neulketing.openthumb.ui.preview
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -11,7 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 
 /**
  * Holds a single WebView instance + the page-state observed from it.
@@ -103,15 +103,15 @@ class WebViewHolder(
                 val urlStr = request.url?.toString()
                 // T234: Google permanently disallows WebView for sign-in /
                 // OAuth. Hand auth-domain navigation to Chrome Custom Tab.
-                if (com.neulketing.openblue.browser.GoogleAuthRouter.shouldRouteExternally(urlStr)) {
+                if (com.neulketing.openthumb.browser.GoogleAuthRouter.shouldRouteExternally(urlStr)) {
                     if (urlStr != null) {
-                        com.neulketing.openblue.browser.GoogleAuthRouter.openInCustomTab(view.context, urlStr)
+                        com.neulketing.openthumb.browser.GoogleAuthRouter.openInCustomTab(view.context, urlStr)
                     }
                     return true
                 }
                 // T134: intent:// / market:// / tel: / mailto: get routed
                 // out instead of trying to load as a page.
-                return com.neulketing.openblue.ui.browser
+                return com.neulketing.openthumb.ui.browser
                     .BrowserExternalSchemeHandler
                     .handle(view.context, request.url)
             }

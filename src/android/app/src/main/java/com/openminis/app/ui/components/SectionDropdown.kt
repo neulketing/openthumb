@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.components
+package com.neulketing.openthumb.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues

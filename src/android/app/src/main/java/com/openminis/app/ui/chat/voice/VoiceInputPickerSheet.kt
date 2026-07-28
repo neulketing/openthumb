@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat.voice
+package com.neulketing.openthumb.ui.chat.voice
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -40,16 +40,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.SystemVoiceEntries
-import com.neulketing.openblue.data.model.SystemVoiceIds
-import com.neulketing.openblue.data.model.hasAudioInput
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.components.MinisTextButton
-import com.neulketing.openblue.ui.components.QuickTestSheet
-import com.neulketing.openblue.ui.components.modalityBadges
-import com.neulketing.openblue.ui.components.providerDotColor
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.SystemVoiceEntries
+import com.neulketing.openthumb.data.model.SystemVoiceIds
+import com.neulketing.openthumb.data.model.hasAudioInput
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.QuickTestSheet
+import com.neulketing.openthumb.ui.components.modalityBadges
+import com.neulketing.openthumb.ui.components.providerDotColor
 
 /**
  * [T-android-voice-panel] Single-select voice INPUT engine picker — Android

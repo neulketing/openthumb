@@ -1,4 +1,4 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
 import android.app.Activity
 import android.content.Context
@@ -9,10 +9,10 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.sandbox.ExecutionCoordinator
-import com.neulketing.openblue.sandbox.PRootKernel
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.sandbox.ExecutionCoordinator
+import com.neulketing.openthumb.sandbox.PRootKernel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -757,7 +757,7 @@ class DebugRPCHandler(private val context: Context) {
                 command = command,
                 timeout = timeoutSec * 1000L,
                 lineCallback = { rawLine ->
-                    val (_, urls) = com.neulketing.openblue.terminal.MinisUrlMarker.extract(rawLine)
+                    val (_, urls) = com.neulketing.openthumb.terminal.MinisUrlMarker.extract(rawLine)
                     capturedUrls.addAll(urls)
                 },
             )
@@ -765,7 +765,7 @@ class DebugRPCHandler(private val context: Context) {
             throw RPCException(-32000, "Shell execute failed: ${e.message}")
         }
         for (raw in capturedUrls) {
-            com.neulketing.openblue.terminal.MinisOpenUrlBroker.offer(raw)
+            com.neulketing.openthumb.terminal.MinisOpenUrlBroker.offer(raw)
         }
         return JSONObject()
             .put("output", result.output)
@@ -776,8 +776,8 @@ class DebugRPCHandler(private val context: Context) {
     // ── Update checker (T33) — exposed only via DebugRPC so the e2e flow can
     // be exercised before the production UI entry point lands.
     private suspend fun handleUpdateCheck(): JSONObject {
-        return when (val r = com.neulketing.openblue.data.UpdateChecker.check()) {
-            is com.neulketing.openblue.data.UpdateChecker.CheckResult.UpdateAvailable -> JSONObject()
+        return when (val r = com.neulketing.openthumb.data.UpdateChecker.check()) {
+            is com.neulketing.openthumb.data.UpdateChecker.CheckResult.UpdateAvailable -> JSONObject()
                 .put("status", "update_available")
                 .put("tag_name", r.tagName)
                 .put("version_name", r.versionName)
@@ -785,17 +785,17 @@ class DebugRPCHandler(private val context: Context) {
                 .put("apk_url", r.apkUrl)
                 .put("apk_size", r.apkSizeBytes)
                 .put("changelog", r.changelog)
-            com.neulketing.openblue.data.UpdateChecker.CheckResult.UpToDate ->
+            com.neulketing.openthumb.data.UpdateChecker.CheckResult.UpToDate ->
                 JSONObject().put("status", "up_to_date")
-            com.neulketing.openblue.data.UpdateChecker.CheckResult.NoReleaseAvailable ->
+            com.neulketing.openthumb.data.UpdateChecker.CheckResult.NoReleaseAvailable ->
                 JSONObject().put("status", "no_release")
-            is com.neulketing.openblue.data.UpdateChecker.CheckResult.NoApkAsset ->
+            is com.neulketing.openthumb.data.UpdateChecker.CheckResult.NoApkAsset ->
                 JSONObject().put("status", "no_apk_asset").put("tag_name", r.tagName)
-            com.neulketing.openblue.data.UpdateChecker.CheckResult.Forbidden ->
+            com.neulketing.openthumb.data.UpdateChecker.CheckResult.Forbidden ->
                 JSONObject().put("status", "forbidden")
-            com.neulketing.openblue.data.UpdateChecker.CheckResult.NetworkUnreachable ->
+            com.neulketing.openthumb.data.UpdateChecker.CheckResult.NetworkUnreachable ->
                 JSONObject().put("status", "network_unreachable")
-            is com.neulketing.openblue.data.UpdateChecker.CheckResult.Error ->
+            is com.neulketing.openthumb.data.UpdateChecker.CheckResult.Error ->
                 JSONObject().put("status", "error").put("message", r.message)
         }
     }
@@ -804,12 +804,12 @@ class DebugRPCHandler(private val context: Context) {
         val url = params.optString("url").ifEmpty {
             throw RPCException(-32602, "Missing 'url' parameter")
         }
-        return when (val r = com.neulketing.openblue.data.UpdateChecker.download(context, url)) {
-            is com.neulketing.openblue.data.UpdateChecker.DownloadResult.Success -> JSONObject()
+        return when (val r = com.neulketing.openthumb.data.UpdateChecker.download(context, url)) {
+            is com.neulketing.openthumb.data.UpdateChecker.DownloadResult.Success -> JSONObject()
                 .put("status", "ok")
                 .put("path", r.file.absolutePath)
                 .put("size", r.file.length())
-            is com.neulketing.openblue.data.UpdateChecker.DownloadResult.Error -> JSONObject()
+            is com.neulketing.openthumb.data.UpdateChecker.DownloadResult.Error -> JSONObject()
                 .put("status", "error")
                 .put("message", r.message)
         }
@@ -821,9 +821,9 @@ class DebugRPCHandler(private val context: Context) {
         }
         val file = java.io.File(path)
         if (!file.exists()) throw RPCException(-32000, "APK not found: $path")
-        val canInstall = com.neulketing.openblue.data.UpdateChecker.canInstall(context)
+        val canInstall = com.neulketing.openthumb.data.UpdateChecker.canInstall(context)
         return try {
-            com.neulketing.openblue.data.UpdateChecker.installApk(context, file)
+            com.neulketing.openthumb.data.UpdateChecker.installApk(context, file)
             JSONObject().put("status", "launched").put("can_install", canInstall)
         } catch (e: Exception) {
             JSONObject()
@@ -914,7 +914,7 @@ class DebugRPCHandler(private val context: Context) {
         // want to stage files BEFORE booting, so route through the rootfs
         // dir directly when the kernel isn't ready yet.
         val hostFile = PRootKernel.resolveHostPath(path) ?: run {
-            val rootfsDir = com.neulketing.openblue.sandbox.RootfsManager.getInstance(context).rootfsDir
+            val rootfsDir = com.neulketing.openthumb.sandbox.RootfsManager.getInstance(context).rootfsDir
             File(rootfsDir, path.removePrefix("/"))
         }
 
@@ -985,20 +985,20 @@ class DebugRPCHandler(private val context: Context) {
      */
     private fun handlePermissionsList(): JSONObject {
         val arr = org.json.JSONArray()
-        for (tool in com.neulketing.openblue.offload.OffloadPermissionManager.toolRegistry) {
+        for (tool in com.neulketing.openthumb.offload.OffloadPermissionManager.toolRegistry) {
             arr.put(JSONObject()
                 .put("toolName", tool.toolName)
                 .put("displayName", tool.displayName)
                 .put("category", tool.category.name)
                 .put("defaultLevel", tool.defaultLevel.name)
-                .put("currentLevel", com.neulketing.openblue.offload.OffloadPermissionManager.getLevel(tool.toolName).name)
+                .put("currentLevel", com.neulketing.openthumb.offload.OffloadPermissionManager.getLevel(tool.toolName).name)
                 .put("showInSettings", tool.showInSettings))
         }
         return JSONObject().put("tools", arr).put("count", arr.length())
     }
 
     /**
-     * T344: Direct invocation of [com.neulketing.openblue.sandbox.offload.ShizukuOffloadHandler]
+     * T344: Direct invocation of [com.neulketing.openthumb.sandbox.offload.ShizukuOffloadHandler]
      * for e2e harnesses. Bypasses the agent loop so debug clients can verify Shizuku
      * CLI behavior without driving a chat. DEBUG-build only — gated in [dispatch].
      *
@@ -1019,10 +1019,10 @@ class DebugRPCHandler(private val context: Context) {
             else -> throw RPCException(-32602, "Missing 'args' (array) or 'command' (string)")
         }
         AppLogger.info("DebugRPC", "debug.shizuku.exec argv=${argvTail.joinToString(" ")}")
-        val handler = com.neulketing.openblue.sandbox.offload.ShizukuOffloadHandler(context)
+        val handler = com.neulketing.openthumb.sandbox.offload.ShizukuOffloadHandler(context)
         // ShizukuOffloadHandler.handle() drops argv[0]; prepend the CLI name so the
         // tail aligns with what `android-shizuku-cli` would receive in-shell.
-        val request = com.neulketing.openblue.sandbox.NativeOffloadRequest(
+        val request = com.neulketing.openthumb.sandbox.NativeOffloadRequest(
             pid = -1,
             argv = listOf("android-shizuku-cli") + argvTail,
             env = emptyMap(),
@@ -1038,7 +1038,7 @@ class DebugRPCHandler(private val context: Context) {
     }
 
     /**
-     * Direct invocation of [com.neulketing.openblue.sandbox.offload.ModelUseOffloadHandler]
+     * Direct invocation of [com.neulketing.openthumb.sandbox.offload.ModelUseOffloadHandler]
      * for e2e harnesses. Mirrors [handleShizukuExec]; lets callers exercise the
      * `minis-model-use` CLI without going through a real Alpine shell prompt.
      * DEBUG-only.
@@ -1063,7 +1063,7 @@ class DebugRPCHandler(private val context: Context) {
         val finalArgv: List<String> = if (params.has("input")) {
             val inputBlob = params.optString("input", "")
             val linuxPath = "/tmp/.debug-modeluse-input-${System.currentTimeMillis()}.json"
-            val hostFile = com.neulketing.openblue.sandbox.PRootKernel.resolveHostPath(linuxPath)
+            val hostFile = com.neulketing.openthumb.sandbox.PRootKernel.resolveHostPath(linuxPath)
                 ?: throw RPCException(-32603, "cannot resolve $linuxPath under rootfs")
             hostFile.parentFile?.mkdirs()
             hostFile.writeText(inputBlob)
@@ -1071,9 +1071,9 @@ class DebugRPCHandler(private val context: Context) {
         } else argvTail
 
         AppLogger.info("DebugRPC", "debug.modelUse.exec argv=${finalArgv.joinToString(" ")}")
-        val app = context.applicationContext as com.neulketing.openblue.MinisApp
-        val handler = com.neulketing.openblue.sandbox.offload.ModelUseOffloadHandler(context, app.providerRepository)
-        val request = com.neulketing.openblue.sandbox.NativeOffloadRequest(
+        val app = context.applicationContext as com.neulketing.openthumb.MinisApp
+        val handler = com.neulketing.openthumb.sandbox.offload.ModelUseOffloadHandler(context, app.providerRepository)
+        val request = com.neulketing.openthumb.sandbox.NativeOffloadRequest(
             pid = -1,
             argv = listOf("minis-model-use") + finalArgv,
             env = emptyMap(),
@@ -1090,7 +1090,7 @@ class DebugRPCHandler(private val context: Context) {
 
     /**
      * [T-android-sessions-cli-full] Direct invocation of
-     * [com.neulketing.openblue.sandbox.offload.SessionsOffloadHandler] for e2e
+     * [com.neulketing.openthumb.sandbox.offload.SessionsOffloadHandler] for e2e
      * harnesses. Mirrors [handleModelUseExec]; lets callers exercise the
      * `minis-sessions-cli` CLI (list / search / messages, incl. --full)
      * without going through a real Alpine shell prompt. DEBUG-only.
@@ -1109,9 +1109,9 @@ class DebugRPCHandler(private val context: Context) {
         }
 
         AppLogger.info("DebugRPC", "debug.sessions.exec argv=${argvTail.joinToString(" ")}")
-        val app = context.applicationContext as com.neulketing.openblue.MinisApp
-        val handler = com.neulketing.openblue.sandbox.offload.SessionsOffloadHandler(app.chatRepository)
-        val request = com.neulketing.openblue.sandbox.NativeOffloadRequest(
+        val app = context.applicationContext as com.neulketing.openthumb.MinisApp
+        val handler = com.neulketing.openthumb.sandbox.offload.SessionsOffloadHandler(app.chatRepository)
+        val request = com.neulketing.openthumb.sandbox.NativeOffloadRequest(
             pid = -1,
             argv = listOf("minis-sessions-cli") + argvTail,
             env = emptyMap(),
@@ -1157,7 +1157,7 @@ class DebugRPCHandler(private val context: Context) {
                 // Hop to the main thread because performWriteBatch is a
                 // suspend fun that uses Dispatchers.Main internally.
                 kotlinx.coroutines.runBlocking {
-                    com.neulketing.openblue.config.ConfigBridge.performWriteBatch(
+                    com.neulketing.openthumb.config.ConfigBridge.performWriteBatch(
                         items = items,
                         caption = "debug.minisConfig.exec",
                         actorRaw = "debug-rpc",
@@ -1170,7 +1170,7 @@ class DebugRPCHandler(private val context: Context) {
                 val path = params.optString("path", "").takeIf { it.isNotEmpty() }
                     ?: throw RPCException(-32602, "Missing 'path' for subcommand=get")
                 AppLogger.info("DebugRPC", "debug.minisConfig.exec get path=$path")
-                com.neulketing.openblue.config.ConfigBridge.readField(
+                com.neulketing.openthumb.config.ConfigBridge.readField(
                     path = path,
                     filter = null,
                     page = 0,
@@ -1179,7 +1179,7 @@ class DebugRPCHandler(private val context: Context) {
             }
             "audit-list" -> {
                 val limit = params.optInt("limit", 100).coerceIn(1, 1000)
-                com.neulketing.openblue.config.ConfigBridge.auditList(limit, null)
+                com.neulketing.openthumb.config.ConfigBridge.auditList(limit, null)
             }
             else -> throw RPCException(-32602, "Unknown subcommand '$sub'")
         }

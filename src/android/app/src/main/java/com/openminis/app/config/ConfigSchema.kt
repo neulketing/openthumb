@@ -1,4 +1,4 @@
-package com.neulketing.openblue.config
+package com.neulketing.openthumb.config
 
 /**
  * Type tag + per-type constraints for a [ConfigField]. Drives the

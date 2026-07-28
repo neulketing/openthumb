@@ -1,4 +1,4 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 import android.content.Context
 import android.util.Log

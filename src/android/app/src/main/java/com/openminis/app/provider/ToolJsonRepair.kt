@@ -1,6 +1,6 @@
-package com.neulketing.openblue.provider
+package com.neulketing.openthumb.provider
 
-import com.neulketing.openblue.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.AgentToolDefinition
 import org.json.JSONObject
 
 /**

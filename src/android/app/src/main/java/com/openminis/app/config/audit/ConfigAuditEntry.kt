@@ -1,4 +1,4 @@
-package com.neulketing.openblue.config.audit
+package com.neulketing.openthumb.config.audit
 
 /** Who initiated the change. Mirrors iOS `ConfigAuditActor`. */
 enum class ConfigAuditActor(val raw: String) {

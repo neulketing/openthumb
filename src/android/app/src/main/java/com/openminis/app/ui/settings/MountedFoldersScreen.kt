@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import android.content.Intent
 import android.net.Uri
@@ -42,7 +42,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
@@ -68,10 +68,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.MountedFoldersStore
-import com.neulketing.openblue.data.SafMountHelper
-import com.neulketing.openblue.ui.components.DialogTextField
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.MountedFoldersStore
+import com.neulketing.openthumb.data.SafMountHelper
+import com.neulketing.openthumb.ui.components.DialogTextField
 import kotlinx.coroutines.launch
 
 /**

@@ -1,14 +1,14 @@
-package com.neulketing.openblue.provider
+package com.neulketing.openthumb.provider
 
 import android.content.Context
-import com.neulketing.openblue.auth.OpenAIOAuthManager
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ProviderCredential
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.provider.anthropic.AnthropicProvider
-import com.neulketing.openblue.provider.gemini.GeminiProvider
-import com.neulketing.openblue.provider.openai.OpenAIProvider
+import com.neulketing.openthumb.auth.OpenAIOAuthManager
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ProviderCredential
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.provider.anthropic.AnthropicProvider
+import com.neulketing.openthumb.provider.gemini.GeminiProvider
+import com.neulketing.openthumb.provider.openai.OpenAIProvider
 
 object ProviderFactory {
     /**
@@ -54,7 +54,7 @@ object ProviderFactory {
                 // codex backend (which only accepts real ChatGPT session tokens).
                 val manualBearer = if (context != null &&
                     instance.credentialType == ProviderCredential.oauth) {
-                    com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)?.loadManualBearerToken()
+                    com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)?.loadManualBearerToken()
                 } else null
 
                 if (instance.credentialType == ProviderCredential.oauth && manualBearer.isNullOrEmpty()
@@ -62,7 +62,7 @@ object ProviderFactory {
                     // Codex OAuth mode — Responses API with refresh-aware token provider
                     val oauthManager = OpenAIOAuthManager(context, instance.id)
                     OpenAIProvider(
-                        oauthTokenProvider = { oauthManager.validAccessToken() ?: throw com.neulketing.openblue.data.model.LLMError.InvalidApiKey() },
+                        oauthTokenProvider = { oauthManager.validAccessToken() ?: throw com.neulketing.openthumb.data.model.LLMError.InvalidApiKey() },
                         model = model,
                         codexAccountId = oauthManager.accountId,
                     )
@@ -114,15 +114,15 @@ object ProviderFactory {
                 val base = basePath ?: "https://api.x.ai/v1"
                 val manualBearer = if (context != null &&
                     instance.credentialType == ProviderCredential.oauth) {
-                    com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)?.loadManualBearerToken()
+                    com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)?.loadManualBearerToken()
                 } else null
                 if (instance.credentialType == ProviderCredential.oauth && manualBearer.isNullOrEmpty()
                     && context != null) {
-                    val oauthManager = com.neulketing.openblue.auth.XAIOAuthManager(context, instance.id)
+                    val oauthManager = com.neulketing.openthumb.auth.XAIOAuthManager(context, instance.id)
                     OpenAIProvider.oauthOpenAICompat(
                         oauthTokenProvider = {
                             oauthManager.validAccessToken()
-                                ?: throw com.neulketing.openblue.data.model.LLMError.InvalidApiKey()
+                                ?: throw com.neulketing.openthumb.data.model.LLMError.InvalidApiKey()
                         },
                         model = model,
                         basePath = base,
@@ -141,14 +141,14 @@ object ProviderFactory {
                 // ⚠️ The `/v1` is load-bearing: /coding/chat/completions 404s;
                 // only /coding/v1/chat/completions works (verified live on iOS).
                 // Custom bases go through effectiveBaseURL's /v1-append logic.
-                val base = basePath ?: "${com.neulketing.openblue.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
+                val base = basePath ?: "${com.neulketing.openthumb.auth.KimiDeviceFlow.CODING_API_BASE}/v1"
                 val manualBearer = if (context != null &&
                     instance.credentialType == ProviderCredential.oauth) {
-                    com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)?.loadManualBearerToken()
+                    com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)?.loadManualBearerToken()
                 } else null
                 if (instance.credentialType == ProviderCredential.oauth && manualBearer.isNullOrEmpty()
                     && context != null) {
-                    val oauthManager = com.neulketing.openblue.auth.KimiOAuthManager(context, instance.id)
+                    val oauthManager = com.neulketing.openthumb.auth.KimiOAuthManager(context, instance.id)
                     // Same path as xAI OAuth: Bearer token provider +
                     // forceChatCompletions so the Codex Responses backend
                     // shaping never applies. No custom UA / extra headers —
@@ -156,7 +156,7 @@ object ProviderFactory {
                     OpenAIProvider.oauthOpenAICompat(
                         oauthTokenProvider = {
                             oauthManager.validAccessToken()
-                                ?: throw com.neulketing.openblue.data.model.LLMError.InvalidApiKey()
+                                ?: throw com.neulketing.openthumb.data.model.LLMError.InvalidApiKey()
                         },
                         model = model,
                         basePath = base,

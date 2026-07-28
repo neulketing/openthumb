@@ -1,8 +1,8 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
 import android.media.MediaPlayer
 import android.util.Log
-import com.neulketing.openblue.sandbox.PRootKernel
+import com.neulketing.openthumb.sandbox.PRootKernel
 import java.io.File
 
 /**

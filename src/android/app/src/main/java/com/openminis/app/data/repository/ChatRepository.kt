@@ -1,9 +1,9 @@
-package com.neulketing.openblue.data.repository
+package com.neulketing.openthumb.data.repository
 
 import android.database.sqlite.SQLiteBlobTooBigException
-import com.neulketing.openblue.data.db.ChatDao
-import com.neulketing.openblue.data.db.ChatSessionEntity
-import com.neulketing.openblue.data.db.MessageEntity
+import com.neulketing.openthumb.data.db.ChatDao
+import com.neulketing.openthumb.data.db.ChatSessionEntity
+import com.neulketing.openthumb.data.db.MessageEntity
 import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
@@ -65,7 +65,7 @@ class ChatRepository(internal val dao: ChatDao) {
      *     fired), OR the single synthetic "Continue" reminder text part, OR
      *   - role ASSISTANT + any tool_use part (model asked for tools that never ran)
      * Part type discriminator is the JSON "type" field — the @SerialName values
-     * from [com.neulketing.openblue.data.model.ContentPart]: "toolUse" / "toolResult"
+     * from [com.neulketing.openthumb.data.model.ContentPart]: "toolUse" / "toolResult"
      * / "text" (camelCase, NOT snake_case); text payload is the "value" field.
      */
     private fun isInterruptedTail(role: String, partsJson: String): Boolean {
@@ -140,7 +140,7 @@ class ChatRepository(internal val dao: ChatDao) {
         // from a foreground retry or a Flow collector before the safe-mode
         // dialog is dismissed. Returning an empty list mirrors the "no rows
         // for this session" branch and is harmless for every caller.
-        if (com.neulketing.openblue.crash.CrashFrequencyDetector.isSafeMode()) {
+        if (com.neulketing.openthumb.crash.CrashFrequencyDetector.isSafeMode()) {
             android.util.Log.w(
                 "ChatRepository",
                 "loadMessages: safe-mode active, skipping (sessionId=$sessionId)",
@@ -200,7 +200,7 @@ class ChatRepository(internal val dao: ChatDao) {
 
     /**
      * Rewrite a single message row's parts_json in place. Used by
-     * [com.neulketing.openblue.ui.chat.ChatViewModel.rerunFromToolBlock]'s block-
+     * [com.neulketing.openthumb.ui.chat.ChatViewModel.rerunFromToolBlock]'s block-
      * boundary cut to trim the kept assistant row to the parts before the
      * target tool_use. Mirrors iOS ChatStore.updateMessageParts.
      */
@@ -578,7 +578,7 @@ class ChatRepository(internal val dao: ChatDao) {
     suspend fun messageCount(sessionId: String): Int = dao.messageCountForSession(sessionId)
 
     /**
-     * Paginated raw [MessageEntity] page — used by [com.neulketing.openblue.share.ChatExporter]
+     * Paginated raw [MessageEntity] page — used by [com.neulketing.openthumb.share.ChatExporter]
      * to stream-export long sessions without loading every message into
      * memory. Unlike [loadMessagePage] this does not strip / project the
      * row; the exporter needs the full `parts_json` payload to serialize.

@@ -1,6 +1,6 @@
-package com.neulketing.openblue.tools
+package com.neulketing.openthumb.tools
 
-import com.neulketing.openblue.browser.BrowserAction
+import com.neulketing.openthumb.browser.BrowserAction
 import org.json.JSONArray
 import org.json.JSONObject
 

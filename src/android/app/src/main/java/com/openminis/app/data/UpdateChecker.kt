@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
 import android.content.Context
 import android.content.Intent
@@ -6,8 +6,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient

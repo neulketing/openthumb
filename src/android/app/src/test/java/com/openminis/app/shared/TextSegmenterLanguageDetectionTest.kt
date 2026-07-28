@@ -1,4 +1,4 @@
-package com.neulketing.openblue.shared
+package com.neulketing.openthumb.shared
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

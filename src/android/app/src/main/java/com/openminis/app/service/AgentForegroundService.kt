@@ -1,4 +1,4 @@
-package com.neulketing.openblue.service
+package com.neulketing.openthumb.service
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,8 +15,8 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -53,7 +53,7 @@ class AgentForegroundService : Service() {
         // a public SDK constant; value verified by decompiling the on-device
         // framework.jar (const-string "android.requestPromotedOngoing").
         private const val EXTRA_REQUEST_PROMOTED_ONGOING = "android.requestPromotedOngoing"
-        private const val ACTION_STOP = "com.neulketing.openblue.STOP_AGENT_SERVICE"
+        private const val ACTION_STOP = "com.neulketing.openthumb.STOP_AGENT_SERVICE"
 
         /**
          * Starts or updates the foreground service with current status.
@@ -133,7 +133,7 @@ class AgentForegroundService : Service() {
         // log, which is exactly the "detection logic recursively
         // crashing" pattern. Skip the overlay observer and let
         // onStartCommand satisfy the FG-deadline + stopSelf.
-        if (com.neulketing.openblue.crash.CrashFrequencyDetector.isSafeMode()) {
+        if (com.neulketing.openthumb.crash.CrashFrequencyDetector.isSafeMode()) {
             Log.w(TAG, "safe-mode ON — skipping overlay/wake-lock bring-up")
             createNotificationChannel()
             return
@@ -151,7 +151,7 @@ class AgentForegroundService : Service() {
         // with a stub notification, then unwind. The crash share dialog
         // owns the UX from here; running a background service in this
         // state would re-trip the lateinit access that brought us down.
-        if (com.neulketing.openblue.crash.CrashFrequencyDetector.isSafeMode()) {
+        if (com.neulketing.openthumb.crash.CrashFrequencyDetector.isSafeMode()) {
             try {
                 val stub = androidx.core.app.NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle("Minis")
@@ -667,7 +667,7 @@ class AgentForegroundService : Service() {
         val seconds = elapsedSeconds % 60
         val timeString = String.format("%d:%02d", minutes, seconds)
 
-        val mainIntent = Intent(this, Class.forName("com.neulketing.openblue.MainActivity")).apply {
+        val mainIntent = Intent(this, Class.forName("com.neulketing.openthumb.MainActivity")).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent = PendingIntent.getActivity(

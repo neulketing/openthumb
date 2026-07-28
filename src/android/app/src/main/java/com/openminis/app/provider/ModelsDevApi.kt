@@ -1,8 +1,8 @@
-package com.neulketing.openblue.provider
+package com.neulketing.openthumb.provider
 
 import android.content.Context
 import android.util.Log
-import com.neulketing.openblue.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient

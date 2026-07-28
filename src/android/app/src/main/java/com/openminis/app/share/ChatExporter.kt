@@ -1,13 +1,13 @@
-package com.neulketing.openblue.share
+package com.neulketing.openthumb.share
 
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.FileProvider
-import com.neulketing.openblue.data.db.ChatSessionEntity
-import com.neulketing.openblue.data.db.MessageEntity
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.data.db.ChatSessionEntity
+import com.neulketing.openthumb.data.db.MessageEntity
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

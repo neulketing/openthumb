@@ -1,4 +1,4 @@
-package com.neulketing.openblue.mcp.oauth
+package com.neulketing.openthumb.mcp.oauth
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

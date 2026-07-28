@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.preview
+package com.neulketing.openthumb.ui.preview
 
 import android.app.Activity
 import android.content.Intent
@@ -49,8 +49,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.neulketing.openblue.R
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.delay
 
 /**
@@ -58,7 +58,7 @@ import kotlinx.coroutines.delay
  * [WebViewHolder] as [WebPreviewBottomSheet]; toggling expand/collapse
  * never reloads the page.
  *
- * T-html-preview-immersive: now mirrors [com.neulketing.openblue.webapp.WebAppActivity]'s
+ * T-html-preview-immersive: now mirrors [com.neulketing.openthumb.webapp.WebAppActivity]'s
  * polish — system bars are hidden while the dialog is open (swipe to
  * reveal transient), restored on dismiss, and the toolbar is a floating
  * pill that auto-fades after 4s of inactivity.
@@ -228,7 +228,7 @@ fun WebPreviewFullscreenScreen(
                         // aware helper from WebPreviewBottomSheet so the
                         // fullscreen "open in browser" button also works
                         // for file:// URLs (sandbox HTML).
-                        com.neulketing.openblue.ui.preview.openExternalFromSheet(
+                        com.neulketing.openthumb.ui.preview.openExternalFromSheet(
                             context, holder.currentUrl,
                         )
                     },
@@ -273,7 +273,7 @@ private fun FloatingMenuButton(
                 modifier = Modifier.size(24.dp),
             )
         }
-        com.neulketing.openblue.ui.components.MinisMenu(
+        com.neulketing.openthumb.ui.components.MinisMenu(
             expanded = menuOpen,
             onDismissRequest = { menuOpen = false },
             alignEnd = true,
@@ -323,7 +323,7 @@ private fun FloatingMenuButton(
                     onOpenExternal()
                 },
             )
-            com.neulketing.openblue.ui.components.MinisMenuDivider()
+            com.neulketing.openthumb.ui.components.MinisMenuDivider()
             androidx.compose.material3.DropdownMenuItem(
                 text = {
                     androidx.compose.material3.Text(

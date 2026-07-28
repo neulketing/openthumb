@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
-import com.neulketing.openblue.data.model.AgentToolDefinition
-import com.neulketing.openblue.data.model.AgentToolParam
+import com.neulketing.openthumb.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.AgentToolParam
 import org.json.JSONObject
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

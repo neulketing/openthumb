@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -68,18 +68,18 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.auth.OpenAIOAuthManager
-import com.neulketing.openblue.auth.OpenRouterOAuthManager
-import com.neulketing.openblue.data.model.ProviderCredential
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.auth.OpenAIOAuthManager
+import com.neulketing.openthumb.auth.OpenRouterOAuthManager
+import com.neulketing.openthumb.data.model.ProviderCredential
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.R
 import kotlinx.coroutines.launch
 import java.util.UUID
-import com.neulketing.openblue.ui.components.MinisButton
-import com.neulketing.openblue.ui.components.RowLabel
-import com.neulketing.openblue.ui.components.SectionTextField
+import com.neulketing.openthumb.ui.components.MinisButton
+import com.neulketing.openthumb.ui.components.RowLabel
+import com.neulketing.openthumb.ui.components.SectionTextField
 
 private enum class AddProviderStep {
     CHOOSE_TYPE,
@@ -100,7 +100,7 @@ fun AddProviderScreen(
     // Voice Chat Provider template row — preseeds type/base URL/label/appendV1
     // on the configure step (mirrors iOS applyVoiceTemplate).
     var selectedVoiceTemplate by remember {
-        mutableStateOf<com.neulketing.openblue.data.model.VoiceProviderTemplate?>(null)
+        mutableStateOf<com.neulketing.openthumb.data.model.VoiceProviderTemplate?>(null)
     }
 
     // Unified back handler: reuse each step's onBack so predictive-back gesture
@@ -224,7 +224,7 @@ private fun availableCredentials(type: ProviderType): List<ProviderCredential> {
 private fun ChooseProviderScreen(
     onBack: () -> Unit,
     onSelect: (ProviderType) -> Unit,
-    onSelectVoiceTemplate: (com.neulketing.openblue.data.model.VoiceProviderTemplate) -> Unit = {},
+    onSelectVoiceTemplate: (com.neulketing.openthumb.data.model.VoiceProviderTemplate) -> Unit = {},
 ) {
     SettingsScaffold(
         title = stringResource(R.string.provider_list_add_provider),
@@ -268,7 +268,7 @@ private fun ChooseProviderScreen(
         // [T-android-provider-voice] Voice Chat Providers — one row per voice
         // vendor template. Tapping prefills the underlying protocol + base URL
         // and jumps to configure (mirrors iOS voiceProviderSection).
-        val templates = com.neulketing.openblue.data.model.VoiceProviderTemplate.all
+        val templates = com.neulketing.openthumb.data.model.VoiceProviderTemplate.all
         val templateNotes = templates.mapNotNull { it.note }
         SettingsSection(
             header = stringResource(R.string.add_provider_voice_chat_providers),
@@ -278,11 +278,11 @@ private fun ChooseProviderScreen(
         ) {
             templates.forEachIndexed { index, template ->
                 val capabilityRes = when (template.capability) {
-                    com.neulketing.openblue.data.model.VoiceProviderTemplate.Capability.TTS ->
+                    com.neulketing.openthumb.data.model.VoiceProviderTemplate.Capability.TTS ->
                         R.string.add_provider_voice_capability_tts
-                    com.neulketing.openblue.data.model.VoiceProviderTemplate.Capability.ASR ->
+                    com.neulketing.openthumb.data.model.VoiceProviderTemplate.Capability.ASR ->
                         R.string.add_provider_voice_capability_asr
-                    com.neulketing.openblue.data.model.VoiceProviderTemplate.Capability.BOTH ->
+                    com.neulketing.openthumb.data.model.VoiceProviderTemplate.Capability.BOTH ->
                         R.string.add_provider_voice_capability_both
                 }
                 SettingsRow(
@@ -369,7 +369,7 @@ private fun ConfigureProviderScreen(
     providerType: ProviderType,
     credentialType: ProviderCredential,
     providerRepository: ProviderRepository,
-    voiceTemplate: com.neulketing.openblue.data.model.VoiceProviderTemplate? = null,
+    voiceTemplate: com.neulketing.openthumb.data.model.VoiceProviderTemplate? = null,
     onBack: () -> Unit,
     onSaved: () -> Unit,
 ) {
@@ -652,7 +652,7 @@ private fun ColumnScope.OAuthConfigSection(
     // coroutine's onDeviceCode callback and RENDERED below — the iOS lesson
     // was a write-only state nobody displayed ("button does nothing").
     var kimiDeviceAuth by remember {
-        mutableStateOf<com.neulketing.openblue.auth.KimiDeviceFlow.DeviceAuthorization?>(null)
+        mutableStateOf<com.neulketing.openthumb.auth.KimiDeviceFlow.DeviceAuthorization?>(null)
     }
     var kimiLoginJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     kimiDeviceAuth?.let { auth ->
@@ -734,7 +734,7 @@ private fun ColumnScope.OAuthConfigSection(
                                         // state as soon as the code is issued;
                                         // login() keeps polling underneath and
                                         // returns once the user authorizes.
-                                        val key = com.neulketing.openblue.auth.KimiOAuthManager.login(
+                                        val key = com.neulketing.openthumb.auth.KimiOAuthManager.login(
                                             context, pendingInstanceId, providerRepository,
                                             onDeviceCode = { auth -> kimiDeviceAuth = auth },
                                         )
@@ -746,7 +746,7 @@ private fun ColumnScope.OAuthConfigSection(
                                         maskedToken = maskOAuthToken(key)
                                     }
                                     ProviderType.anthropic -> {
-                                        val key = com.neulketing.openblue.auth.ClaudeOAuthManager.login(context, pendingInstanceId, providerRepository)
+                                        val key = com.neulketing.openthumb.auth.ClaudeOAuthManager.login(context, pendingInstanceId, providerRepository)
                                         maskedToken = maskOAuthToken(key)
                                     }
                                     ProviderType.openAI -> {
@@ -754,7 +754,7 @@ private fun ColumnScope.OAuthConfigSection(
                                         maskedToken = maskOAuthToken(key)
                                     }
                                     ProviderType.xAI -> {
-                                        val key = com.neulketing.openblue.auth.XAIOAuthManager.login(context, pendingInstanceId, providerRepository)
+                                        val key = com.neulketing.openthumb.auth.XAIOAuthManager.login(context, pendingInstanceId, providerRepository)
                                         maskedToken = maskOAuthToken(key)
                                     }
                                     else -> {
@@ -776,7 +776,7 @@ private fun ColumnScope.OAuthConfigSection(
                                 // (4xx, token format) keep their raw
                                 // message so we don't lose diagnostic
                                 // signal.
-                                errorMessage = if (e is com.neulketing.openblue.auth.OAuthNetworkUnreachableException) {
+                                errorMessage = if (e is com.neulketing.openthumb.auth.OAuthNetworkUnreachableException) {
                                     context.getString(R.string.add_provider_oauth_network_unreachable)
                                 } else {
                                     e.message ?: "Authentication failed"

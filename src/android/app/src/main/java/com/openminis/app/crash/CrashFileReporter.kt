@@ -1,4 +1,4 @@
-package com.neulketing.openblue.crash
+package com.neulketing.openthumb.crash
 
 import android.content.Context
 import org.acra.config.CoreConfiguration
@@ -14,7 +14,7 @@ import java.util.Locale
 /**
  * T283: Java/Kotlin crash → file. Writes a single text report into
  * `filesDir/logs/` using the same `.log` extension that
- * [com.neulketing.openblue.logging.AppLogger.listLogFiles] already filters
+ * [com.neulketing.openthumb.logging.AppLogger.listLogFiles] already filters
  * for, so reports surface in LogManagementScreen without needing a
  * separate crash-files screen.
  *

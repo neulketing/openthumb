@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.util
+package com.neulketing.openthumb.ui.util
 
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester

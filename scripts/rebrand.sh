@@ -9,9 +9,9 @@ set -euo pipefail
 # Change the three knobs below and re-run on a fresh checkout to pick a
 # different name.
 
-OLD_PKG="com.openminis.app"
-NEW_PKG="com.neulketing.openblue"
-NEW_APP_NAME="OpenBlue"
+OLD_PKG="com.neulketing.openblue"
+NEW_PKG="com.neulketing.openthumb"
+NEW_APP_NAME="OpenThumb"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ANDROID="$REPO_ROOT/src/android"

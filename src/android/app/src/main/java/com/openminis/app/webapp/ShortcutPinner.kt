@@ -1,4 +1,4 @@
-package com.neulketing.openblue.webapp
+package com.neulketing.openthumb.webapp
 
 import android.content.Context
 import android.content.Intent
@@ -8,8 +8,8 @@ import android.widget.Toast
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.db.WebAppShortcutEntity
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.db.WebAppShortcutEntity
 
 /**
  * T-pwa-1 (renamed Pwa → WebApp): pin a WebApp shortcut to the user's

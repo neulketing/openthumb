@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.terminal.emulator
+package com.neulketing.openthumb.ui.terminal.emulator
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.State
@@ -388,7 +388,7 @@ class TerminalEmulator(cols: Int = 80, rows: Int = 24) {
         if (eq <= 0 || payload.substring(0, eq) != "MinisOpenURL") return
         val urlString = payload.substring(eq + 1)
         if (urlString.isEmpty()) return
-        com.neulketing.openblue.terminal.MinisOpenUrlBroker.offer(urlString)
+        com.neulketing.openthumb.terminal.MinisOpenUrlBroker.offer(urlString)
     }
 
     private fun switchBuffer(toAlternate: Boolean) {

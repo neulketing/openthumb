@@ -1,11 +1,11 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
 import android.content.Context
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.browser.BrowserAction
-import com.neulketing.openblue.browser.BrowserActionInput
-import com.neulketing.openblue.browser.BrowserTabPool
-import com.neulketing.openblue.browser.BrowserUseManager
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.browser.BrowserAction
+import com.neulketing.openthumb.browser.BrowserActionInput
+import com.neulketing.openthumb.browser.BrowserTabPool
+import com.neulketing.openthumb.browser.BrowserUseManager
 import org.json.JSONArray
 import org.json.JSONObject
 

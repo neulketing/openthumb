@@ -1,4 +1,4 @@
-package com.neulketing.openblue.agent.shell
+package com.neulketing.openthumb.agent.shell
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals

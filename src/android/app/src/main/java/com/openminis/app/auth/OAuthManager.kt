@@ -1,4 +1,4 @@
-package com.neulketing.openblue.auth
+package com.neulketing.openthumb.auth
 
 import android.content.Context
 import android.content.Intent
@@ -50,12 +50,12 @@ abstract class OAuthManager(
         }
 
         /** Create the appropriate OAuthManager for a provider instance. */
-        fun forInstance(context: Context, instance: com.neulketing.openblue.data.model.ProviderInstance): OAuthManager? {
+        fun forInstance(context: Context, instance: com.neulketing.openthumb.data.model.ProviderInstance): OAuthManager? {
             return when (instance.providerType) {
-                com.neulketing.openblue.data.model.ProviderType.anthropic -> ClaudeOAuthManager(context, instance.id)
-                com.neulketing.openblue.data.model.ProviderType.openAI -> OpenAIOAuthManager(context, instance.id)
-                com.neulketing.openblue.data.model.ProviderType.xAI -> XAIOAuthManager(context, instance.id)
-                com.neulketing.openblue.data.model.ProviderType.kimiCode -> KimiOAuthManager(context, instance.id)
+                com.neulketing.openthumb.data.model.ProviderType.anthropic -> ClaudeOAuthManager(context, instance.id)
+                com.neulketing.openthumb.data.model.ProviderType.openAI -> OpenAIOAuthManager(context, instance.id)
+                com.neulketing.openthumb.data.model.ProviderType.xAI -> XAIOAuthManager(context, instance.id)
+                com.neulketing.openthumb.data.model.ProviderType.kimiCode -> KimiOAuthManager(context, instance.id)
                 else -> null
             }
         }
@@ -395,7 +395,7 @@ abstract class OAuthManager(
     // key under the user, and OAuth callers can't afford a crash here
     // since some of them run in the background refresh path.
     private fun getEncryptedPrefs() =
-        com.neulketing.openblue.util.EncryptedPrefsFactory.safeCreate(context, "oauth_prefs")
+        com.neulketing.openthumb.util.EncryptedPrefsFactory.safeCreate(context, "oauth_prefs")
 
     protected open suspend fun onTokensReceived(json: JSONObject) {}
 }

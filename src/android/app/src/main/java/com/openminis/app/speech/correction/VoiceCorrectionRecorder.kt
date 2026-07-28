@@ -1,8 +1,8 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 import android.content.Context
 import android.util.Log
-import com.neulketing.openblue.shared.SentenceSplitter
+import com.neulketing.openthumb.shared.SentenceSplitter
 
 /**
  * [T-android-voice-correction] Captures the user's own fixes as training

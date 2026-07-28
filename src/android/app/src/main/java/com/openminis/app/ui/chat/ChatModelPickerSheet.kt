@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 // [T-android-split-chat] ModelPickerSheet (+ its private helpers fuzzyMatch /
 // providerDotColor) extracted verbatim from ChatScreen.kt. Full import block
@@ -135,13 +135,13 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.FileMentionIndex
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.ui.components.MinisAlertDialog
-import com.neulketing.openblue.ui.components.MinisMenu
-import com.neulketing.openblue.ui.components.MinisMenuDivider
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.FileMentionIndex
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.ui.components.MinisAlertDialog
+import com.neulketing.openthumb.ui.components.MinisMenu
+import com.neulketing.openthumb.ui.components.MinisMenuDivider
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -251,26 +251,26 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.neulketing.openblue.offload.OffloadPermissionManager
+import com.neulketing.openthumb.offload.OffloadPermissionManager
 import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownColor
 import com.mikepenz.markdown.m3.markdownTypography
 import org.intellij.markdown.ast.ASTNode
 import org.intellij.markdown.ast.getTextInNode
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ProviderConfig
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.model.RoutingStrategy
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.browser.BrowserSheet
-import com.neulketing.openblue.ui.theme.ChatColors
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ProviderConfig
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.model.RoutingStrategy
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.browser.BrowserSheet
+import com.neulketing.openthumb.ui.theme.ChatColors
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * Fuzzy match: substring first, then all query chars appear in order.
@@ -875,7 +875,7 @@ internal fun ModelPickerSheet(
                                                 // voice seed serving as the collapsed
                                                 // representative is indistinguishable from
                                                 // a chat model.
-                                                com.neulketing.openblue.ui.components.modalityBadges(displayEntry.model).forEach { badge ->
+                                                com.neulketing.openthumb.ui.components.modalityBadges(displayEntry.model).forEach { badge ->
                                                     Spacer(Modifier.width(4.dp))
                                                     Text(
                                                         badge,
@@ -947,7 +947,7 @@ internal fun ModelPickerSheet(
                                                     )
                                                     // [T-android-provider-voice] Modality
                                                     // chips (iOS entryRow badges).
-                                                    com.neulketing.openblue.ui.components.modalityBadges(entry.model).forEach { badge ->
+                                                    com.neulketing.openthumb.ui.components.modalityBadges(entry.model).forEach { badge ->
                                                         Spacer(Modifier.width(4.dp))
                                                         Text(
                                                             badge,

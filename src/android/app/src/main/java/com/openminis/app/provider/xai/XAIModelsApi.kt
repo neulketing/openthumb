@@ -1,8 +1,8 @@
-package com.neulketing.openblue.provider.xai
+package com.neulketing.openthumb.provider.xai
 
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.provider.ModelsDevApi
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.provider.ModelsDevApi
 
 /**
  * Static catalog of xAI (Grok) models exposed to OAuth users.

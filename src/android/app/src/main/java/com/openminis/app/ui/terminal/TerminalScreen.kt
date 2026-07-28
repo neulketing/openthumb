@@ -1,6 +1,6 @@
-package com.neulketing.openblue.ui.terminal
+package com.neulketing.openthumb.ui.terminal
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.foundation.background
@@ -58,12 +58,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.sandbox.TerminalSession
-import com.neulketing.openblue.terminal.MinisOpenUrlBroker
-import com.neulketing.openblue.ui.terminal.canvas.TerminalNativeViewCompose
-import com.neulketing.openblue.ui.terminal.canvas.TerminalInputView
-import com.neulketing.openblue.ui.terminal.canvas.rememberTerminalInputController
-import com.neulketing.openblue.ui.terminal.emulator.TerminalEmulator
+import com.neulketing.openthumb.sandbox.TerminalSession
+import com.neulketing.openthumb.terminal.MinisOpenUrlBroker
+import com.neulketing.openthumb.ui.terminal.canvas.TerminalNativeViewCompose
+import com.neulketing.openthumb.ui.terminal.canvas.TerminalInputView
+import com.neulketing.openthumb.ui.terminal.canvas.rememberTerminalInputController
+import com.neulketing.openthumb.ui.terminal.emulator.TerminalEmulator
 import kotlinx.coroutines.launch
 
 // iOS-matched palette
@@ -280,7 +280,7 @@ fun TerminalScreen(
         }
 
         previewUrl?.let { url ->
-            com.neulketing.openblue.ui.components.UrlPreviewSheet(
+            com.neulketing.openthumb.ui.components.UrlPreviewSheet(
                 url = url,
                 onDismiss = { previewUrl = null },
             )

@@ -1,7 +1,7 @@
-package com.neulketing.openblue.scheduled
+package com.neulketing.openthumb.scheduled
 
 import android.content.Context
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -9,7 +9,7 @@ import org.json.JSONArray
 
 /**
  * [T-android-scheduled-tasks-design] SharedPreferences-backed JSON array of
- * [ScheduledTask] rows. Same pattern as [com.neulketing.openblue.offload.AlarmOffloadManager]
+ * [ScheduledTask] rows. Same pattern as [com.neulketing.openthumb.offload.AlarmOffloadManager]
  * — small dataset, low write frequency, no Room migration cost.
  */
 class ScheduledTaskStore(private val context: Context) {

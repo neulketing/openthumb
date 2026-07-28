@@ -1,4 +1,4 @@
-package com.neulketing.openblue.auth
+package com.neulketing.openthumb.auth
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

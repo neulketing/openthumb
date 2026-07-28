@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
 /**
  * [T-android-voice-correction] Turns a before/after edit into learnable

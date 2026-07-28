@@ -1,4 +1,4 @@
-package com.neulketing.openblue.auth
+package com.neulketing.openthumb.auth
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals

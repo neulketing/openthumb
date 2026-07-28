@@ -1,4 +1,4 @@
-package com.neulketing.openblue.browser
+package com.neulketing.openthumb.browser
 
 /**
  * Injectable JavaScript for browser_use actions.

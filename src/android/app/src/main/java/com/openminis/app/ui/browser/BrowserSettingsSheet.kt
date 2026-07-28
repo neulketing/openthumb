@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.browser
+package com.neulketing.openthumb.ui.browser
 
 import androidx.compose.ui.res.stringResource
 import android.webkit.CookieManager
@@ -56,13 +56,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.browser.BrowserTabPool
-import com.neulketing.openblue.browser.UserAgentProfile
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.browser.BrowserTabPool
+import com.neulketing.openthumb.browser.UserAgentProfile
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.launch
-import com.neulketing.openblue.ui.components.MinisTextButton
-import com.neulketing.openblue.ui.util.bringIntoViewOnFocus
+import com.neulketing.openthumb.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.util.bringIntoViewOnFocus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -340,7 +340,7 @@ fun BrowserSettingsSheet(
             Spacer(Modifier.height(8.dp))
 
             val hasCookies = CookieManager.getInstance().hasCookies()
-            val historyStore = remember { com.neulketing.openblue.browser.BrowserHistoryStore.getInstance(context) }
+            val historyStore = remember { com.neulketing.openthumb.browser.BrowserHistoryStore.getInstance(context) }
             val allDomains = remember(hasCookies) { historyStore.uniqueDomains() }
             val domains = remember(allDomains, cookieFilterText) {
                 if (cookieFilterText.isBlank()) allDomains

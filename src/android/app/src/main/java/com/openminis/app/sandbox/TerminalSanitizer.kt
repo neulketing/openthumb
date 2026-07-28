@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 /**
  * Strips ANSI escape sequences and handles CR-based line overwrites

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
 import android.app.Activity
 import android.graphics.Bitmap

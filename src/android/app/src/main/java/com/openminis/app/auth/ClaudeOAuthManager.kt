@@ -1,11 +1,11 @@
-package com.neulketing.openblue.auth
+package com.neulketing.openthumb.auth
 
 import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.browser.customtabs.CustomTabsIntent
-import com.neulketing.openblue.BuildConfig
-import com.neulketing.openblue.data.repository.ProviderRepository
+import com.neulketing.openthumb.BuildConfig
+import com.neulketing.openthumb.data.repository.ProviderRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex

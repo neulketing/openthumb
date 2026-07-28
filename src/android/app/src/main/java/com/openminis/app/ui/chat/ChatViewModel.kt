@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -9,11 +9,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.compose.foundation.lazy.LazyListState
-import com.neulketing.openblue.agent.Level
-import com.neulketing.openblue.agent.ToolLoopDetector
-import com.neulketing.openblue.browser.BrowserActionInput
-import com.neulketing.openblue.browser.BrowserTabPool
-import com.neulketing.openblue.data.db.MessageEntity
+import com.neulketing.openthumb.agent.Level
+import com.neulketing.openthumb.agent.ToolLoopDetector
+import com.neulketing.openthumb.browser.BrowserActionInput
+import com.neulketing.openthumb.browser.BrowserTabPool
+import com.neulketing.openthumb.data.db.MessageEntity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Delete
@@ -21,45 +21,45 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Extension
-import com.neulketing.openblue.data.BPETokenizer
-import com.neulketing.openblue.data.ContextOffload
-import com.neulketing.openblue.data.ContextPolicy
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.data.FileMentionIndex
-import com.neulketing.openblue.data.db.CompactMarkerEntity
-import com.neulketing.openblue.data.model.AgentContentPart
-import com.neulketing.openblue.data.model.AgentToolDefinition
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.LLMStreamChunk
-import com.neulketing.openblue.data.model.LLMUsage
-import com.neulketing.openblue.data.model.ModelGroup
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.provider.ImageBudget
-import com.neulketing.openblue.provider.LLMProvider
-import com.neulketing.openblue.provider.ProviderFactory
-import com.neulketing.openblue.provider.catalogMaxThinkingLevel
-import com.neulketing.openblue.provider.effectiveMaxThinkingLevel
-import com.neulketing.openblue.agent.shell.BashismDetector
-import com.neulketing.openblue.agent.shell.BashismReminder
-import com.neulketing.openblue.agent.shell.OnDemandBash
-import com.neulketing.openblue.sandbox.ExecutionCoordinator
-import com.neulketing.openblue.terminal.MinisOpenUrlBroker
-import com.neulketing.openblue.terminal.MinisUrlMarker
-import com.neulketing.openblue.tools.AgentTools
-import com.neulketing.openblue.tools.FileEditTool
-import com.neulketing.openblue.tools.FileReadTool
-import com.neulketing.openblue.tools.FileWriteTool
-import com.neulketing.openblue.tools.MemoryTools
-import com.neulketing.openblue.tools.ReadImageTool
-import com.neulketing.openblue.tools.ToolExecutionResult
-import com.neulketing.openblue.offload.OffloadPermissionManager
-import com.neulketing.openblue.service.SessionActivityTracker
-import com.neulketing.openblue.service.SessionConcurrencyManager
+import com.neulketing.openthumb.data.BPETokenizer
+import com.neulketing.openthumb.data.ContextOffload
+import com.neulketing.openthumb.data.ContextPolicy
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.data.FileMentionIndex
+import com.neulketing.openthumb.data.db.CompactMarkerEntity
+import com.neulketing.openthumb.data.model.AgentContentPart
+import com.neulketing.openthumb.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMStreamChunk
+import com.neulketing.openthumb.data.model.LLMUsage
+import com.neulketing.openthumb.data.model.ModelGroup
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.provider.ImageBudget
+import com.neulketing.openthumb.provider.LLMProvider
+import com.neulketing.openthumb.provider.ProviderFactory
+import com.neulketing.openthumb.provider.catalogMaxThinkingLevel
+import com.neulketing.openthumb.provider.effectiveMaxThinkingLevel
+import com.neulketing.openthumb.agent.shell.BashismDetector
+import com.neulketing.openthumb.agent.shell.BashismReminder
+import com.neulketing.openthumb.agent.shell.OnDemandBash
+import com.neulketing.openthumb.sandbox.ExecutionCoordinator
+import com.neulketing.openthumb.terminal.MinisOpenUrlBroker
+import com.neulketing.openthumb.terminal.MinisUrlMarker
+import com.neulketing.openthumb.tools.AgentTools
+import com.neulketing.openthumb.tools.FileEditTool
+import com.neulketing.openthumb.tools.FileReadTool
+import com.neulketing.openthumb.tools.FileWriteTool
+import com.neulketing.openthumb.tools.MemoryTools
+import com.neulketing.openthumb.tools.ReadImageTool
+import com.neulketing.openthumb.tools.ToolExecutionResult
+import com.neulketing.openthumb.offload.OffloadPermissionManager
+import com.neulketing.openthumb.service.SessionActivityTracker
+import com.neulketing.openthumb.service.SessionConcurrencyManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -88,8 +88,8 @@ class ChatViewModel(
     private val providerRepository: ProviderRepository,
     internal val context: Context,
     val memoryRepository: MemoryRepository? = null,
-    val skillRepository: com.neulketing.openblue.data.repository.SkillRepository? = null,
-    val mcpRepository: com.neulketing.openblue.data.repository.MCPRepository? = null,
+    val skillRepository: com.neulketing.openthumb.data.repository.SkillRepository? = null,
+    val mcpRepository: com.neulketing.openthumb.data.repository.MCPRepository? = null,
 ) : ViewModel() {
 
     companion object {
@@ -297,8 +297,8 @@ class ChatViewModel(
             providerRepository: ProviderRepository,
             appContext: Context,
             memoryRepository: MemoryRepository?,
-            skillRepository: com.neulketing.openblue.data.repository.SkillRepository?,
-            mcpRepository: com.neulketing.openblue.data.repository.MCPRepository? = null,
+            skillRepository: com.neulketing.openthumb.data.repository.SkillRepository?,
+            mcpRepository: com.neulketing.openthumb.data.repository.MCPRepository? = null,
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -315,7 +315,7 @@ class ChatViewModel(
         }
     }
 
-    private val mediaStore = com.neulketing.openblue.data.storage.MediaStore(context)
+    private val mediaStore = com.neulketing.openthumb.data.storage.MediaStore(context)
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
@@ -807,13 +807,13 @@ class ChatViewModel(
      * conversation history untouched — only the on-disk entry and the
      * op-log row are mutated.
      */
-    fun revokeMemoryRecord(record: MemoryToolRecord): com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult {
+    fun revokeMemoryRecord(record: MemoryToolRecord): com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult {
         val repo = memoryRepository
-            ?: return com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult.IOError("Memory not available")
+            ?: return com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult.IOError("Memory not available")
         val written = record.writtenContent
-            ?: return com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult.NotFound
+            ?: return com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult.NotFound
         val result = repo.revokeEntry(written)
-        if (result is com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult.Success) {
+        if (result is com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult.Success) {
             _memoryToolRecords.value = _memoryToolRecords.value - record
         }
         return result
@@ -871,13 +871,13 @@ class ChatViewModel(
     fun replaceMemoryRecord(
         record: MemoryToolRecord,
         newContent: String,
-    ): com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult {
+    ): com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult {
         val repo = memoryRepository
-            ?: return com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult.IOError("Memory not available")
+            ?: return com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult.IOError("Memory not available")
         val old = record.writtenContent
-            ?: return com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult.NotFound
+            ?: return com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult.NotFound
         val result = repo.replaceEntryBody(old, newContent)
-        if (result is com.neulketing.openblue.data.repository.MemoryRepository.EntryMutationResult.Success) {
+        if (result is com.neulketing.openthumb.data.repository.MemoryRepository.EntryMutationResult.Success) {
             _memoryToolRecords.value = _memoryToolRecords.value.map {
                 if (it === record) it.copy(
                     writtenContent = newContent,
@@ -896,7 +896,7 @@ class ChatViewModel(
     // overwrites this with the per-session DB value, which takes
     // precedence — the global pref only applies to drafts.
     internal val _memoryEnabled =
-        MutableStateFlow(com.neulketing.openblue.data.MemoryGlobalPrefs.isGlobalEnabled(context))
+        MutableStateFlow(com.neulketing.openthumb.data.MemoryGlobalPrefs.isGlobalEnabled(context))
     val memoryEnabled: StateFlow<Boolean> = _memoryEnabled.asStateFlow()
 
     internal val _thinkingLevel = MutableStateFlow(ThinkingLevel.OFF)
@@ -929,7 +929,7 @@ class ChatViewModel(
             val entry = entryId?.let { id -> config.modelEntries.find { it.id == id } }
             val instance = entry?.let { e -> config.instances.find { it.id == e.providerInstanceId } }
             instance != null &&
-                instance.providerType == com.neulketing.openblue.data.model.ProviderType.anthropic &&
+                instance.providerType == com.neulketing.openthumb.data.model.ProviderType.anthropic &&
                 instance.customBaseURL.isNullOrBlank()
         }.stateIn(
             viewModelScope,
@@ -939,7 +939,7 @@ class ChatViewModel(
 
     /** [T-android-enhanced-cache] True once the user accepted the one-time warning. */
     fun isEnhancedCacheConfirmed(): Boolean =
-        com.neulketing.openblue.data.EnhancedCachePrefs.isConfirmed(context)
+        com.neulketing.openthumb.data.EnhancedCachePrefs.isConfirmed(context)
 
     /**
      * [T-android-enhanced-cache] Enable Enhanced Cache after the confirmation
@@ -947,7 +947,7 @@ class ChatViewModel(
      * in-memory toggle on.
      */
     fun confirmAndEnableEnhancedCache() {
-        com.neulketing.openblue.data.EnhancedCachePrefs.setConfirmed(context)
+        com.neulketing.openthumb.data.EnhancedCachePrefs.setConfirmed(context)
         _enhancedCacheEnabled.value = true
     }
 
@@ -968,11 +968,11 @@ class ChatViewModel(
      * request-build time, so this flow only drives the menu row + nav badge.
      */
     internal val _fastModeEnabled =
-        MutableStateFlow(com.neulketing.openblue.data.FastModePrefs.isEnabled())
+        MutableStateFlow(com.neulketing.openthumb.data.FastModePrefs.isEnabled())
     val fastModeEnabled: StateFlow<Boolean> = _fastModeEnabled.asStateFlow()
 
     fun setFastModeEnabled(enabled: Boolean) {
-        com.neulketing.openblue.data.FastModePrefs.setEnabled(context, enabled)
+        com.neulketing.openthumb.data.FastModePrefs.setEnabled(context, enabled)
         _fastModeEnabled.value = enabled
     }
 
@@ -996,8 +996,8 @@ class ChatViewModel(
             val entry = entryId?.let { id -> config.modelEntries.find { it.id == id } }
             val instance = entry?.let { e -> config.instances.find { it.id == e.providerInstanceId } }
             val isCodexOAuth = instance != null &&
-                instance.providerType == com.neulketing.openblue.data.model.ProviderType.openAI &&
-                instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth &&
+                instance.providerType == com.neulketing.openthumb.data.model.ProviderType.openAI &&
+                instance.credentialType == com.neulketing.openthumb.data.model.ProviderCredential.oauth &&
                 instance.customBaseURL.isNullOrBlank()
             entry != null && instance != null &&
                 entry.model.id.contains("gpt", ignoreCase = true) &&
@@ -1054,7 +1054,7 @@ class ChatViewModel(
         FileMentionIndex(
             filesDir = java.io.File(context.applicationContext.filesDir, "minis-global"),
             mountsProvider = {
-                com.neulketing.openblue.sandbox.PRootKernel
+                com.neulketing.openthumb.sandbox.PRootKernel
                     .mountEntriesForIndex(context.applicationContext)
             },
         )
@@ -2241,7 +2241,7 @@ class ChatViewModel(
      * resolve boundaries the same way iOS `cachedLatestMarker` does. Refreshed
      * on every compactAll write and on session reload. */
     @Volatile
-    private var _cachedLatestMarker: com.neulketing.openblue.data.db.CompactMarkerEntity? = null
+    private var _cachedLatestMarker: com.neulketing.openthumb.data.db.CompactMarkerEntity? = null
 
     /**
      * Result of a bounded walk-back. `priorIdx` is the agentHistory index
@@ -2579,14 +2579,14 @@ class ChatViewModel(
         viewModelScope.launch {
             canResume.collect { interrupted ->
                 if (interrupted) {
-                    com.neulketing.openblue.service.SessionBadgeStore.push(
+                    com.neulketing.openthumb.service.SessionBadgeStore.push(
                         sessionId,
-                        com.neulketing.openblue.service.SessionBadgeStore.SessionBadgeState.PAUSED,
+                        com.neulketing.openthumb.service.SessionBadgeStore.SessionBadgeState.PAUSED,
                     )
                 } else {
-                    com.neulketing.openblue.service.SessionBadgeStore.remove(
+                    com.neulketing.openthumb.service.SessionBadgeStore.remove(
                         sessionId,
-                        com.neulketing.openblue.service.SessionBadgeStore.SessionBadgeState.PAUSED,
+                        com.neulketing.openthumb.service.SessionBadgeStore.SessionBadgeState.PAUSED,
                     )
                 }
             }
@@ -2596,7 +2596,7 @@ class ChatViewModel(
         // cold start. loadSession() is idempotent (re-checks isSafeMode
         // on entry; sessionLoaded gate prevents double-population), so
         // this is a clean "now finish the work you skipped" hook.
-        com.neulketing.openblue.crash.CrashFrequencyDetector
+        com.neulketing.openthumb.crash.CrashFrequencyDetector
             .registerSafeModeClearedListener {
                 viewModelScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                     runCatching { loadSession() }
@@ -2740,7 +2740,7 @@ class ChatViewModel(
      *  current session so the shared edit-title sheet (reused from the session
      *  list) can be opened from the in-chat title pill. Returns null for
      *  drafts that haven't been persisted yet. */
-    suspend fun loadSessionEntity(): com.neulketing.openblue.data.db.ChatSessionEntity? {
+    suspend fun loadSessionEntity(): com.neulketing.openthumb.data.db.ChatSessionEntity? {
         val sid = realSessionId.ifEmpty { return null }
         return runCatching { chatRepository.getSession(sid) }.getOrNull()
     }
@@ -2896,13 +2896,13 @@ class ChatViewModel(
         // a re-crash loop while the user is staring at the share dialog.
         // The flag clears the moment the dialog closes (share / dismiss /
         // cancel) — see CrashFrequencyDetector.maybeShowOnActivity.
-        if (com.neulketing.openblue.crash.CrashFrequencyDetector.isSafeMode()) {
+        if (com.neulketing.openthumb.crash.CrashFrequencyDetector.isSafeMode()) {
             android.util.Log.w(TAG, "loadSession: safe-mode active, skipping session restore")
             // [T-android-perf-logging] Surface the skip on the Perf timeline
             // too — when a crash_or_stall recovery loop is suspected, this
             // distinguishes "loadSession ran and was slow" from "loadSession
             // was skipped (safe-mode), so the stall is elsewhere".
-            com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+            com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                 sessionId,
                 "loadSession.skipped",
                 "reason=safeMode",
@@ -2917,7 +2917,7 @@ class ChatViewModel(
             // an early-return / exception path.
             val tHangDiagStart = System.currentTimeMillis()
             println("[T-HANG-DIAG] loadSession ENTER session=$sessionId isDraft=$isDraft")
-            com.neulketing.openblue.diagnostics.PerfLongCtx.step(sessionId, "loadSession.enter", "isDraft=$isDraft")
+            com.neulketing.openthumb.diagnostics.PerfLongCtx.step(sessionId, "loadSession.enter", "isDraft=$isDraft")
             try {
             val config = providerRepository.config.value
             _availableGroups.value = config.modelGroups
@@ -3019,25 +3019,25 @@ class ChatViewModel(
             // (#466/#470) — we only move work, not gating.
             val tHangDiagBeforeLoad = System.currentTimeMillis()
             data class LoadedSessionData(
-                val messages: List<com.neulketing.openblue.data.db.MessageEntity>,
+                val messages: List<com.neulketing.openthumb.data.db.MessageEntity>,
                 val ordered: List<ChatMessage>,
                 val llmHistory: List<LLMMessage>,
                 val loadMs: Long,
                 val transformMs: Long,
             )
-            com.neulketing.openblue.diagnostics.PerfLongCtx.step(sessionId, "db.query.begin")
+            com.neulketing.openthumb.diagnostics.PerfLongCtx.step(sessionId, "db.query.begin")
             val loaded = withContext(Dispatchers.IO) {
                 val tIoBeforeLoad = System.currentTimeMillis()
                 val rows = chatRepository.loadMessages(sessionId)
                 val tIoAfterLoad = System.currentTimeMillis()
-                com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                     sessionId,
                     "db.query.end",
                     "count=${rows.size}",
                 )
                 val chatUi = rows.toChatMessages()
                 val tIoAfterTransform = System.currentTimeMillis()
-                com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                     sessionId,
                     "toChatMessages.end",
                     "count=${chatUi.size}",
@@ -3054,7 +3054,7 @@ class ChatViewModel(
                     totalPartsChars += entity.partsJson.length
                     llm.add(entity.toLLMMessage())
                 }
-                com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                     sessionId,
                     "toLLMMessage.end",
                     "count=${llm.size} totalPartsChars=$totalPartsChars",
@@ -3161,7 +3161,7 @@ class ChatViewModel(
             _compactSummary.value = marker?.summary
             _cachedLatestMarker = marker
 
-            com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+            com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                 sessionId,
                 "stateflow.emit.begin",
                 "count=${ordered.size}",
@@ -3236,7 +3236,7 @@ class ChatViewModel(
                     "[T-HANG-DIAG] loadSession EXIT session=$sessionId " +
                         "totalMs=${System.currentTimeMillis() - tHangDiagStart}",
                 )
-                com.neulketing.openblue.diagnostics.PerfLongCtx.step(
+                com.neulketing.openthumb.diagnostics.PerfLongCtx.step(
                     sessionId,
                     "loadSession.exit",
                     "totalMs=${System.currentTimeMillis() - tHangDiagStart}",
@@ -3289,8 +3289,8 @@ class ChatViewModel(
      */
     private suspend fun applyCompactMarkerGraying(
         messages: List<ChatMessage>,
-        marker: com.neulketing.openblue.data.db.CompactMarkerEntity,
-        rawMessages: List<com.neulketing.openblue.data.db.MessageEntity>,
+        marker: com.neulketing.openthumb.data.db.CompactMarkerEntity,
+        rawMessages: List<com.neulketing.openthumb.data.db.MessageEntity>,
         historyDbIds: Set<String>,
     ): List<ChatMessage> {
         // Some legacy rows have empty-string boundaries instead of NULL —
@@ -3311,7 +3311,7 @@ class ChatViewModel(
         // Used when even createdAt fallback fails — better to show no
         // divider than to incorrectly gray live messages.
         var insertIdx = -1
-        var healedMarker: com.neulketing.openblue.data.db.CompactMarkerEntity? = null
+        var healedMarker: com.neulketing.openthumb.data.db.CompactMarkerEntity? = null
 
         // Helper: locate the UI message whose sourceDbIds (or id) contains
         // the given dbId. Matches iOS uiIndexForAnchorRaw, which scans by
@@ -3456,10 +3456,10 @@ class ChatViewModel(
      * Mirrors iOS AIChatViewModel+Compaction.swift:125.
      */
     private fun anchorByCreatedAt(
-        rawMessages: List<com.neulketing.openblue.data.db.MessageEntity>,
+        rawMessages: List<com.neulketing.openthumb.data.db.MessageEntity>,
         markerCreatedAt: Long,
         historyDbIds: Set<String>,
-    ): com.neulketing.openblue.data.db.MessageEntity? {
+    ): com.neulketing.openthumb.data.db.MessageEntity? {
         return rawMessages.lastOrNull { raw ->
             raw.createdAt < markerCreatedAt &&
                 (historyDbIds.isEmpty() || raw.id in historyDbIds)
@@ -3476,10 +3476,10 @@ class ChatViewModel(
      * Mirrors iOS AIChatViewModel+Compaction.swift:150.
      */
     private fun rewriteMarkerForHeal(
-        original: com.neulketing.openblue.data.db.CompactMarkerEntity,
-        newAnchor: com.neulketing.openblue.data.db.MessageEntity,
-        lastRaw: com.neulketing.openblue.data.db.MessageEntity?,
-    ): com.neulketing.openblue.data.db.CompactMarkerEntity {
+        original: com.neulketing.openthumb.data.db.CompactMarkerEntity,
+        newAnchor: com.neulketing.openthumb.data.db.MessageEntity,
+        lastRaw: com.neulketing.openthumb.data.db.MessageEntity?,
+    ): com.neulketing.openthumb.data.db.CompactMarkerEntity {
         // Legacy sort-order fallback writes a past-end sentinel so any
         // hypothetical v1 reader sees "everything compacted, nothing
         // kept" (graceful degradation, no overlap with live tail).
@@ -3839,7 +3839,7 @@ class ChatViewModel(
     /**
      * Convert a staged share file (under filesDir/share_extension/) into
      * an [InputAttachment] and add it to the composer. Called by
-     * ChatScreen when draining a [com.neulketing.openblue.share.PendingShare].
+     * ChatScreen when draining a [com.neulketing.openthumb.share.PendingShare].
      */
     fun addAttachmentFromStagedShare(file: java.io.File): InputAttachment? {
         if (!file.exists()) return null
@@ -3882,7 +3882,7 @@ class ChatViewModel(
      * [T-android-rerun-from-tool-block-position] Resolve the live UI assistant
      * bubble id that currently owns the tool block with [blockId] (== its
      * tool_use id). Returns null when no live bubble holds it. Used by the
-     * debug RPC ([com.neulketing.openblue.debug.HeadlessChatRunner.rerunFromToolBlock])
+     * debug RPC ([com.neulketing.openthumb.debug.HeadlessChatRunner.rerunFromToolBlock])
      * because the in-memory bubble id is a volatile `assistant_<ts>` runtime id
      * (not the DB row id a caller would read from `chat.messages.list`), so the
      * harness can't supply it directly.
@@ -4266,19 +4266,19 @@ class ChatViewModel(
     ): Boolean {
         var provider = initialProvider
         // Refresh OAuth token if needed
-        if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+        if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
             try {
                 val activeEntryId = _activeEntryId.value
                 val entry = activeEntryId?.let { id -> providerRepository.config.value.modelEntries.find { it.id == id } }
                 val instance = entry?.let { e -> providerRepository.config.value.instances.find { it.id == e.providerInstanceId } }
                 if (instance != null) {
-                    val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                    val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                     val freshToken = manager?.validAccessToken()
                     if (freshToken != null) {
                         val storedKey = providerRepository.loadApiKey(instance.id)
                         if (freshToken != storedKey) {
                             providerRepository.saveApiKey(instance.id, freshToken)
-                            provider = com.neulketing.openblue.provider.ProviderFactory.create(
+                            provider = com.neulketing.openthumb.provider.ProviderFactory.create(
                                 instance, freshToken, currentModel ?: provider.model, context
                             )
                             currentProvider = provider
@@ -4291,8 +4291,8 @@ class ChatViewModel(
         }
 
         val baseSystemPrompt = buildSystemPrompt()
-        val systemPrompt = if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
-            val prefix = com.neulketing.openblue.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
+        val systemPrompt = if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+            val prefix = com.neulketing.openthumb.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
             if (baseSystemPrompt?.startsWith(prefix) == true) baseSystemPrompt
             else "$prefix\n\n${baseSystemPrompt ?: ""}"
         } else baseSystemPrompt
@@ -4308,7 +4308,7 @@ class ChatViewModel(
                 val activeFallbackStrategy = run {
                     val groupId = _selectedGroupId.value
                     groupId?.let { providerRepository.config.value.modelGroups.find { g -> g.id == it }?.fallbackStrategy }
-                        ?: com.neulketing.openblue.data.model.FallbackStrategy.default
+                        ?: com.neulketing.openthumb.data.model.FallbackStrategy.default
                 }
                 val fallbackProviders = buildFallbackProviders(launchedProvider)
                 try {
@@ -4714,7 +4714,7 @@ class ChatViewModel(
         provider: LLMProvider,
         systemPrompt: String?,
         fallbackProviders: List<LLMProvider>,
-        fallbackStrategy: com.neulketing.openblue.data.model.FallbackStrategy,
+        fallbackStrategy: com.neulketing.openthumb.data.model.FallbackStrategy,
     ) {
         while (_promptQueue.value.isNotEmpty()) {
             val queued = _promptQueue.value
@@ -4921,20 +4921,20 @@ class ChatViewModel(
             ))
 
             // Refresh OAuth token if needed before sending (mirrors iOS validAccessToken)
-            if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+            if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
                 try {
                     val activeEntryId = _activeEntryId.value
                     val entry = activeEntryId?.let { id -> providerRepository.config.value.modelEntries.find { it.id == id } }
                     val instance = entry?.let { e -> providerRepository.config.value.instances.find { it.id == e.providerInstanceId } }
                     if (instance != null) {
-                        val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                        val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                         val freshToken = manager?.validAccessToken()
                         if (freshToken != null) {
                             val storedKey = providerRepository.loadApiKey(instance.id)
                             if (freshToken != storedKey) {
                                 providerRepository.saveApiKey(instance.id, freshToken)
                                 // Recreate provider with fresh token
-                                provider = com.neulketing.openblue.provider.ProviderFactory.create(
+                                provider = com.neulketing.openthumb.provider.ProviderFactory.create(
                                     instance, freshToken, currentModel ?: provider.model, context
                                 )
                                 currentProvider = provider
@@ -4950,8 +4950,8 @@ class ChatViewModel(
             // Build system prompt
             // Anthropic OAuth requires the Claude Code prefix in the system prompt
             val baseSystemPrompt = buildSystemPrompt()
-            val systemPrompt = if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
-                val prefix = com.neulketing.openblue.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
+            val systemPrompt = if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+                val prefix = com.neulketing.openthumb.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
                 if (baseSystemPrompt?.startsWith(prefix) == true) baseSystemPrompt
                 else "$prefix\n\n${baseSystemPrompt ?: ""}"
             } else baseSystemPrompt
@@ -4970,7 +4970,7 @@ class ChatViewModel(
                     val activeFallbackStrategy = run {
                         val groupId = _selectedGroupId.value
                         groupId?.let { providerRepository.config.value.modelGroups.find { g -> g.id == it }?.fallbackStrategy }
-                            ?: com.neulketing.openblue.data.model.FallbackStrategy.default
+                            ?: com.neulketing.openthumb.data.model.FallbackStrategy.default
                     }
 
                     // Build full fallback provider list upfront (mirrors iOS triedEntries approach)
@@ -5269,13 +5269,13 @@ class ChatViewModel(
             }
 
             // Refresh OAuth token if needed
-            if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+            if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
                 try {
                     val activeEntryId = _activeEntryId.value
                     val entry = activeEntryId?.let { id -> providerRepository.config.value.modelEntries.find { it.id == id } }
                     val instance = entry?.let { e -> providerRepository.config.value.instances.find { it.id == e.providerInstanceId } }
                     if (instance != null) {
-                        val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                        val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                         val freshToken = manager?.validAccessToken()
                         if (freshToken != null) {
                             val storedKey = providerRepository.loadApiKey(instance.id)
@@ -5292,8 +5292,8 @@ class ChatViewModel(
             }
 
             val baseSystemPrompt = buildSystemPrompt()
-            val systemPrompt = if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
-                val prefix = com.neulketing.openblue.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
+            val systemPrompt = if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+                val prefix = com.neulketing.openthumb.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
                 if (baseSystemPrompt?.startsWith(prefix) == true) baseSystemPrompt
                 else "$prefix\n\n${baseSystemPrompt ?: ""}"
             } else baseSystemPrompt
@@ -5309,7 +5309,7 @@ class ChatViewModel(
                     val activeFallbackStrategy = run {
                         val groupId = _selectedGroupId.value
                         groupId?.let { providerRepository.config.value.modelGroups.find { g -> g.id == it }?.fallbackStrategy }
-                            ?: com.neulketing.openblue.data.model.FallbackStrategy.default
+                            ?: com.neulketing.openthumb.data.model.FallbackStrategy.default
                     }
                     val fallbackProviders = buildFallbackProviders(provider)
                     try {
@@ -5456,7 +5456,7 @@ class ChatViewModel(
     private fun unwrapFlowException(e: Throwable): Throwable {
         var cause: Throwable? = e
         while (cause != null) {
-            if (cause is com.neulketing.openblue.data.model.LLMError) return cause
+            if (cause is com.neulketing.openthumb.data.model.LLMError) return cause
             cause = cause.cause
         }
         return e
@@ -5498,7 +5498,7 @@ class ChatViewModel(
     // Mirrors iOS `AIChatViewModel.swift`:
     //   - estimateContextTokens()        (line 7451)
     //   - offloadContextIfNeeded()       (line 7481)
-    // Per-tool writers live in [com.neulketing.openblue.data.ContextOffload].
+    // Per-tool writers live in [com.neulketing.openthumb.data.ContextOffload].
     //
     // The agent loop calls [offloadContextIfNeeded] once per turn just before
     // the next API call. When token usage crosses the policy threshold, large
@@ -5780,7 +5780,7 @@ class ChatViewModel(
         provider: LLMProvider,
         systemPrompt: String?,
         fallbackProviders: List<LLMProvider> = emptyList(),
-        fallbackStrategy: com.neulketing.openblue.data.model.FallbackStrategy = com.neulketing.openblue.data.model.FallbackStrategy.default,
+        fallbackStrategy: com.neulketing.openthumb.data.model.FallbackStrategy = com.neulketing.openthumb.data.model.FallbackStrategy.default,
     ) {
         AppLogger.info(TAG_STREAM, "runAgentLoop ENTER provider=${provider.javaClass.simpleName} historySize=${agentHistory.size}")
         // [T-android-queued-message-interrupt-on-toolclose] `assistantId` is
@@ -6015,7 +6015,7 @@ class ChatViewModel(
                     // choke point every turn passes through, regardless of how
                     // currentProvider was (re)assigned by the fallback loop.
                     // Non-Anthropic providers ignore it (cast fails silently).
-                    (currentProvider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)
+                    (currentProvider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)
                         ?.enhancedCache = _enhancedCacheEnabled.value
                     // Route through effectiveAgentHistory() so a populated
                     // [_compactSummary] is prepended as a `<context-summary>`
@@ -6375,15 +6375,15 @@ class ChatViewModel(
                 } catch (e: Exception) {
                     if (e is CancellationException && e.cause == null) throw e  // real job cancellation
                     val actual = unwrapFlowException(e)
-                    val isRateLimit = actual is com.neulketing.openblue.data.model.LLMError.RateLimited
-                    val is5xx = actual is com.neulketing.openblue.data.model.LLMError.ProviderError &&
+                    val isRateLimit = actual is com.neulketing.openthumb.data.model.LLMError.RateLimited
+                    val is5xx = actual is com.neulketing.openthumb.data.model.LLMError.ProviderError &&
                         actual.detail.contains(Regex("[5][0-9]{2}"))
                     // Auto-retry on transient network/5xx/transient errors on the SAME provider
                     // before considering a fallback (mirrors iOS streamWithAutoRetry).
                     // Rate limits are provider-level signals that should trigger fallback immediately,
                     // not retry on the same provider.
-                    val isTransient = actual is com.neulketing.openblue.data.model.LLMError.NetworkError ||
-                        actual is com.neulketing.openblue.data.model.LLMError.TransientError ||
+                    val isTransient = actual is com.neulketing.openthumb.data.model.LLMError.NetworkError ||
+                        actual is com.neulketing.openthumb.data.model.LLMError.TransientError ||
                         is5xx
                     if (isTransient && retryAttempt < AUTO_RETRY_DELAYS_SEC.size) {
                         val delaySec = AUTO_RETRY_DELAYS_SEC[retryAttempt]
@@ -6464,12 +6464,12 @@ class ChatViewModel(
                     // flash of the stale banner.
                     withContext(Dispatchers.Main) { clearInlineError() }
                     val shouldFallback = isRateLimit || is5xx ||
-                        fallbackStrategy == com.neulketing.openblue.data.model.FallbackStrategy.always
+                        fallbackStrategy == com.neulketing.openthumb.data.model.FallbackStrategy.always
                     val next = if (shouldFallback) remainingFallbacks.removeFirstOrNull() else null
                     if (next != null) {
                         val reason = when {
                             isRateLimit -> "Rate limited"
-                            actual is com.neulketing.openblue.data.model.LLMError.ProviderError -> actual.detail
+                            actual is com.neulketing.openthumb.data.model.LLMError.ProviderError -> actual.detail
                             else -> actual.message ?: "Error"
                         }
                         // [T-android-model-indicator-flash-on-endpoint-retry]
@@ -6556,7 +6556,7 @@ class ChatViewModel(
                             if (fallbackReasons.isNotEmpty() || skipped.isNotEmpty()) {
                                 val trail = (fallbackReasons + skipped).joinToString("\n")
                                 val finalDesc = actual.message ?: actual.toString()
-                                throw com.neulketing.openblue.data.model.LLMError.ProviderError("$trail\n$finalDesc")
+                                throw com.neulketing.openthumb.data.model.LLMError.ProviderError("$trail\n$finalDesc")
                             }
                         }
                         throw actual  // re-throw unwrapped, all fallbacks exhausted
@@ -6736,7 +6736,7 @@ class ChatViewModel(
                 // Mutates `args` in place; downstream argsStr and preflight see
                 // the repaired payload. Mirrors iOS repairToolArgs in
                 // AIChatViewModel.swift.
-                val repairs = com.neulketing.openblue.provider.ToolJsonRepair.repair(
+                val repairs = com.neulketing.openthumb.provider.ToolJsonRepair.repair(
                     name, args, toolInputChunkRings[id]?.lastOrNull(), agentTools,
                 )
                 if (repairs.isNotEmpty()) {
@@ -6899,10 +6899,10 @@ class ChatViewModel(
                     // SUCCESS / TIMEOUT / FAILED result instead of
                     // text-sniffing the stale "Running: foo" status.
                     val toolOutcome = when (finalStatus) {
-                        ToolBlockStatus.SUCCESS -> com.neulketing.openblue.service.ToolOutcome.Success
-                        ToolBlockStatus.TIMEOUT -> com.neulketing.openblue.service.ToolOutcome.Timeout
-                        ToolBlockStatus.FAILED -> com.neulketing.openblue.service.ToolOutcome.Error
-                        else -> com.neulketing.openblue.service.ToolOutcome.Unknown
+                        ToolBlockStatus.SUCCESS -> com.neulketing.openthumb.service.ToolOutcome.Success
+                        ToolBlockStatus.TIMEOUT -> com.neulketing.openthumb.service.ToolOutcome.Timeout
+                        ToolBlockStatus.FAILED -> com.neulketing.openthumb.service.ToolOutcome.Error
+                        else -> com.neulketing.openthumb.service.ToolOutcome.Unknown
                     }
                     SessionActivityTracker.clearToolRunning(toolOutcome)
                     android.util.Log.d("ToolChain[VM]", "[turn=$turn] block[$blockIdx] status→$finalStatus title=${result.toolTitle} contentLen=${finalContent.length}")
@@ -7349,7 +7349,7 @@ class ChatViewModel(
             // contain a secret that escaped masking. The user-visible streamed
             // content (toolBlocks above) is intentionally left unmasked.
             val finalOutput = "$output$exitInfo"
-            val (redactedOut, redactHits) = com.neulketing.openblue.data.EnvVarRedactor.redactIfEnabled(finalOutput)
+            val (redactedOut, redactHits) = com.neulketing.openthumb.data.EnvVarRedactor.redactIfEnabled(finalOutput)
             if (redactHits > 0) {
                 android.util.Log.i("EnvVarRedact", "shell_execute: masked $redactHits env-var value(s) in tool result")
             }
@@ -7945,7 +7945,7 @@ class ChatViewModel(
         // has no personality body, identitySection() returns the identity
         // sentence with its original single trailing space — the full
         // assembled prompt then matches the pre-SOUL prompt byte-for-byte.
-        val identitySection = com.neulketing.openblue.agent.SystemPromptBuilder.identitySection(context)
+        val identitySection = com.neulketing.openthumb.agent.SystemPromptBuilder.identitySection(context)
         // [T-memory-toggle-gates-injection-and-tools-android] Mirror the iOS
         // gate: when memory is disabled for this session, replace the
         // "memory_write / memory_get" tool bullets and the "Memory system:"
@@ -8521,7 +8521,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
     }
 
     private fun buildMediaRefPartJson(
-        ref: com.neulketing.openblue.data.model.MediaRef,
+        ref: com.neulketing.openthumb.data.model.MediaRef,
         linuxPath: String? = null,
     ): String {
         val value = JSONObject()
@@ -8814,9 +8814,9 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         // and proceed with the stale token so the request's own 401 flows into
         // the existing error/fallback handling. runBlocking is safe here — this
         // is only reached from the suspend agent loop on a background thread.
-        if (instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth) {
+        if (instance.credentialType == com.neulketing.openthumb.data.model.ProviderCredential.oauth) {
             try {
-                val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                 val freshToken = kotlinx.coroutines.runBlocking { manager?.validAccessToken() }
                 if (freshToken != null && freshToken != apiKey) {
                     providerRepository.saveApiKey(instance.id, freshToken)
@@ -8889,7 +8889,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         // Cancelled so the overlay's glyph reflects the actual end
         // state (⊘) instead of carrying over the prior tool's outcome.
         publishOverlayReplyExcerpt(activeSessionId)
-        SessionActivityTracker.clearToolRunning(com.neulketing.openblue.service.ToolOutcome.Cancelled)
+        SessionActivityTracker.clearToolRunning(com.neulketing.openthumb.service.ToolOutcome.Cancelled)
         SessionActivityTracker.setInactive(activeSessionId)
         if (isDraft && realSessionId.isNotEmpty() && activeSessionId != sessionId) {
             SessionActivityTracker.setInactive(sessionId)
@@ -8952,19 +8952,19 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
             var provider: LLMProvider = initialProvider
 
             // Refresh OAuth token if needed (mirrors sendMessage L2477-2501).
-            if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+            if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
                 try {
                     val activeEntryId = _activeEntryId.value
                     val entry = activeEntryId?.let { id -> providerRepository.config.value.modelEntries.find { it.id == id } }
                     val instance = entry?.let { e -> providerRepository.config.value.instances.find { it.id == e.providerInstanceId } }
                     if (instance != null) {
-                        val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                        val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                         val freshToken = manager?.validAccessToken()
                         if (freshToken != null) {
                             val storedKey = providerRepository.loadApiKey(instance.id)
                             if (freshToken != storedKey) {
                                 providerRepository.saveApiKey(instance.id, freshToken)
-                                provider = com.neulketing.openblue.provider.ProviderFactory.create(
+                                provider = com.neulketing.openthumb.provider.ProviderFactory.create(
                                     instance, freshToken, currentModel ?: provider.model, context
                                 )
                                 currentProvider = provider
@@ -8977,8 +8977,8 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
             }
 
             val baseSystemPrompt = buildSystemPrompt()
-            val systemPrompt = if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
-                val prefix = com.neulketing.openblue.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
+            val systemPrompt = if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+                val prefix = com.neulketing.openthumb.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
                 if (baseSystemPrompt?.startsWith(prefix) == true) baseSystemPrompt
                 else "$prefix\n\n${baseSystemPrompt ?: ""}"
             } else baseSystemPrompt
@@ -9001,7 +9001,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
                     val activeFallbackStrategy = run {
                         val groupId = _selectedGroupId.value
                         groupId?.let { providerRepository.config.value.modelGroups.find { g -> g.id == it }?.fallbackStrategy }
-                            ?: com.neulketing.openblue.data.model.FallbackStrategy.default
+                            ?: com.neulketing.openthumb.data.model.FallbackStrategy.default
                     }
                     val fallbackProviders = buildFallbackProviders(provider)
 
@@ -9246,8 +9246,8 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
         viewModelScope.launch {
             val baseSystemPrompt = buildSystemPrompt()
             val systemPrompt =
-                if ((provider as? com.neulketing.openblue.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
-                    val prefix = com.neulketing.openblue.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
+                if ((provider as? com.neulketing.openthumb.provider.anthropic.AnthropicProvider)?.isOAuth == true) {
+                    val prefix = com.neulketing.openthumb.auth.ClaudeOAuthManager.ANTHROPIC_OAUTH_IDENTIFIER_PROMPT
                     if (baseSystemPrompt?.startsWith(prefix) == true) baseSystemPrompt
                     else "$prefix\n\n${baseSystemPrompt ?: ""}"
                 } else baseSystemPrompt
@@ -9264,7 +9264,7 @@ Scheduled tasks: crontab / at / nohup loops will stop when the app is suspended,
                         val groupId = _selectedGroupId.value
                         groupId?.let {
                             providerRepository.config.value.modelGroups.find { g -> g.id == it }?.fallbackStrategy
-                        } ?: com.neulketing.openblue.data.model.FallbackStrategy.default
+                        } ?: com.neulketing.openthumb.data.model.FallbackStrategy.default
                     }
                     val fallbackProviders = buildFallbackProviders(provider)
                     try {

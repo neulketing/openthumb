@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui
+package com.neulketing.openthumb.ui
 
 import org.junit.Assert.assertTrue
 import org.junit.Test

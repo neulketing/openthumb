@@ -1,11 +1,11 @@
-package com.neulketing.openblue.debug
+package com.neulketing.openthumb.debug
 
 import android.content.Context
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.data.db.MessageEntity
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.service.SessionActivityTracker
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.data.db.MessageEntity
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.service.SessionActivityTracker
 import org.json.JSONArray
 import org.json.JSONObject
 

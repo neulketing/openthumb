@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import android.net.Uri
 import android.widget.Toast
@@ -46,9 +46,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,8 +157,8 @@ fun ProviderListScreen(
                         // instances always show the gray dot even after a
                         // successful sign-in or manual token paste.
                         val isConfigured = if (instance.credentialType ==
-                            com.neulketing.openblue.data.model.ProviderCredential.oauth) {
-                            val mgr = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                            com.neulketing.openthumb.data.model.ProviderCredential.oauth) {
+                            val mgr = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                             mgr?.isAuthenticated() == true
                         } else {
                             !apiKey.isNullOrBlank()

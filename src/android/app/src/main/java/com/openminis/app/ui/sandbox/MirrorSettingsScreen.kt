@@ -1,6 +1,6 @@
-package com.neulketing.openblue.ui.sandbox
+package com.neulketing.openthumb.ui.sandbox
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 
 import android.content.Context
 import android.content.SharedPreferences

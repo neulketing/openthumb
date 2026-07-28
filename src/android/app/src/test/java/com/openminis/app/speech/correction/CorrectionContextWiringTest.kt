@@ -1,7 +1,7 @@
-package com.neulketing.openblue.speech.correction
+package com.neulketing.openthumb.speech.correction
 
-import com.neulketing.openblue.ui.chat.AssistantBlock
-import com.neulketing.openblue.ui.chat.ChatMessage
+import com.neulketing.openthumb.ui.chat.AssistantBlock
+import com.neulketing.openthumb.ui.chat.ChatMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -1,6 +1,6 @@
-package com.neulketing.openblue.ui.browser
+package com.neulketing.openthumb.ui.browser
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
@@ -75,10 +75,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.neulketing.openblue.browser.BrowserHistoryStore
-import com.neulketing.openblue.browser.BrowserTabPool
-import com.neulketing.openblue.browser.UserAgentProfile
-import com.neulketing.openblue.ui.chat.StandardChatSheet
+import com.neulketing.openthumb.browser.BrowserHistoryStore
+import com.neulketing.openthumb.browser.BrowserTabPool
+import com.neulketing.openthumb.browser.UserAgentProfile
+import com.neulketing.openthumb.ui.chat.StandardChatSheet
 import kotlinx.coroutines.launch
 
 /**

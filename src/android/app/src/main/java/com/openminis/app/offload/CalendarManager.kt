@@ -1,4 +1,4 @@
-package com.neulketing.openblue.offload
+package com.neulketing.openthumb.offload
 
 import android.Manifest
 import android.content.ContentValues

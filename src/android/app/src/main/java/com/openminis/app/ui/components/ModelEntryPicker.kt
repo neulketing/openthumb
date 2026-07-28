@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.components
+package com.neulketing.openthumb.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,17 +34,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.ModelEntry
-import com.neulketing.openblue.data.model.ProviderInstance
-import com.neulketing.openblue.data.model.ProviderType
-import com.neulketing.openblue.data.model.SystemVoiceEntries
-import com.neulketing.openblue.data.model.hasAudioInput
-import com.neulketing.openblue.data.model.hasAudioOutput
-import com.neulketing.openblue.data.model.normalizeModalities
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.ModelEntry
+import com.neulketing.openthumb.data.model.ProviderInstance
+import com.neulketing.openthumb.data.model.ProviderType
+import com.neulketing.openthumb.data.model.SystemVoiceEntries
+import com.neulketing.openthumb.data.model.hasAudioInput
+import com.neulketing.openthumb.data.model.hasAudioOutput
+import com.neulketing.openthumb.data.model.normalizeModalities
 
 /**
  * [T-android-provider-voice] First-class modality scoping for the shared

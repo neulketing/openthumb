@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.db
+package com.neulketing.openthumb.data.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 /**
  * Per-row provider instance, mirroring iOS ProviderConfigDB. Maps
- * 1:1 to [com.neulketing.openblue.data.model.ProviderInstance]; every
+ * 1:1 to [com.neulketing.openthumb.data.model.ProviderInstance]; every
  * field that ProviderInstance carries locally MUST have a column
  * here (credentials excluded — those live in EncryptedSharedPreferences).
  */

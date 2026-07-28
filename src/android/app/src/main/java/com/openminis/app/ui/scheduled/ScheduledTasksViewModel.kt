@@ -1,11 +1,11 @@
-package com.neulketing.openblue.ui.scheduled
+package com.neulketing.openthumb.ui.scheduled
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.neulketing.openblue.scheduled.ScheduledTask
-import com.neulketing.openblue.scheduled.ScheduledTaskManager
+import com.neulketing.openthumb.scheduled.ScheduledTask
+import com.neulketing.openthumb.scheduled.ScheduledTaskManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 class ScheduledTasksViewModel(private val appContext: Context) : ViewModel() {
 
     private val manager = ScheduledTaskManager(appContext)
-    private val app get() = appContext as com.neulketing.openblue.MinisApp
+    private val app get() = appContext as com.neulketing.openthumb.MinisApp
 
     /** Exposed for the editor's ModelPickerSheet — read-only access to the
      *  same ProviderRepository the chat screen uses. */
@@ -139,7 +139,7 @@ class ScheduledTasksViewModel(private val appContext: Context) : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             _runNowState.value = RunNowState(taskId = task.id, status = RunStatus.RUNNING)
             val sid = runCatching {
-                com.neulketing.openblue.scheduled.ScheduledAgentRunner.run(
+                com.neulketing.openthumb.scheduled.ScheduledAgentRunner.run(
                     appContext, task, waitForCompletion = false,
                 )
             }.getOrNull()

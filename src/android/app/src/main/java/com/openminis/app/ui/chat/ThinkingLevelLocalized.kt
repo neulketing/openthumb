@@ -1,8 +1,8 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import android.content.Context
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.model.ThinkingLevel
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.model.ThinkingLevel
 
 /**
  * Localized display name for [ThinkingLevel]. The data-layer

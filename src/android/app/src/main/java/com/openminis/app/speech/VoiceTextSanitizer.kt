@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech
+package com.neulketing.openthumb.speech
 
 /**
  * [T-android-voice-text-sanitizer] Cleans a text unit before it is handed to

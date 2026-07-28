@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,10 +50,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.MCPRepository
-import com.neulketing.openblue.ui.components.DialogTextField
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.MCPRepository
+import com.neulketing.openthumb.ui.components.DialogTextField
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 /**
  * MCP Integrations management screen. Mirrors [SkillsManagementScreen]:
@@ -69,7 +69,7 @@ fun MCPIntegrationsScreen(
     // [T-mcp-env-var-picker-android] App env vars, for the STDIO env field's
     // "insert app var" picker ($$VAR references resolve at runtime in PRoot).
     // Null when the caller hasn't wired it — the picker affordance hides.
-    envVarRepository: com.neulketing.openblue.data.repository.EnvVarRepository? = null,
+    envVarRepository: com.neulketing.openthumb.data.repository.EnvVarRepository? = null,
 ) {
     val servers by mcpRepository.servers.collectAsState()
 
@@ -213,7 +213,7 @@ fun MCPIntegrationsScreen(
 @Composable
 private fun MCPAddSheet(
     mcpRepository: MCPRepository,
-    envVarRepository: com.neulketing.openblue.data.repository.EnvVarRepository?,
+    envVarRepository: com.neulketing.openthumb.data.repository.EnvVarRepository?,
     editServer: MCPRepository.MCPServerConfig?,
     onDismiss: () -> Unit,
     onRequestDelete: () -> Unit,
@@ -275,7 +275,7 @@ private fun MCPAddSheet(
 @Composable
 private fun MCPFormTab(
     mcpRepository: MCPRepository,
-    envVarRepository: com.neulketing.openblue.data.repository.EnvVarRepository?,
+    envVarRepository: com.neulketing.openthumb.data.repository.EnvVarRepository?,
     editServer: MCPRepository.MCPServerConfig?,
     onDone: () -> Unit,
     onRequestDelete: () -> Unit,
@@ -286,7 +286,7 @@ private fun MCPFormTab(
     val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
     // [T-mcp-env-var-picker-android] App env var keys for the STDIO env picker.
     val appEnvEntries by (envVarRepository?.entries
-        ?.collectAsState() ?: remember { mutableStateOf(emptyList<com.neulketing.openblue.data.repository.EnvVarRepository.EnvVarEntry>()) })
+        ?.collectAsState() ?: remember { mutableStateOf(emptyList<com.neulketing.openthumb.data.repository.EnvVarRepository.EnvVarEntry>()) })
     val appEnvKeys = remember(appEnvEntries) { appEnvEntries.map { it.key } }
     var showEnvVarPicker by remember { mutableStateOf(false) }
     // [T-mcp-http-headers-env-picker-android] Same $$VAR picker offered on the
@@ -323,7 +323,7 @@ private fun MCPFormTab(
     var oauthClientSecret by remember {
         mutableStateOf(
             editServer?.id?.let {
-                com.neulketing.openblue.mcp.oauth.MCPOAuthStore.clientSecret(context, it)
+                com.neulketing.openthumb.mcp.oauth.MCPOAuthStore.clientSecret(context, it)
             } ?: "",
         )
     }
@@ -333,14 +333,14 @@ private fun MCPFormTab(
     var oauthAuthorized by remember {
         mutableStateOf(
             editServer?.id?.let {
-                com.neulketing.openblue.mcp.oauth.MCPOAuthStore.isAuthorized(context, it)
+                com.neulketing.openthumb.mcp.oauth.MCPOAuthStore.isAuthorized(context, it)
             } ?: false,
         )
     }
     var oauthBusy by remember { mutableStateOf(false) }
 
-    fun currentOAuthConfig(): com.neulketing.openblue.mcp.oauth.MCPOAuthConfig? {
-        val cfg = com.neulketing.openblue.mcp.oauth.MCPOAuthConfig(
+    fun currentOAuthConfig(): com.neulketing.openthumb.mcp.oauth.MCPOAuthConfig? {
+        val cfg = com.neulketing.openthumb.mcp.oauth.MCPOAuthConfig(
             clientId = oauthClientId.trim(),
             authorizationEndpoint = oauthAuthEndpoint.trim(),
             tokenEndpoint = oauthTokenEndpoint.trim(),
@@ -502,7 +502,7 @@ private fun MCPFormTab(
                             onClick = {
                                 val sid = name.trim()
                                 if (sid.isNotEmpty()) {
-                                    com.neulketing.openblue.mcp.oauth.MCPOAuthStore.signOut(context, sid)
+                                    com.neulketing.openthumb.mcp.oauth.MCPOAuthStore.signOut(context, sid)
                                     oauthAuthorized = false
                                 }
                             },
@@ -530,16 +530,16 @@ private fun MCPFormTab(
                                     errorText = null
                                     // Persist the secret so the token exchange can
                                     // read it; harmless if the flow is cancelled.
-                                    com.neulketing.openblue.mcp.oauth.MCPOAuthStore.setClientSecret(
+                                    com.neulketing.openthumb.mcp.oauth.MCPOAuthStore.setClientSecret(
                                         context, sid, oauthClientSecret.trim().ifBlank { null },
                                     )
                                     oauthBusy = true
                                     oauthScope.launch {
-                                        val result = com.neulketing.openblue.mcp.oauth.MCPOAuthController(context)
+                                        val result = com.neulketing.openthumb.mcp.oauth.MCPOAuthController(context)
                                             .authorize(sid, url.trim(), cfg)
                                         oauthBusy = false
                                         when (result) {
-                                            is com.neulketing.openblue.mcp.oauth.MCPOAuthController.Result.Success -> {
+                                            is com.neulketing.openthumb.mcp.oauth.MCPOAuthController.Result.Success -> {
                                                 oauthAuthorized = true
                                                 android.widget.Toast.makeText(
                                                     context,
@@ -547,8 +547,8 @@ private fun MCPFormTab(
                                                     android.widget.Toast.LENGTH_SHORT,
                                                 ).show()
                                             }
-                                            is com.neulketing.openblue.mcp.oauth.MCPOAuthController.Result.Cancelled -> {}
-                                            is com.neulketing.openblue.mcp.oauth.MCPOAuthController.Result.Failed -> {
+                                            is com.neulketing.openthumb.mcp.oauth.MCPOAuthController.Result.Cancelled -> {}
+                                            is com.neulketing.openthumb.mcp.oauth.MCPOAuthController.Result.Failed -> {
                                                 errorText = result.message
                                             }
                                         }
@@ -725,7 +725,7 @@ private fun MCPFormTab(
                 // store (keyed by server id) — it never goes into servers.json.
                 // Cleared when the OAuth section is emptied.
                 if (isUrlTransport) {
-                    com.neulketing.openblue.mcp.oauth.MCPOAuthStore.setClientSecret(
+                    com.neulketing.openthumb.mcp.oauth.MCPOAuthStore.setClientSecret(
                         context, server.id,
                         if (server.oauth != null) oauthClientSecret.trim().ifBlank { null } else null,
                     )

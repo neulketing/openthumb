@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import android.content.Context
 import android.content.Intent
@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -91,7 +91,7 @@ fun LogManagementScreen(
     // "logs"; a `?tab=config-audit` deep-link query lands users straight
     // on the audit list. Mirrors iOS LogManagementView.
     val initialTab = remember {
-        com.neulketing.openblue.deeplink.DeepLinkCoordinator.consumePendingLogsTab() ?: "logs"
+        com.neulketing.openthumb.deeplink.DeepLinkCoordinator.consumePendingLogsTab() ?: "logs"
     }
     var tab by remember { mutableStateOf(initialTab) }
 

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.navigation
+package com.neulketing.openthumb.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.CubicBezierEasing
@@ -15,10 +15,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.neulketing.openblue.deeplink.DeepLinkAction
-import com.neulketing.openblue.deeplink.DeepLinkCoordinator
-import com.neulketing.openblue.ui.settings.KEY_LAUNCH_SESSION
-import com.neulketing.openblue.ui.settings.getAppearancePrefs
+import com.neulketing.openthumb.deeplink.DeepLinkAction
+import com.neulketing.openthumb.deeplink.DeepLinkCoordinator
+import com.neulketing.openthumb.ui.settings.KEY_LAUNCH_SESSION
+import com.neulketing.openthumb.ui.settings.getAppearancePrefs
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.compose.ui.window.DialogProperties
@@ -27,56 +27,56 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.ui.chat.ChatScreen
-import com.neulketing.openblue.ui.sessions.SessionListScreen
-import com.neulketing.openblue.ui.settings.AboutScreen
-import com.neulketing.openblue.ui.settings.AddAgentLoopGroupsScreen
-import com.neulketing.openblue.ui.settings.AddAgentLoopModelsScreen
-import com.neulketing.openblue.ui.settings.AddCustomModelScreen
-import com.neulketing.openblue.ui.settings.BackgroundSettingsScreen
-import com.neulketing.openblue.ui.settings.AddModelsToGroupScreen
-import com.neulketing.openblue.ui.settings.ShadowVoiceDetailScreen
-import com.neulketing.openblue.ui.settings.AddProviderScreen
-import com.neulketing.openblue.ui.settings.ModelEntryDetailScreen
-import com.neulketing.openblue.ui.settings.ModelGroupDetailScreen
-import com.neulketing.openblue.ui.settings.ModelGroupsScreen
-import com.neulketing.openblue.ui.settings.ProviderDetailScreen
-import com.neulketing.openblue.ui.settings.ProviderListScreen
-import com.neulketing.openblue.ui.sandbox.FileBrowserScreen
-import com.neulketing.openblue.ui.sandbox.FileBrowserViewModel
-import com.neulketing.openblue.ui.sandbox.FileItem
-import com.neulketing.openblue.ui.sandbox.FilePreviewScreen
-import com.neulketing.openblue.ui.sandbox.RootfsManagementScreen
-import com.neulketing.openblue.ui.settings.EnvironmentVariablesScreen
-import com.neulketing.openblue.ui.settings.AppearanceScreen
-import com.neulketing.openblue.ui.settings.SettingsScreen
-import com.neulketing.openblue.ui.settings.SystemPermissionsScreen
-import com.neulketing.openblue.ui.settings.SessionStorageDetailScreen
-import com.neulketing.openblue.ui.settings.SkillDetailScreen
-import com.neulketing.openblue.ui.settings.StorageManagementScreen
-import com.neulketing.openblue.ui.settings.SkillFileViewerScreen
-import com.neulketing.openblue.ui.settings.UsageStatsScreen
-import com.neulketing.openblue.ui.settings.MinisSkillsBrowserScreen
-import com.neulketing.openblue.ui.settings.MountDetailScreen
-import com.neulketing.openblue.ui.settings.MountedFoldersScreen
-import com.neulketing.openblue.ui.settings.SharedFolderDetailScreen
-import com.neulketing.openblue.ui.settings.SharedFoldersScreen
-import com.neulketing.openblue.ui.settings.SkillsManagementScreen
-import com.neulketing.openblue.data.repository.EnvVarRepository
-import com.neulketing.openblue.data.repository.MemoryRepository
-import com.neulketing.openblue.data.repository.SkillRepository
-import com.neulketing.openblue.ui.settings.LogDetailScreen
-import com.neulketing.openblue.ui.settings.LogManagementScreen
-import com.neulketing.openblue.ui.settings.MemoryFileEditScreen
-import com.neulketing.openblue.ui.settings.MemoryManagementScreen
-import com.neulketing.openblue.ui.settings.OffloadPermissionScreen
-import com.neulketing.openblue.ui.settings.ShizukuPermissionScreen
-import com.neulketing.openblue.sandbox.RootfsManager
-import com.neulketing.openblue.sandbox.TerminalSession
-import com.neulketing.openblue.ui.terminal.TerminalScreen
-import com.neulketing.openblue.ui.onboarding.OnboardingModelSelectionScreen
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.ui.chat.ChatScreen
+import com.neulketing.openthumb.ui.sessions.SessionListScreen
+import com.neulketing.openthumb.ui.settings.AboutScreen
+import com.neulketing.openthumb.ui.settings.AddAgentLoopGroupsScreen
+import com.neulketing.openthumb.ui.settings.AddAgentLoopModelsScreen
+import com.neulketing.openthumb.ui.settings.AddCustomModelScreen
+import com.neulketing.openthumb.ui.settings.BackgroundSettingsScreen
+import com.neulketing.openthumb.ui.settings.AddModelsToGroupScreen
+import com.neulketing.openthumb.ui.settings.ShadowVoiceDetailScreen
+import com.neulketing.openthumb.ui.settings.AddProviderScreen
+import com.neulketing.openthumb.ui.settings.ModelEntryDetailScreen
+import com.neulketing.openthumb.ui.settings.ModelGroupDetailScreen
+import com.neulketing.openthumb.ui.settings.ModelGroupsScreen
+import com.neulketing.openthumb.ui.settings.ProviderDetailScreen
+import com.neulketing.openthumb.ui.settings.ProviderListScreen
+import com.neulketing.openthumb.ui.sandbox.FileBrowserScreen
+import com.neulketing.openthumb.ui.sandbox.FileBrowserViewModel
+import com.neulketing.openthumb.ui.sandbox.FileItem
+import com.neulketing.openthumb.ui.sandbox.FilePreviewScreen
+import com.neulketing.openthumb.ui.sandbox.RootfsManagementScreen
+import com.neulketing.openthumb.ui.settings.EnvironmentVariablesScreen
+import com.neulketing.openthumb.ui.settings.AppearanceScreen
+import com.neulketing.openthumb.ui.settings.SettingsScreen
+import com.neulketing.openthumb.ui.settings.SystemPermissionsScreen
+import com.neulketing.openthumb.ui.settings.SessionStorageDetailScreen
+import com.neulketing.openthumb.ui.settings.SkillDetailScreen
+import com.neulketing.openthumb.ui.settings.StorageManagementScreen
+import com.neulketing.openthumb.ui.settings.SkillFileViewerScreen
+import com.neulketing.openthumb.ui.settings.UsageStatsScreen
+import com.neulketing.openthumb.ui.settings.MinisSkillsBrowserScreen
+import com.neulketing.openthumb.ui.settings.MountDetailScreen
+import com.neulketing.openthumb.ui.settings.MountedFoldersScreen
+import com.neulketing.openthumb.ui.settings.SharedFolderDetailScreen
+import com.neulketing.openthumb.ui.settings.SharedFoldersScreen
+import com.neulketing.openthumb.ui.settings.SkillsManagementScreen
+import com.neulketing.openthumb.data.repository.EnvVarRepository
+import com.neulketing.openthumb.data.repository.MemoryRepository
+import com.neulketing.openthumb.data.repository.SkillRepository
+import com.neulketing.openthumb.ui.settings.LogDetailScreen
+import com.neulketing.openthumb.ui.settings.LogManagementScreen
+import com.neulketing.openthumb.ui.settings.MemoryFileEditScreen
+import com.neulketing.openthumb.ui.settings.MemoryManagementScreen
+import com.neulketing.openthumb.ui.settings.OffloadPermissionScreen
+import com.neulketing.openthumb.ui.settings.ShizukuPermissionScreen
+import com.neulketing.openthumb.sandbox.RootfsManager
+import com.neulketing.openthumb.sandbox.TerminalSession
+import com.neulketing.openthumb.ui.terminal.TerminalScreen
+import com.neulketing.openthumb.ui.onboarding.OnboardingModelSelectionScreen
 
 // T342: Material 3 motion easing curves. Compose-Material3 (1.3.x) ships
 // `MotionScheme` only in 1.4-alpha; mirror the spec values directly so we
@@ -213,7 +213,7 @@ fun AppNavigation(
     providerRepository: ProviderRepository,
     envVarRepository: EnvVarRepository? = null,
     skillRepository: SkillRepository? = null,
-    mcpRepository: com.neulketing.openblue.data.repository.MCPRepository? = null,
+    mcpRepository: com.neulketing.openthumb.data.repository.MCPRepository? = null,
     memoryRepository: MemoryRepository? = null,
     navController: NavHostController = rememberNavController(),
     initialDeepLink: DeepLinkAction? = null,
@@ -227,7 +227,7 @@ fun AppNavigation(
     // saw the change because PRootKernel.mountedFoldersStore pointed at
     // the application-scoped singleton in MinisApp.
     val mountedFoldersStore = remember {
-        (context.applicationContext as com.neulketing.openblue.MinisApp).mountedFoldersStore
+        (context.applicationContext as com.neulketing.openthumb.MinisApp).mountedFoldersStore
     }
 
     // Handle initial deep link after composition
@@ -305,7 +305,7 @@ fun AppNavigation(
         val hasDeepLink = initialDeepLink != null && initialDeepLink !is DeepLinkAction.Unknown
         if (hasDeepLink) return@LaunchedEffect
         val hasPendingShare =
-            com.neulketing.openblue.share.ShareCoordinator.bufferVersion.value > 0
+            com.neulketing.openthumb.share.ShareCoordinator.bufferVersion.value > 0
         val rawMode = getAppearancePrefs(context).getInt(KEY_LAUNCH_SESSION, 0)
         // Hang-detector circuit breaker: if the previous launches racked up
         // ≥3 main-thread hangs, force mode = 3 (home) so we don't reopen
@@ -330,9 +330,9 @@ fun AppNavigation(
         // moment the user has ANY non-crash_or_stall cycle (clean_exit /
         // silent_kill / first_launch) — see LaunchCycleBeacon.lastRestartCount.
         val mode = if (
-            com.neulketing.openblue.diagnostics.HangDetector.shouldForceHomeOnLaunch(context) ||
-            com.neulketing.openblue.crash.CrashFrequencyDetector.shouldForceHomeOnLaunch(context) ||
-            com.neulketing.openblue.diagnostics.LaunchCycleBeacon.shouldForceHomeOnLaunch()
+            com.neulketing.openthumb.diagnostics.HangDetector.shouldForceHomeOnLaunch(context) ||
+            com.neulketing.openthumb.crash.CrashFrequencyDetector.shouldForceHomeOnLaunch(context) ||
+            com.neulketing.openthumb.diagnostics.LaunchCycleBeacon.shouldForceHomeOnLaunch()
         ) 3 else rawMode
         val autoThresholdMs = 15L * 60 * 1000
         val target: String? = when {
@@ -377,7 +377,7 @@ fun AppNavigation(
     // fresh chat so ChatScreen's existing LaunchedEffect(shareBufferVersion)
     // can drain it. The drain itself is idempotent: consumeBuffer is one-shot,
     // so a ChatScreen already in the backstack won't double-inject.
-    val shareBufferVersion by com.neulketing.openblue.share.ShareCoordinator.bufferVersion.collectAsState()
+    val shareBufferVersion by com.neulketing.openthumb.share.ShareCoordinator.bufferVersion.collectAsState()
     LaunchedEffect(shareBufferVersion) {
         if (shareBufferVersion == 0) return@LaunchedEffect
         val current = navController.currentDestination?.route ?: return@LaunchedEffect
@@ -612,9 +612,9 @@ fun AppNavigation(
                     val rootfs = RootfsManager.getInstance(ctx.applicationContext)
                     val hostPath = java.io.File(rootfs.rootfsDir, "var/minis/$folderId")
                     val label = when (folderId) {
-                        "shared" -> ctx.getString(com.neulketing.openblue.R.string.shared_folder_name_shared)
-                        "skills" -> ctx.getString(com.neulketing.openblue.R.string.shared_folder_name_skills)
-                        "memory" -> ctx.getString(com.neulketing.openblue.R.string.shared_folder_name_memory)
+                        "shared" -> ctx.getString(com.neulketing.openthumb.R.string.shared_folder_name_shared)
+                        "skills" -> ctx.getString(com.neulketing.openthumb.R.string.shared_folder_name_skills)
+                        "memory" -> ctx.getString(com.neulketing.openthumb.R.string.shared_folder_name_memory)
                         else -> folderId
                     }
                     FilePreviewHolder.fileBrowserViewModel = FileBrowserViewModel(
@@ -1091,7 +1091,7 @@ fun AppNavigation(
         // [T-mcp-integration-android] MCP Integrations management screen.
         composable(Routes.MCP) {
             if (mcpRepository != null) {
-                com.neulketing.openblue.ui.settings.MCPIntegrationsScreen(
+                com.neulketing.openthumb.ui.settings.MCPIntegrationsScreen(
                     mcpRepository = mcpRepository,
                     onBack = { navController.safePopBackStack() },
                     envVarRepository = envVarRepository,
@@ -1101,7 +1101,7 @@ fun AppNavigation(
 
         // [T-soul-md] SOUL.md editor.
         composable(Routes.SOUL) {
-            com.neulketing.openblue.ui.settings.SoulSettingsScreen(
+            com.neulketing.openthumb.ui.settings.SoulSettingsScreen(
                 onBack = { navController.safePopBackStack() },
             )
         }
@@ -1202,7 +1202,7 @@ fun AppNavigation(
 
         // [T-android-scheduled-tasks-design] Scheduled tasks list + editor.
         composable(Routes.SCHEDULED_TASKS) {
-            com.neulketing.openblue.ui.scheduled.ScheduledTasksScreen(
+            com.neulketing.openthumb.ui.scheduled.ScheduledTasksScreen(
                 onBack = { navController.safePopBackStack() },
                 onEditTask = { taskId ->
                     navController.safeNavigate(Routes.scheduledTaskEdit(taskId))
@@ -1221,7 +1221,7 @@ fun AppNavigation(
             arguments = listOf(navArgument("taskId") { type = NavType.StringType }),
         ) { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
-            com.neulketing.openblue.ui.scheduled.ScheduledTaskRunsScreen(
+            com.neulketing.openthumb.ui.scheduled.ScheduledTaskRunsScreen(
                 taskId = taskId,
                 onBack = { navController.safePopBackStack() },
                 onOpenSession = { sessionId ->
@@ -1240,7 +1240,7 @@ fun AppNavigation(
             ),
         ) { backStackEntry ->
             val taskId = backStackEntry.arguments?.getString("taskId")
-            com.neulketing.openblue.ui.scheduled.ScheduledTaskEditScreen(
+            com.neulketing.openthumb.ui.scheduled.ScheduledTaskEditScreen(
                 taskId = taskId,
                 onBack = { navController.safePopBackStack() },
                 onOpenSession = { sessionId ->

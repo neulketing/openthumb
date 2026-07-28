@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.db
+package com.neulketing.openthumb.data.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

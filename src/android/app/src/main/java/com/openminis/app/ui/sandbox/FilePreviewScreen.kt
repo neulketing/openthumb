@@ -1,6 +1,6 @@
-package com.neulketing.openblue.ui.sandbox
+package com.neulketing.openthumb.ui.sandbox
 
-import com.neulketing.openblue.R
+import com.neulketing.openthumb.R
 import androidx.compose.ui.res.stringResource
 import android.content.ContentValues
 import android.content.Context
@@ -77,18 +77,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.FileProvider
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.ui.components.rememberIosBounceOverscrollEffect
-import com.neulketing.openblue.ui.markdown.MarkdownText
-import com.neulketing.openblue.ui.chat.StreamingMarkdownText
-import com.neulketing.openblue.ui.media.InlineAudioPlayer
-import com.neulketing.openblue.ui.media.InlineVideoPlayer
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.ui.components.rememberIosBounceOverscrollEffect
+import com.neulketing.openthumb.ui.markdown.MarkdownText
+import com.neulketing.openthumb.ui.chat.StreamingMarkdownText
+import com.neulketing.openthumb.ui.media.InlineAudioPlayer
+import com.neulketing.openthumb.ui.media.InlineVideoPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.OutputStream
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 private const val MAX_TEXT_PREVIEW_BYTES = 512_000 // 500 KB
 
@@ -146,7 +146,7 @@ fun FilePreviewScreen(
         val galleryState = remember(item.file.absolutePath) {
             collectImageGallery(item.file)
         }
-        com.neulketing.openblue.ui.components.ImageGalleryViewer(
+        com.neulketing.openthumb.ui.components.ImageGalleryViewer(
             items = galleryState.first,
             startIndex = galleryState.second,
             onDismiss = onBack,
@@ -433,7 +433,7 @@ private fun MarkdownPreview(item: FileItem) {
         error != null -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(error!!, color = MaterialTheme.colorScheme.error)
         }
-        content != null -> com.neulketing.openblue.ui.chat.MarkdownDocument(
+        content != null -> com.neulketing.openthumb.ui.chat.MarkdownDocument(
             // T285-md: was StreamingMarkdownText inside verticalScroll{}, which
             // composed the full document up-front and stalled the chat-tap →
             // preview transition with main-thread parseInline scans across
@@ -1166,7 +1166,7 @@ private suspend fun saveImageToGallery(context: Context, src: File): Boolean =
  * Build the swipe-able gallery's (items, startIndex) for a tapped image
  * file: enumerate all image siblings in its parent directory (sorted by
  * name, case-insensitive), find the tapped one's index, and wrap them as
- * [com.neulketing.openblue.ui.components.ImageGalleryItem]. Non-image files are
+ * [com.neulketing.openthumb.ui.components.ImageGalleryItem]. Non-image files are
  * filtered by extension here — matches [FileItem.isImageFile].
  *
  * Falls back to a 1-item list (just the tapped file) when the parent dir
@@ -1177,7 +1177,7 @@ private val IMAGE_GALLERY_EXTENSIONS =
 
 private fun collectImageGallery(
     file: java.io.File,
-): Pair<List<com.neulketing.openblue.ui.components.ImageGalleryItem>, Int> {
+): Pair<List<com.neulketing.openthumb.ui.components.ImageGalleryItem>, Int> {
     val parent = file.parentFile
     val siblings = parent?.listFiles()
         ?.filter {
@@ -1189,7 +1189,7 @@ private fun collectImageGallery(
     val startIdx = list.indexOfFirst { it.absolutePath == file.absolutePath }
         .coerceAtLeast(0)
     val items = list.map {
-        com.neulketing.openblue.ui.components.ImageGalleryItem(
+        com.neulketing.openthumb.ui.components.ImageGalleryItem(
             model = it,
             caption = it.name,
         )

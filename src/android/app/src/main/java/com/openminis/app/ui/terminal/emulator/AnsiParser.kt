@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.terminal.emulator
+package com.neulketing.openthumb.ui.terminal.emulator
 
 /** Actions emitted by the parser. */
 sealed class ParsedAction {

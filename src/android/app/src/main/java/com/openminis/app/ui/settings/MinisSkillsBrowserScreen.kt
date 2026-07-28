@@ -1,7 +1,7 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
-import com.neulketing.openblue.R
-import com.neulketing.openblue.ui.components.MinisTextButton
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.ui.components.MinisTextButton
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -53,7 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.data.repository.SkillRepository
+import com.neulketing.openthumb.data.repository.SkillRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -162,16 +162,16 @@ fun MinisSkillsBrowserScreen(
                                 // T234: Google permanently disallows WebView
                                 // for sign-in / OAuth. Hand auth-domain nav
                                 // to Chrome Custom Tab.
-                                if (com.neulketing.openblue.browser.GoogleAuthRouter.shouldRouteExternally(urlStr)) {
+                                if (com.neulketing.openthumb.browser.GoogleAuthRouter.shouldRouteExternally(urlStr)) {
                                     if (urlStr != null) {
-                                        com.neulketing.openblue.browser.GoogleAuthRouter.openInCustomTab(ctx, urlStr)
+                                        com.neulketing.openthumb.browser.GoogleAuthRouter.openInCustomTab(ctx, urlStr)
                                     }
                                     return true
                                 }
                                 // T134: hand off intent:// / market:// /
                                 // tel: / mailto: links to the system so the
                                 // user doesn't see ERR_UNKNOWN_URL_SCHEME.
-                                return com.neulketing.openblue.ui.browser
+                                return com.neulketing.openthumb.ui.browser
                                     .BrowserExternalSchemeHandler
                                     .handle(ctx, request?.url)
                             }

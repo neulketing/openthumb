@@ -1,9 +1,9 @@
-package com.neulketing.openblue.provider.anthropic
+package com.neulketing.openthumb.provider.anthropic
 
 import android.content.Context
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.provider.ModelsDevApi
-import com.neulketing.openblue.provider.applyUserAgentOverride
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.provider.ModelsDevApi
+import com.neulketing.openthumb.provider.applyUserAgentOverride
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull

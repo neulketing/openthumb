@@ -1,12 +1,12 @@
-package com.neulketing.openblue.provider
+package com.neulketing.openthumb.provider
 
-import com.neulketing.openblue.data.model.AgentToolDefinition
-import com.neulketing.openblue.data.model.LLMError
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.LLMModel
-import com.neulketing.openblue.data.model.LLMResponse
-import com.neulketing.openblue.data.model.LLMStreamChunk
-import com.neulketing.openblue.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.model.AgentToolDefinition
+import com.neulketing.openthumb.data.model.LLMError
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.LLMModel
+import com.neulketing.openthumb.data.model.LLMResponse
+import com.neulketing.openthumb.data.model.LLMStreamChunk
+import com.neulketing.openthumb.data.model.ThinkingLevel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 

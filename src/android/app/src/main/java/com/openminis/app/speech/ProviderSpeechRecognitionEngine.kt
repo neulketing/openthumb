@@ -1,4 +1,4 @@
-package com.neulketing.openblue.speech
+package com.neulketing.openthumb.speech
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -6,11 +6,11 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.provider.voice.VoiceInputRequest
-import com.neulketing.openblue.provider.voice.VoiceProvider
-import com.neulketing.openblue.provider.voice.VoiceProviderException
-import com.neulketing.openblue.provider.voice.VoiceProviderFactory
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.provider.voice.VoiceInputRequest
+import com.neulketing.openthumb.provider.voice.VoiceProvider
+import com.neulketing.openthumb.provider.voice.VoiceProviderException
+import com.neulketing.openthumb.provider.voice.VoiceProviderFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

@@ -1,14 +1,14 @@
-package com.neulketing.openblue.scheduled
+package com.neulketing.openthumb.scheduled
 
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.debug.HeadlessChatRunner
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.service.AgentForegroundService
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.debug.HeadlessChatRunner
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.service.AgentForegroundService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -215,7 +215,7 @@ object ScheduledAgentRunner {
                         return null
                     }
                 val title = task.label.ifBlank { "Scheduled task" }
-                val memoryOn = com.neulketing.openblue.data.MemoryGlobalPrefs.isGlobalEnabled(app)
+                val memoryOn = com.neulketing.openthumb.data.MemoryGlobalPrefs.isGlobalEnabled(app)
                 val session = app.chatRepository.createSession(
                     modelId = seedModelId,
                     title = title,

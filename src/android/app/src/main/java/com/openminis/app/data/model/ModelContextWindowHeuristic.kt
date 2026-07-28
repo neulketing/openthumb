@@ -1,4 +1,4 @@
-package com.neulketing.openblue.data.model
+package com.neulketing.openthumb.data.model
 
 /**
  * T-ctxslider 54ab8e93: heuristic context-window inference used by the

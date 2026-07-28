@@ -1,4 +1,4 @@
-package com.neulketing.openblue.deeplink
+package com.neulketing.openthumb.deeplink
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,8 +64,8 @@ object DeepLinkCoordinator {
     /**
      * App-icon quick-action that a freshly-opened ChatScreen should auto-
      * trigger on first compose. Mirrors iOS `pendingChatAction` on
-     * AIChatViewModel. Set by [com.neulketing.openblue.MainActivity] /
-     * [com.neulketing.openblue.ui.navigation.AppNavigation] when the launch
+     * AIChatViewModel. Set by [com.neulketing.openthumb.MainActivity] /
+     * [com.neulketing.openthumb.ui.navigation.AppNavigation] when the launch
      * intent carries `minis://action/voice_chat` or
      * `minis://action/camera_chat`; consumed exactly once by ChatScreen
      * so re-entering the same chat later doesn't fire the action again.

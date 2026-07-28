@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,10 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.data.repository.MCPRepository
-import com.neulketing.openblue.ui.settings.SettingsRow
-import com.neulketing.openblue.ui.settings.SettingsSection
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.data.repository.MCPRepository
+import com.neulketing.openthumb.ui.settings.SettingsRow
+import com.neulketing.openthumb.ui.settings.SettingsSection
 
 private const val MCP_NOTE_TRUNC = 200
 

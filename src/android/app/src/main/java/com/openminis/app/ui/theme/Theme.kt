@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.theme
+package com.neulketing.openthumb.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape

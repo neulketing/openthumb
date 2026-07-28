@@ -1,8 +1,8 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest

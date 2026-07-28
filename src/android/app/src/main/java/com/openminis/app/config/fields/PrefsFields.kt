@@ -1,12 +1,12 @@
-package com.neulketing.openblue.config.fields
+package com.neulketing.openthumb.config.fields
 
 import android.content.SharedPreferences
-import com.neulketing.openblue.config.ConfigAccess
-import com.neulketing.openblue.config.ConfigError
-import com.neulketing.openblue.config.ConfigField
-import com.neulketing.openblue.config.ConfigRisk
-import com.neulketing.openblue.config.ConfigSchema
-import com.neulketing.openblue.config.ConfigValue
+import com.neulketing.openthumb.config.ConfigAccess
+import com.neulketing.openthumb.config.ConfigError
+import com.neulketing.openthumb.config.ConfigField
+import com.neulketing.openthumb.config.ConfigRisk
+import com.neulketing.openthumb.config.ConfigSchema
+import com.neulketing.openthumb.config.ConfigValue
 
 /**
  * Convenience wrappers for the most common backend (SharedPreferences).

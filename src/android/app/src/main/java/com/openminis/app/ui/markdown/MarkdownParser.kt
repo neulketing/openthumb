@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.markdown
+package com.neulketing.openthumb.ui.markdown
 
 /**
  * Lightweight markdown parser that converts raw markdown text into a list of block nodes.

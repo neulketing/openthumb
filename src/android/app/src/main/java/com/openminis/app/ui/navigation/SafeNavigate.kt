@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.navigation
+package com.neulketing.openthumb.ui.navigation
 
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavController

@@ -1,17 +1,17 @@
-package com.neulketing.openblue.ui.sessions
+package com.neulketing.openthumb.ui.sessions
 
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.neulketing.openblue.data.db.ChatSessionEntity
-import com.neulketing.openblue.data.model.LLMMessage
-import com.neulketing.openblue.data.model.ThinkingLevel
-import com.neulketing.openblue.data.repository.ChatRepository
-import com.neulketing.openblue.data.repository.ProviderRepository
-import com.neulketing.openblue.provider.ProviderFactory
-import com.neulketing.openblue.ui.chat.ChatViewModelStore
+import com.neulketing.openthumb.data.db.ChatSessionEntity
+import com.neulketing.openthumb.data.model.LLMMessage
+import com.neulketing.openthumb.data.model.ThinkingLevel
+import com.neulketing.openthumb.data.repository.ChatRepository
+import com.neulketing.openthumb.data.repository.ProviderRepository
+import com.neulketing.openthumb.provider.ProviderFactory
+import com.neulketing.openthumb.ui.chat.ChatViewModelStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -141,7 +141,7 @@ class SessionListViewModel(
         // to the crash burst, we don't want to re-deserialize it before the
         // user has acknowledged the share-logs dialog.
         viewModelScope.launch {
-            if (com.neulketing.openblue.crash.CrashFrequencyDetector.isSafeMode()) {
+            if (com.neulketing.openthumb.crash.CrashFrequencyDetector.isSafeMode()) {
                 android.util.Log.w(
                     TAG,
                     "SessionListVM init: safe-mode active, deferring observeSessions",
@@ -154,7 +154,7 @@ class SessionListViewModel(
                 // once on ON → OFF; after that we start the Flow collector
                 // for the rest of the VM's life.
                 val started = kotlinx.coroutines.CompletableDeferred<Unit>()
-                val unsub = com.neulketing.openblue.crash.CrashFrequencyDetector
+                val unsub = com.neulketing.openthumb.crash.CrashFrequencyDetector
                     .registerSafeModeClearedListener {
                         if (!started.isCompleted) started.complete(Unit)
                     }
@@ -236,7 +236,7 @@ class SessionListViewModel(
                 // [T-android-session-paused-badge] Drop badges for the
                 // deleted session so persisted PAUSED entries don't leak
                 // forever in SharedPreferences.
-                com.neulketing.openblue.service.SessionBadgeStore.clear(it)
+                com.neulketing.openthumb.service.SessionBadgeStore.clear(it)
             }
         }
         clearSelection()
@@ -246,7 +246,7 @@ class SessionListViewModel(
         viewModelScope.launch {
             chatRepository.deleteSession(id)
             ChatViewModelStore.release(id)
-            com.neulketing.openblue.service.SessionBadgeStore.clear(id)
+            com.neulketing.openthumb.service.SessionBadgeStore.clear(id)
         }
     }
 
@@ -300,7 +300,7 @@ class SessionListViewModel(
                     if (firstAssistantText.isNotEmpty()) append("Assistant: $firstAssistantText\n")
                     if (lastUserText.isNotEmpty()) append("User: $lastUserText\n")
                     if (lastAssistantText.isNotEmpty()) append("Assistant: $lastAssistantText\n")
-                    append(com.neulketing.openblue.ui.chat.titleLanguageDirective())
+                    append(com.neulketing.openthumb.ui.chat.titleLanguageDirective())
                 }
 
                 // Build candidate list: session's model first, then all others.
@@ -340,9 +340,9 @@ class SessionListViewModel(
                     var apiKey = providerRepository.loadApiKey(instance.id) ?: continue
 
                     // Refresh OAuth token if needed
-                    if (instance.credentialType == com.neulketing.openblue.data.model.ProviderCredential.oauth) {
+                    if (instance.credentialType == com.neulketing.openthumb.data.model.ProviderCredential.oauth) {
                         try {
-                            val manager = com.neulketing.openblue.auth.OAuthManager.forInstance(context, instance)
+                            val manager = com.neulketing.openthumb.auth.OAuthManager.forInstance(context, instance)
                             val freshToken = manager?.validAccessToken()
                             if (freshToken != null && freshToken != apiKey) {
                                 providerRepository.saveApiKey(instance.id, freshToken)
@@ -383,7 +383,7 @@ class SessionListViewModel(
                             // the auto path via TITLE_GEN_SYSTEM_PROMPT (iOS-aligned
                             // wording). Passed bare — AnthropicProvider handles the
                             // OAuth Claude Code prefix at the provider layer.
-                            systemPrompt = com.neulketing.openblue.ui.chat.TITLE_GEN_SYSTEM_PROMPT,
+                            systemPrompt = com.neulketing.openthumb.ui.chat.TITLE_GEN_SYSTEM_PROMPT,
                             maxTokens = titleMaxTokens,
                             // [T-android-titlegen-temperature] null (not 0.3) so
                             // buildRequestBody omits the field — the gpt-5.x

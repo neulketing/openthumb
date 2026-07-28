@@ -1,9 +1,9 @@
-package com.neulketing.openblue.mcp.oauth
+package com.neulketing.openthumb.mcp.oauth
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.neulketing.openblue.logging.AppLogger
-import com.neulketing.openblue.util.EncryptedPrefsFactory
+import com.neulketing.openthumb.logging.AppLogger
+import com.neulketing.openthumb.util.EncryptedPrefsFactory
 import org.json.JSONObject
 
 /**

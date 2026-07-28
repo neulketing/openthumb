@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.settings
+package com.neulketing.openthumb.ui.settings
 
 import android.widget.Toast
 import android.app.Activity
@@ -36,9 +36,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import com.neulketing.openblue.R
-import com.neulketing.openblue.accessibility.MinisAccessibilityService
-import com.neulketing.openblue.power.PowerOptimizationManager
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.accessibility.MinisAccessibilityService
+import com.neulketing.openthumb.power.PowerOptimizationManager
 import kotlinx.coroutines.delay
 
 /**
@@ -151,7 +151,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
             // because it is a privacy control, matching iOS's Permissions page.
             var correctionEnabled by remember {
                 mutableStateOf(
-                    com.neulketing.openblue.speech.correction.VoiceCorrectionConsent.isEnabled(context),
+                    com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent.isEnabled(context),
                 )
             }
             var showClearCorrectionConfirm by remember { mutableStateOf(false) }
@@ -166,11 +166,11 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                     checked = correctionEnabled,
                     onCheckedChange = { on ->
                         correctionEnabled = on
-                        com.neulketing.openblue.speech.correction.VoiceCorrectionConsent
+                        com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent
                             .setEnabled(context, on)
                         // Turning the toggle off counts as an answer, so the
                         // one-time prompt must not reappear afterwards.
-                        com.neulketing.openblue.speech.correction.VoiceCorrectionConsent
+                        com.neulketing.openthumb.speech.correction.VoiceCorrectionConsent
                             .setPrompted(context, true)
                     },
                 )
@@ -191,7 +191,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                     confirmButton = {
                         TextButton(onClick = {
                             showClearCorrectionConfirm = false
-                            com.neulketing.openblue.speech.correction.VoiceCorrection
+                            com.neulketing.openthumb.speech.correction.VoiceCorrection
                                 .clearAllData(context)
                             Toast.makeText(
                                 context,

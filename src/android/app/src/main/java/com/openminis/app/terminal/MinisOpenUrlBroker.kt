@@ -1,4 +1,4 @@
-package com.neulketing.openblue.terminal
+package com.neulketing.openthumb.terminal
 
 import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow

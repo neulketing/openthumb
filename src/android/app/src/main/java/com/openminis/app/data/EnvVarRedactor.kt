@@ -1,6 +1,6 @@
-package com.neulketing.openblue.data
+package com.neulketing.openthumb.data
 
-import com.neulketing.openblue.data.repository.EnvVarRepository
+import com.neulketing.openthumb.data.repository.EnvVarRepository
 
 /**
  * Masks env-var values that leaked into shell tool output before they
@@ -32,7 +32,7 @@ object EnvVarRedactor {
     /**
      * Static handoff so non-DI call sites (e.g. ShellExecutor on a
      * background coroutine) can reach the repository without plumbing
-     * it through every layer. Set once from [com.neulketing.openblue.MinisApp.onCreate].
+     * it through every layer. Set once from [com.neulketing.openthumb.MinisApp.onCreate].
      */
     @Volatile
     var envVarRepository: EnvVarRepository? = null

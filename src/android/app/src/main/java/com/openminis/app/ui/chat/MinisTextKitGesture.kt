@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.chat
+package com.neulketing.openthumb.ui.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -775,13 +775,13 @@ fun MinisSelectionToolbarHost(
                 fun preview(text: String): String =
                     if (text.length > 40) text.take(37) + "…" else text
 
-                val labelCopy = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_copy)
-                val labelAddToInput = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_add_to_chat_input)
-                val labelCopyMarkdown = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_copy_markdown)
-                val labelCopyRichText = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_copy_rich_text)
-                val labelReadAloud = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_read_aloud)
-                val toastCopiedAsMarkdown = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_copied_as_markdown_toast)
-                val toastCopiedAsRichText = androidx.compose.ui.res.stringResource(com.neulketing.openblue.R.string.selection_copied_as_rich_text_toast)
+                val labelCopy = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_copy)
+                val labelAddToInput = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_add_to_chat_input)
+                val labelCopyMarkdown = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_copy_markdown)
+                val labelCopyRichText = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_copy_rich_text)
+                val labelReadAloud = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_read_aloud)
+                val toastCopiedAsMarkdown = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_copied_as_markdown_toast)
+                val toastCopiedAsRichText = androidx.compose.ui.res.stringResource(com.neulketing.openthumb.R.string.selection_copied_as_rich_text_toast)
                 MinisToolbarButton(label = labelCopy) {
                     val text = controller.selectedPlainText()
                     if (text.isNotEmpty()) {
@@ -789,7 +789,7 @@ fun MinisSelectionToolbarHost(
                         haptics.performHapticFeedback(
                             androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress
                         )
-                        toast(context.getString(com.neulketing.openblue.R.string.selection_copied_toast, preview(text)))
+                        toast(context.getString(com.neulketing.openthumb.R.string.selection_copied_toast, preview(text)))
                     }
                     controller.clearSelection()
                 }

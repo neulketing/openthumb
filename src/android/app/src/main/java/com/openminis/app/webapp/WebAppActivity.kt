@@ -1,4 +1,4 @@
-package com.neulketing.openblue.webapp
+package com.neulketing.openthumb.webapp
 
 import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
@@ -65,10 +65,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewAssetLoader
-import com.neulketing.openblue.MainActivity
-import com.neulketing.openblue.MinisApp
-import com.neulketing.openblue.R
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.MainActivity
+import com.neulketing.openthumb.MinisApp
+import com.neulketing.openthumb.R
+import com.neulketing.openthumb.logging.AppLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -102,7 +102,7 @@ class WebAppActivity : ComponentActivity() {
 
     // T-n01-andmenu-l10n: pre-Tiramisu locale override (see MainActivity).
     override fun attachBaseContext(newBase: android.content.Context) {
-        super.attachBaseContext(com.neulketing.openblue.i18n.LocaleWrap.wrap(newBase))
+        super.attachBaseContext(com.neulketing.openthumb.i18n.LocaleWrap.wrap(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -545,7 +545,7 @@ class WebAppActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_SHORTCUT_ID = "webapp_shortcut_id"
-        const val ACTION_OPEN_WEBAPP = "com.neulketing.openblue.action.OPEN_WEBAPP"
+        const val ACTION_OPEN_WEBAPP = "com.neulketing.openthumb.action.OPEN_WEBAPP"
         const val EXTRA_TARGET_SESSION_ID = "target_session_id"
         private const val ASSET_LOADER_HOST = "appassets.androidplatform.net"
         private const val AUTO_HIDE_MS = 4000L

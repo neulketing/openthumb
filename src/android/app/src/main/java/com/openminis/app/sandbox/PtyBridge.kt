@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 /**
  * JNI bridge to bionic libc's forkpty() + termios + waitpid.

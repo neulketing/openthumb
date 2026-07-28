@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 import android.content.Context
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -145,12 +145,12 @@ class PRootKernelInstrumentedTest {
         }
         PRootKernel.boot(context)
 
-        PRootKernel.addBindMount("/var/minis/workspace", "/data/user/0/com.neulketing.openblue/workspace")
+        PRootKernel.addBindMount("/var/minis/workspace", "/data/user/0/com.neulketing.openthumb/workspace")
 
         val cmd = PRootKernel.buildProotCommand("ls /var/minis/workspace")
 
         // Should contain -b host:linux format
-        val bindStr = "/data/user/0/com.neulketing.openblue/workspace:/var/minis/workspace"
+        val bindStr = "/data/user/0/com.neulketing.openthumb/workspace:/var/minis/workspace"
         assertTrue("Should contain bind mount arg", cmd.contains(bindStr))
     }
 

@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.browser
+package com.neulketing.openthumb.ui.browser
 
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -6,7 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.core.net.toUri
-import com.neulketing.openblue.logging.AppLogger
+import com.neulketing.openthumb.logging.AppLogger
 
 /**
  * Centralized router for non-http(s) URL schemes that show up inside our

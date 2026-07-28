@@ -1,11 +1,11 @@
-package com.neulketing.openblue.i18n
+package com.neulketing.openthumb.i18n
 
 import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 import android.os.LocaleList
-import com.neulketing.openblue.ui.settings.KEY_LANGUAGE
-import com.neulketing.openblue.ui.settings.PREF_APPEARANCE
+import com.neulketing.openthumb.ui.settings.KEY_LANGUAGE
+import com.neulketing.openthumb.ui.settings.PREF_APPEARANCE
 import java.util.Locale
 
 /**

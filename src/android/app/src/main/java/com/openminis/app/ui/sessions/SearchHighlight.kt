@@ -1,4 +1,4 @@
-package com.neulketing.openblue.ui.sessions
+package com.neulketing.openthumb.ui.sessions
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable

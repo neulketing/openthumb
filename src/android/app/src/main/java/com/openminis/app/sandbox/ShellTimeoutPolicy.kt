@@ -1,4 +1,4 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
 /**
  * Choose a shell-execution timeout based on the **command prefix**, matching

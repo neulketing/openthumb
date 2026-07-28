@@ -1,6 +1,6 @@
-package com.neulketing.openblue.config.confirm
+package com.neulketing.openthumb.config.confirm
 
-import com.neulketing.openblue.config.ConfigRisk
+import com.neulketing.openthumb.config.ConfigRisk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch

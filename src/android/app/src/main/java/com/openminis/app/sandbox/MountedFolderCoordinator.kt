@@ -1,6 +1,6 @@
-package com.neulketing.openblue.sandbox
+package com.neulketing.openthumb.sandbox
 
-import com.neulketing.openblue.data.MountedFoldersStore
+import com.neulketing.openthumb.data.MountedFoldersStore
 
 /**
  * Bridges the user-facing [MountedFoldersStore] to the parts of the app

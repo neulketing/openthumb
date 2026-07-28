@@ -1,4 +1,4 @@
-package com.neulketing.openblue.network
+package com.neulketing.openthumb.network
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -6,7 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.util.Log
-import com.neulketing.openblue.sandbox.RootfsManager
+import com.neulketing.openthumb.sandbox.RootfsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

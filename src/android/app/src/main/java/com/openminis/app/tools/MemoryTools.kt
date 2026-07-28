@@ -1,6 +1,6 @@
-package com.neulketing.openblue.tools
+package com.neulketing.openthumb.tools
 
-import com.neulketing.openblue.data.repository.MemoryRepository
+import com.neulketing.openthumb.data.repository.MemoryRepository
 import org.json.JSONArray
 import org.json.JSONObject
 
