@@ -34,14 +34,13 @@ import java.util.concurrent.TimeUnit
 object UpdateChecker {
 
     private const val TAG = "UpdateChecker"
-    private const val OWNER = "OpenMinis"
-    // T133: the public repo is OpenMinis/OpenMinis (org + repo share a name).
-    // Previously pointed at OpenMinis/MinisApp, which is the private dev
-    // mirror — every API call 404'd, which we mistranslated as "no release
-    // published". The 0.1-preview release is published as a prerelease on
-    // OpenMinis/OpenMinis with a MinisApp-*.apk asset attached.
-    private const val REPO = "OpenMinis"
-    private const val DOWNLOAD_FILENAME = "minis-update.apk"
+    // The fork ships its own releases (neulketing/openthumb, OpenThumb-*.apk).
+    // Upstream's MinisApp-*.apk could never install over this package anyway
+    // (different applicationId and signature), and its version numbers don't
+    // share our line — OpenThumb versions independently from 1.0.0.
+    private const val OWNER = "neulketing"
+    private const val REPO = "openthumb"
+    private const val DOWNLOAD_FILENAME = "openthumb-update.apk"
     /**
      * Sub-directory of `filesDir` where we stage downloaded update APKs. We
      * moved off `cacheDir/shared/` (the original location) so the OS can't
@@ -258,7 +257,7 @@ object UpdateChecker {
     }
 
     /** Public so UI can deep-link users to manual download when GitHub is blocked. */
-    const val RELEASES_URL: String = "https://github.com/OpenMinis/OpenMinis/releases"
+    const val RELEASES_URL: String = "https://github.com/neulketing/openthumb/releases"
 
     /** Returns (downloadUrl, sizeBytes) for the first .apk asset, or (null, 0). */
     private fun findApkAsset(assets: JSONArray?): Pair<String?, Long> {
@@ -289,7 +288,7 @@ object UpdateChecker {
     }
 
     /**
-     * Stream the APK from [url] into `${cacheDir}/shared/minis-update.apk`,
+     * Stream the APK from [url] into `filesDir/updates/`,
      * surfacing progress (0..1) through [onProgress] roughly every 64 KiB.
      * Returns the on-disk [File] on success so the caller can hand it to
      * [installApk]. The path is intentionally inside `shared/` because that's
@@ -313,7 +312,7 @@ object UpdateChecker {
             val safeName = versionName
                 ?.replace(Regex("[^A-Za-z0-9._-]"), "_")
                 ?.takeIf { it.isNotEmpty() }
-                ?.let { "minis-$it.apk" }
+                ?.let { "openthumb-$it.apk" }
                 ?: DOWNLOAD_FILENAME
             val outFile = File(outDir, safeName)
             // A previous, possibly-aborted download could leave a stale APK

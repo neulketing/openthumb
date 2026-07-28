@@ -106,6 +106,15 @@ fun AboutScreen(onBack: () -> Unit) {
                 // LocalInAppBrowserLauncher ambient defaults to a no-op when
                 // no InAppBrowserHost is in the tree above this screen — and
                 // nothing wraps Settings, so the row used to be a dead tap.
+                onClick = { openExternalUrl(context, "https://github.com/neulketing/openthumb") },
+                trailing = { ExternalLinkIcon() },
+                showDivider = true,
+            )
+            // Fork attribution (GPL-3.0): credit upstream visibly.
+            SettingsRow(
+                icon = Icons.Outlined.Code,
+                iconColor = tileBlue,
+                title = "Based on OpenMinis (GPL-3.0)",
                 onClick = { openExternalUrl(context, "https://github.com/OpenMinis/OpenMinis") },
                 trailing = { ExternalLinkIcon() },
                 showDivider = false,
