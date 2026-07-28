@@ -27,6 +27,14 @@ data class NotificationTriggerRule(
     /** Minimum seconds between firings of this rule. */
     val cooldownSec: Int = DEFAULT_COOLDOWN_SEC,
     val enabled: Boolean = true,
+    /**
+     * Optional per-rule active window, minutes-of-day local (0..1439).
+     * The rule only fires when the wall clock is inside [activeStartMin,
+     * activeEndMin); a start later than the end wraps past midnight.
+     * null on either side = unbounded.
+     */
+    val activeStartMin: Int? = null,
+    val activeEndMin: Int? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val lastFiredAt: Long? = null,
 ) {
@@ -39,6 +47,8 @@ data class NotificationTriggerRule(
         put("prompt", prompt)
         put("cooldownSec", cooldownSec)
         put("enabled", enabled)
+        if (activeStartMin != null) put("activeStartMin", activeStartMin)
+        if (activeEndMin != null) put("activeEndMin", activeEndMin)
         put("createdAt", createdAt)
         if (lastFiredAt != null) put("lastFiredAt", lastFiredAt)
     }
@@ -54,6 +64,8 @@ data class NotificationTriggerRule(
             prompt = o.optString("prompt"),
             cooldownSec = o.optInt("cooldownSec", DEFAULT_COOLDOWN_SEC),
             enabled = o.optBoolean("enabled", true),
+            activeStartMin = if (o.has("activeStartMin")) o.optInt("activeStartMin") else null,
+            activeEndMin = if (o.has("activeEndMin")) o.optInt("activeEndMin") else null,
             createdAt = o.optLong("createdAt"),
             lastFiredAt = if (o.has("lastFiredAt")) o.optLong("lastFiredAt") else null,
         )
@@ -74,6 +86,26 @@ data class NotificationTriggerRule(
         fun shouldFire(rule: NotificationTriggerRule, nowMs: Long): Boolean {
             val last = rule.lastFiredAt ?: return true
             return nowMs - last >= rule.cooldownSec * 1000L
+        }
+
+        /** Active-window gate: true when [rule] may fire at [nowMs]. */
+        fun withinActiveWindow(rule: NotificationTriggerRule, nowMs: Long): Boolean =
+            isWithinWindow(rule.activeStartMin, rule.activeEndMin, nowMs)
+
+        /**
+         * Shared minutes-of-day window test (per-rule active window and the
+         * global quiet hours). [startMin]/[endMin] are local minutes-of-day;
+         * either may be null (unbounded). A start later than the end wraps
+         * past midnight. Keeps Calendar use in one place so the semantics are
+         * identical everywhere.
+         */
+        fun isWithinWindow(startMin: Int?, endMin: Int?, nowMs: Long): Boolean {
+            if (startMin == null && endMin == null) return true
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = nowMs }
+            val now = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+            val start = startMin ?: 0
+            val end = endMin ?: 24 * 60
+            return if (start <= end) now in start until end else now >= start || now < end
         }
 
         /** Substitute {app} {title} {text} and append the notification block. */

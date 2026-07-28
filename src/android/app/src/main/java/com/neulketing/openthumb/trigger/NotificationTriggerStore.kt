@@ -64,9 +64,29 @@ class NotificationTriggerStore(context: Context) {
         awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
+    // ── Quiet hours (global) ─────────────────────────────────────────────
+    // No rule fires inside the window. Minutes-of-day local; start > end
+    // wraps past midnight. Null end/start = unset (quiet hours off).
+
+    var quietStartMin: Int?
+        get() = if (prefs.contains(KEY_QUIET_START)) prefs.getInt(KEY_QUIET_START, 0) else null
+        set(v) = prefs.edit().apply { if (v == null) remove(KEY_QUIET_START) else putInt(KEY_QUIET_START, v) }.apply()
+
+    var quietEndMin: Int?
+        get() = if (prefs.contains(KEY_QUIET_END)) prefs.getInt(KEY_QUIET_END, 0) else null
+        set(v) = prefs.edit().apply { if (v == null) remove(KEY_QUIET_END) else putInt(KEY_QUIET_END, v) }.apply()
+
+    fun quietHoursEnabled(): Boolean = quietStartMin != null || quietEndMin != null
+
+    fun isQuietNow(nowMs: Long): Boolean =
+        quietHoursEnabled() &&
+            NotificationTriggerRule.isWithinWindow(quietStartMin, quietEndMin, nowMs)
+
     companion object {
         private const val TAG = "NotifTriggerStore"
         private const val PREFS_NAME = "minis_notification_triggers_prefs"
         private const val KEY_RULES = "rules_json"
+        private const val KEY_QUIET_START = "quiet_start_min"
+        private const val KEY_QUIET_END = "quiet_end_min"
     }
 }

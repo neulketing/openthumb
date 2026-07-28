@@ -72,11 +72,17 @@ arrives, the agent runs headlessly on the same path scheduled tasks use — so i
 inherits the foreground service, session handling and completion notice for
 free.
 
-Rules live in **Scheduled tasks → the bell icon**. Four gates keep it from
+Rules live in **Scheduled tasks → the bell icon**. Five gates keep it from
 running away: the app ignores its own notifications (a self-trigger loop would
-never stop), ongoing and group-summary notifications are skipped, each rule has
-a cooldown claimed *before* dispatch so a burst cannot double-fire it, and no
-more than two trigger runs are ever in flight.
+never stop), ongoing and group-summary notifications are skipped, global
+quiet hours suspend everything overnight, each rule has an optional active
+window plus a cooldown claimed *before* dispatch so a burst cannot
+double-fire it, and no more than two trigger runs are ever in flight.
+
+Every firing lands in a run history (the clock icon on the rules screen) —
+the counterpart to scheduled tasks' run records — and the rule editor has a
+**Test** button that fires the prompt immediately with a synthetic
+notification, so a rule can be proven before it is armed.
 
 Requires Notification access, which Android only grants by hand — the rules
 screen links straight to that settings page.

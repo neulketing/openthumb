@@ -99,4 +99,54 @@ class NotificationTriggerRuleTest {
         assertNull(back.lastFiredAt)
         assertEquals(r, back)
     }
+
+    // -- active window ------------------------------------------------------
+
+    private fun atTime(hour: Int, minute: Int): Long =
+        java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, hour)
+            set(java.util.Calendar.MINUTE, minute)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+    @Test
+    fun `null window is always active`() {
+        assertTrue(NotificationTriggerRule.isWithinWindow(null, null, atTime(3, 30)))
+    }
+
+    @Test
+    fun `daytime window contains its hours and excludes others`() {
+        assertTrue(NotificationTriggerRule.isWithinWindow(9 * 60, 18 * 60, atTime(10, 0)))
+        assertFalse(NotificationTriggerRule.isWithinWindow(9 * 60, 18 * 60, atTime(20, 0)))
+    }
+
+    @Test
+    fun `window start is inclusive and end is exclusive`() {
+        assertTrue(NotificationTriggerRule.isWithinWindow(9 * 60, 18 * 60, atTime(9, 0)))
+        assertFalse(NotificationTriggerRule.isWithinWindow(9 * 60, 18 * 60, atTime(18, 0)))
+    }
+
+    @Test
+    fun `overnight window wraps past midnight`() {
+        assertTrue(NotificationTriggerRule.isWithinWindow(22 * 60, 7 * 60, atTime(23, 0)))
+        assertTrue(NotificationTriggerRule.isWithinWindow(22 * 60, 7 * 60, atTime(6, 59)))
+        assertFalse(NotificationTriggerRule.isWithinWindow(22 * 60, 7 * 60, atTime(12, 0)))
+    }
+
+    @Test
+    fun `rule active window goes through the shared window test`() {
+        val r = rule().copy(activeStartMin = 22 * 60, activeEndMin = 7 * 60)
+        assertTrue(NotificationTriggerRule.withinActiveWindow(r, atTime(1, 0)))
+        assertFalse(NotificationTriggerRule.withinActiveWindow(r, atTime(15, 0)))
+    }
+
+    @Test
+    fun `json round-trip preserves the active window`() {
+        val r = rule().copy(activeStartMin = 540, activeEndMin = 1080)
+        val back = NotificationTriggerRule.fromJson(r.toJson())
+        assertEquals(540, back.activeStartMin)
+        assertEquals(1080, back.activeEndMin)
+        assertEquals(r, back)
+    }
 }

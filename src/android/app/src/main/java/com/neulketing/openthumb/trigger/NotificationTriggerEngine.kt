@@ -26,9 +26,16 @@ import java.util.concurrent.atomic.AtomicInteger
  *     (completion, FGS); reacting to them would self-trigger forever.
  *  2. Ongoing/group-summary notifications are ignored (FGS bars, media
  *     players, bundled summaries — noise, not events).
- *  3. Per-rule cooldown ([NotificationTriggerRule.cooldownSec]), claimed
- *     synchronously BEFORE dispatch so a burst can't double-fire a rule.
- *  4. Global in-flight cap [MAX_CONCURRENT_RUNS].
+ *  3. Global quiet hours ([NotificationTriggerStore.isQuietNow]) — no rule
+ *     fires inside the window.
+ *  4. Per-rule active window ([NotificationTriggerRule.withinActiveWindow])
+ *     and cooldown, claimed synchronously BEFORE dispatch so a burst can't
+ *     double-fire a rule.
+ *  5. Global in-flight cap [MAX_CONCURRENT_RUNS].
+ *
+ * Every dispatch is appended to [NotificationTriggerRunStore] once the
+ * runner returns, so the rules screen can show what the phone did on its
+ * own. [testFire] bypasses gates 3-4 for the editor's "test this rule".
  */
 object NotificationTriggerEngine {
 
@@ -37,6 +44,9 @@ object NotificationTriggerEngine {
     // ponytail: global cap of 2 concurrent trigger runs; lift to a queue if
     // real usage ever needs more parallelism.
     private const val MAX_CONCURRENT_RUNS = 2
+
+    /** Synthetic package used for "test this rule" runs in the run log. */
+    const val TEST_PACKAGE = "openthumb.test"
 
     private val inFlight = AtomicInteger(0)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -66,6 +76,7 @@ object NotificationTriggerEngine {
         if (title.isBlank() && text.isBlank()) return
 
         val store = NotificationTriggerStore(context)
+        if (store.isQuietNow(System.currentTimeMillis())) return     // quiet hours
         val candidates = store.all().filter {
             NotificationTriggerRule.matches(it, pkg, title, text)
         }
@@ -82,6 +93,25 @@ object NotificationTriggerEngine {
     }
 
     /**
+     * "Test this rule" from the editor: fire the prompt immediately with a
+     * synthetic notification, bypassing cooldown, quiet hours and the active
+     * window — the point is to see the run, not to respect the schedule.
+     * Recorded in the run log with pkg = [TEST_PACKAGE].
+     */
+    fun testFire(context: Context, rule: NotificationTriggerRule) {
+        if (inFlight.get() >= MAX_CONCURRENT_RUNS) {
+            AppLogger.warning(TAG, "test run for rule ${rule.id} skipped — $MAX_CONCURRENT_RUNS runs in flight")
+            return
+        }
+        dispatch(
+            context, rule,
+            pkg = TEST_PACKAGE,
+            title = "Test notification",
+            text = "This is a manual test of rule \"${rule.label}\".",
+        )
+    }
+
+    /**
      * Cooldown check + lastFiredAt write in one synchronized step, so two
      * notifications arriving back-to-back can't both pass the check.
      * Returns the updated rule when claimed, null when still cooling down.
@@ -93,6 +123,7 @@ object NotificationTriggerEngine {
     ): NotificationTriggerRule? {
         val fresh = store.get(rule.id) ?: return null
         val now = System.currentTimeMillis()
+        if (!NotificationTriggerRule.withinActiveWindow(fresh, now)) return null
         if (!NotificationTriggerRule.shouldFire(fresh, now)) return null
         val claimed = fresh.copy(lastFiredAt = now)
         store.upsert(claimed)
@@ -122,10 +153,21 @@ object NotificationTriggerEngine {
         AppLogger.info(TAG, "rule ${rule.id} fired for $pkg (\"${title.take(40)}\")")
         inFlight.incrementAndGet()
         scope.launch {
+            var ok = false
             try {
-                ScheduledAgentRunner.run(context, task, waitForCompletion = true)
+                ok = ScheduledAgentRunner.run(context, task, waitForCompletion = true) != null
             } finally {
                 inFlight.decrementAndGet()
+                NotificationTriggerRunStore(context).append(
+                    NotificationTriggerRun(
+                        ruleId = rule.id,
+                        ruleLabel = rule.label,
+                        firedAt = System.currentTimeMillis(),
+                        pkg = pkg,
+                        title = title,
+                        ok = ok,
+                    ),
+                )
             }
         }
     }
