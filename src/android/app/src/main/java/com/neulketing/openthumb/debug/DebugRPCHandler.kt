@@ -631,7 +631,7 @@ class DebugRPCHandler(private val context: Context) {
 
     private fun metaObject(): JSONObject {
         return JSONObject().apply {
-            put("app", "MinisApp")
+            put("app", "OpenThumb")
             put("version", BuildConfig.VERSION_NAME)
             put("build", BuildConfig.VERSION_CODE)
             put("device", "${Build.MANUFACTURER} ${Build.MODEL}")

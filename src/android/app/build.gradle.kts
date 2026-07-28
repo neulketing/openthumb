@@ -24,6 +24,11 @@ fun customizationValue(key: String): String =
 
 android {
     namespace = "com.neulketing.openthumb"
+    // Distribution artifacts carry the product name: openthumb-debug.apk /
+    // openthumb-release.aab (CI artifact path references the debug one).
+    base {
+        archivesName.set("openthumb")
+    }
     // [T-android-dynamic-island] Bumped 35→36 so the Android 16 (Baklava)
     // Live Updates APIs — Notification.ProgressStyle, FLAG_PROMOTED_ONGOING,
     // NotificationManager.canPostPromotedNotifications(), setShortCriticalText —
@@ -37,7 +42,10 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 21
-        versionName = "0.21-preview"
+        // Own version line, decoupled from upstream's: OpenThumb 1.0.0 is
+        // OpenMinis 0.20-preview + the fork's changes. Never reuse upstream's
+        // preview numbers — both projects hit 0.21-preview the same week.
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

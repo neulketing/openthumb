@@ -264,7 +264,7 @@ class DebugServer(
         } catch (_: Exception) {
             "?"
         }
-        return """{"app":"MinisApp","platform":"android","version":"$version",""" +
+        return """{"app":"OpenThumb","platform":"android","version":"$version",""" +
             """"rpc":"jsonrpc-2.0","auth":"token-lan","transport":"plaintext",""" +
             """"rpc_path":"/","skill_path":"/skill"}"""
     }
