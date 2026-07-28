@@ -1,0 +1,16 @@
+{
+  "name": "openthumb-sync-worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optional BYO-backend sync for OpenThumb. You deploy it, you own it.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260722.1",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.25.0"
+  }
+}

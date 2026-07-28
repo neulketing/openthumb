@@ -1,0 +1,37 @@
+# OpenThumb sync worker — BYO-backend template.
+#
+# This worker syncs your chats, trigger runs, scheduled tasks, trigger rules
+# and memory to infrastructure YOU own. OpenThumb has no server of its own;
+# this is the optional self-hosted backend you point the app at.
+#
+# Setup steps are in README.md. In short:
+#   1. npx wrangler login
+#   2. npx wrangler d1 create openthumb-sync        -> paste database_id below
+#   3. npx wrangler r2 bucket create openthumb-sync
+#   4. npx wrangler d1 execute openthumb-sync --remote --file=schema.sql
+#   5. openssl rand -hex 32  ->  npx wrangler secret put SYNC_TOKEN
+#   6. npx wrangler deploy
+
+name = "openthumb-sync"
+main = "src/index.ts"
+compatibility_date = "2026-07-28"
+
+# D1 holds item metadata and small payloads.
+# TODO: replace the placeholder with the id printed by `wrangler d1 create`.
+[[d1_databases]]
+binding = "SYNC_DB"
+database_name = "openthumb-sync"
+database_id = "TODO-paste-database-id-here"
+
+# R2 holds payloads larger than 64 KB (D1 row size is limited).
+# The bucket name must match what you passed to `wrangler r2 bucket create`.
+[[r2_buckets]]
+binding = "SYNC_BUCKET"
+bucket_name = "openthumb-sync"
+
+# Auth token. Never put the value in this file — set it with:
+#   npx wrangler secret put SYNC_TOKEN
+# Generate the value yourself with: openssl rand -hex 32
+
+[vars]
+# Non-secret configuration only.
