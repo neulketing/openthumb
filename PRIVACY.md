@@ -19,6 +19,12 @@ Only what you configure it to send:
   agent read, are sent to the AI provider you set up (Anthropic, OpenAI, Google,
   or another). Their privacy policies apply. Your API keys are stored on the
   device and sent only to the matching provider.
+- **Sync (optional, off by default)** — only if you enter the URL and token of
+  a sync server you operate yourself (see `tools/sync-worker/`), the app
+  uploads your trigger rules, trigger run history and scheduled tasks to that
+  server. Chats are not synced in v1. The token is stored on the device and
+  sent only to your server. You can turn sync off or wipe the settings at any
+  time.
 - **The web** — when you ask the agent to browse or call APIs, those requests
   go to those sites, like a browser.
 

@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -82,6 +83,9 @@ fun SettingsScreen(
     // [T-mcp-integration-android] MCP Integrations page, listed directly below
     // Memory. Default no-op for callers that haven't wired the route yet.
     onMcpClick: () -> Unit = {},
+    // [T-thumb-sync-v1] Sync (BYO-backend) page. Default no-op for callers
+    // that haven't wired the route yet.
+    onSyncClick: () -> Unit = {},
     // [T-soul-md] Soul settings page lives between Skills and Memory in the
     // Agent Runtime section; default no-op for callers that haven't wired
     // the route yet.
@@ -210,6 +214,15 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_env_vars),
                     subtitle = stringResource(R.string.settings_env_vars_subtitle),
                     onClick = onEnvVarsClick,
+                )
+                // [T-thumb-sync-v1] Sync — optional BYO-backend, off by default.
+                // Literals match the trigger UI style (no strings.xml entry).
+                SettingsItem(
+                    icon = Icons.Outlined.Sync,
+                    iconColor = Color(0xFF5AC8FA),
+                    title = "Sync",
+                    subtitle = "Back up to your own server",
+                    onClick = onSyncClick,
                     showDivider = false,
                 )
             }

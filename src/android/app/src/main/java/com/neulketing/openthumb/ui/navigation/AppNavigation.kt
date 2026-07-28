@@ -146,6 +146,8 @@ object Routes {
     const val MCP = "mcp"
     /** [T-soul-md] SOUL.md editor. */
     const val SOUL = "soul"
+    /** [T-thumb-sync-v1] BYO-backend sync settings. */
+    const val SYNC = "sync"
     const val MEMORY_FILE_EDIT = "memory_file/{fileName}/{isGlobal}"
     const val PERMISSIONS = "permissions"
     /**
@@ -580,6 +582,7 @@ fun AppNavigation(
                 onTerminalClick = { navController.safeNavigate(Routes.terminal()) },
                 onMemoryClick = { navController.safeNavigate(Routes.MEMORY) },
                 onMcpClick = { navController.safeNavigate(Routes.MCP) },
+                onSyncClick = { navController.safeNavigate(Routes.SYNC) },
                 onSoulClick = { navController.safeNavigate(Routes.SOUL) },
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },
                 onUsageClick = { navController.safeNavigate(Routes.USAGE_STATS) },
@@ -1104,6 +1107,13 @@ fun AppNavigation(
         // [T-soul-md] SOUL.md editor.
         composable(Routes.SOUL) {
             com.neulketing.openthumb.ui.settings.SoulSettingsScreen(
+                onBack = { navController.safePopBackStack() },
+            )
+        }
+
+        // [T-thumb-sync-v1] BYO-backend sync settings.
+        composable(Routes.SYNC) {
+            com.neulketing.openthumb.ui.settings.SyncSettingsScreen(
                 onBack = { navController.safePopBackStack() },
             )
         }
