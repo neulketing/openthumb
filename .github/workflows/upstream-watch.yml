@@ -43,11 +43,11 @@ jobs:
             --title "Upstream ${{ steps.diff.outputs.latest }} released — merge review" \
             --body "OpenMinis/OpenMinis published a new release: **${{ steps.diff.outputs.latest }}** (previous marker: $(cat docs/upstream-last-seen.txt 2>/dev/null || echo none)).
 
-Review what changed upstream, decide merge or skip, then close this issue and commit the updated \`docs/upstream-last-seen.txt\`.
+          Review what changed upstream, decide merge or skip, then close this issue and commit the updated \`docs/upstream-last-seen.txt\`.
 
-https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}
+          https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}
 
-_Filed by .github/workflows/upstream-watch.yml_" \
+          _Filed by .github/workflows/upstream-watch.yml_" \
             --label upstream || gh issue create \
             --title "Upstream ${{ steps.diff.outputs.latest }} released — merge review" \
             --body "OpenMinis/OpenMinis published **${{ steps.diff.outputs.latest }}**. Review for merge. https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}"
