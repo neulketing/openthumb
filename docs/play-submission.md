@@ -20,6 +20,10 @@ proprietors, and 사업자등록증 is the business document verification asks f
 **The business name must match exactly across three places** — Play account,
 사업자등록증, and the D-U-N-S registration — or verification fails.
 
+Play separates the **legal business name** (used for verification) from the
+**public developer name** shown on the store listing, so the listing can read
+`neulketing` while the account is verified against the business entity.
+
 Recommendation: **개인사업자 → organization account.** The tester gate applies
 to every new app on a personal account, not just the first, and a farm-run
 tester pool risks the account itself. D-U-N-S is the long pole, so apply
@@ -118,4 +122,6 @@ collection — the same treatment as a browser.
 - [x] Signed **AAB** built (`bundleRelease`, 20 MB, jarsigner verified)
 - [ ] Screenshots — phone (min 2), on a real device
 - [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
-- [ ] Developer account ($25, owner) — pick type first (see above); D-U-N-S if organization
+- [ ] D-U-N-S number — free via Apple's lookup form (works for non-US
+      businesses; the number is shared with Google). Needs an Apple ID sign-in.
+- [ ] Developer account ($25, owner) — organization type, after D-U-N-S
