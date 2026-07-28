@@ -1,0 +1,69 @@
+name: Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # deps/build_proot.sh needs NDK r28+; the app builds CMake 3.22.1
+  # (src/android/app/build.gradle.kts pins externalNativeBuild.cmake.version).
+  NDK_VERSION: 28.0.13004108
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install NDK and CMake
+        run: |
+          sdkmanager --install "ndk;$NDK_VERSION" "cmake;3.22.1"
+          # build_proot.sh otherwise looks under ~/Library/Android/sdk/ndk (macOS only).
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: Prepare build inputs
+        run: |
+          # -n: never clobber a checked-in file that already has real values.
+          cp -n src/android/app/provider-customization.properties.example \
+                src/android/app/provider-customization.properties || true
+          # stageDebugSkillAssets declares this directory as a task input, and
+          # .claude/ is gitignored, so it does not exist on a fresh checkout.
+          mkdir -p .claude/skills/debug-server
+
+      - name: Build native dependencies
+        run: |
+          ./deps/build_proot.sh
+          ./scripts/prepare_android_sandbox.sh
+
+      - name: Assemble debug APK
+        working-directory: src/android
+        run: ./gradlew :app:assembleDebug
+
+      # Non-blocking for now: upstream ships a large lint backlog and we do not
+      # want a red badge on inherited findings. The reason this step exists is
+      # NewApi regressions — minSdk is 26, and an unguarded API-29+ call
+      # crashes on Android 9 devices at runtime with no build error.
+      - name: Lint
+        continue-on-error: true
+        working-directory: src/android
+        run: ./gradlew :app:lintDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: src/android/app/build/outputs/apk/debug/app-debug.apk

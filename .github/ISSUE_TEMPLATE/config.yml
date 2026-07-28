@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Upstream OpenMinis issues
+    url: https://github.com/OpenMinis/OpenMinis/issues
+    about: >-
+      OpenThumb is a fork. If the problem is not specific to this fork (agent
+      loop, providers, sandbox, UI, iOS), report it upstream — it gets fixed for
+      everyone and flows back here.

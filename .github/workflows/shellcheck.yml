@@ -1,0 +1,22 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Discover by shebang, not extension: tools/openthumb-fleet has no .sh
+      # suffix. Severity is capped at "error" so inherited style findings in
+      # upstream scripts do not block; real breakage still fails the job.
+      - name: Run shellcheck
+        run: shellcheck --severity=error $(grep -rlE '^#!.*\b(ba)?sh\b' scripts tools 2>/dev/null)

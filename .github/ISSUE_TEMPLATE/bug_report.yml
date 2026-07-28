@@ -1,0 +1,70 @@
+name: Bug report
+description: Something in OpenThumb is broken
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        OpenThumb is a fork of
+        [OpenMinis](https://github.com/OpenMinis/OpenMinis). If the bug is not
+        specific to this fork, please report it upstream instead — see
+        CONTRIBUTING.md.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version and API level
+      placeholder: "Android 9 (API 28)"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+      placeholder: "Pixel 6a"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: OpenThumb version
+      description: Settings → About.
+      placeholder: "0.20-preview"
+
+  - type: dropdown
+    id: upstream
+    attributes:
+      label: Does it also happen on upstream OpenMinis?
+      options:
+        - "Yes — reproduces on upstream too"
+        - "No — only on OpenThumb"
+        - "Not tested"
+    validations:
+      required: true
+
+  - type: input
+    id: fleet-size
+    attributes:
+      label: Fleet size
+      description: Only if this involves tools/openthumb-fleet — how many devices?
+      placeholder: "4 devices"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        In-app logs (Settings → Logs), or `adb logcat` output around the
+        failure. A native crash needs the full tombstone / `beginning of crash`
+        block.
+      render: text

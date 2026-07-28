@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest something for OpenThumb
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        OpenThumb is a fork of
+        [OpenMinis](https://github.com/OpenMinis/OpenMinis). General app
+        features belong upstream; this tracker is for fork-specific work such as
+        fleet tooling. See CONTRIBUTING.md.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The situation you are in, not the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Is this fork-specific?
+      options:
+        - "Fork-specific (fleet tooling, OpenThumb build/packaging)"
+        - "General OpenMinis feature — belongs upstream"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you have tried or considered
