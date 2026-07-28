@@ -1,0 +1,4 @@
+• Notification triggers: the agent reacts to matching notifications headlessly — quiet hours, per-rule active windows, test-fire and run history
+• Optional sync to your own server (BYO Cloudflare Worker), off by default
+• Fleet tool: per-device health, result collection, job queue
+• Android 8/9 startup crash fix
