@@ -118,10 +118,25 @@
 
   .phoneCol { grid-column:2; grid-row:1; display:flex; justify-content:center; }
   @media (max-width:900px){ .phoneCol{ grid-column:1; grid-row:2; } }
-  .phone { width:100%; max-width:330px; border:1px solid var(--line); border-radius:36px;
-           background:var(--panel); padding:16px 14px 20px;
-           box-shadow:0 30px 70px -34px rgba(0,0,0,.4); }
-  .notch { width:78px; height:5px; border-radius:99px; background:var(--line); margin:2px auto 18px; }
+  /* Device frame: an outer bezel with an inset screen, so the illustration
+     reads as a phone rather than a floating card. */
+  .phone { width:100%; max-width:330px; border-radius:42px; padding:9px;
+           background:linear-gradient(160deg,#3a3630,#191713);
+           box-shadow:0 34px 80px -34px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.25); }
+  .screen { background:var(--panel); border-radius:34px; padding:0 12px 18px;
+            overflow:hidden; }
+  .statusbar { display:flex; align-items:center; justify-content:space-between;
+               padding:11px 8px 9px; font-size:.68rem; color:var(--dim);
+               font-variant-numeric:tabular-nums; }
+  .statusbar .icons { display:flex; gap:5px; align-items:center; }
+  .statusbar .icons i { display:block; width:11px; height:8px; border-radius:1.5px;
+                        background:var(--dim); opacity:.55; }
+  .statusbar .icons i.bat { width:15px; opacity:.75; }
+  .appbar { display:flex; align-items:center; gap:8px; padding:4px 4px 14px;
+            font-weight:700; font-size:.86rem; }
+  .appbar .dotmark { width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .homebar { width:104px; height:4px; border-radius:99px; background:var(--line);
+             margin:16px auto 2px; }
   .step { opacity:0; transform:translateY(10px) scale(.98);
           transition:opacity .45s ease, transform .45s cubic-bezier(.2,.7,.3,1); }
   .step.on { opacity:1; transform:none; }
@@ -143,6 +158,20 @@
   .agent .li::before { content:""; position:absolute; left:0; top:7px; width:6px; height:6px;
                        border-radius:50%; background:var(--accent); opacity:.6; }
   .cap { text-align:center; font-size:.75rem; color:var(--dim); margin-top:16px; }
+
+
+  /* ── real screenshots (base44's artifact strip) ──────────────── */
+  .shots { display:flex; gap:18px; margin-top:52px; overflow-x:auto; padding:6px 2px 20px;
+           scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
+  .shots figure { flex:0 0 auto; width:212px; scroll-snap-align:center; }
+  .shots img { width:100%; display:block; border-radius:18px; border:1px solid var(--line);
+               background:var(--panel); box-shadow:0 18px 44px -26px rgba(0,0,0,.5);
+               transition:transform .4s cubic-bezier(.2,.7,.3,1); }
+  .shots figure:hover img { transform:translateY(-6px); }
+  .shots figcaption { margin-top:12px; font-size:.8rem; color:var(--dim); text-align:center; }
+  /* stagger the strip like pinned artifacts, flattened on touch */
+  .shots figure:nth-child(even) { transform:translateY(20px); }
+  @media (hover:none){ .shots figure:nth-child(even){ transform:none; } }
 
   /* ── sections ────────────────────────────────────── */
   section.wrap { padding-top:104px; padding-bottom:104px; position:relative; }
@@ -230,6 +259,7 @@
     </span>
     <span class="sp"></span>
     <a class="lnk hide-sm" href="#autonomy">Autonomy</a>
+    <a class="lnk hide-sm" href="#shots">Screens</a>
     <a class="lnk hide-sm" href="#fleet">Fleet</a>
     <a class="lnk hide-sm" href="#start">Get started</a>
     <a class="pill" href="https://github.com/neulketing/openthumb">GitHub</a>
@@ -284,7 +314,12 @@
         <div class="phoneCol">
           <div>
             <div class="phone">
-              <div class="notch"></div>
+             <div class="screen">
+              <div class="statusbar">
+                <span>9:14</span>
+                <span class="icons"><i></i><i></i><i class="bat"></i></span>
+              </div>
+              <div class="appbar"><span class="dotmark"></span> OpenThumb</div>
               <div class="step" data-step="0">
                 <div class="bubble">
                   <div class="from">Messages · 09:14</div>
@@ -303,6 +338,8 @@
                   <div class="li step" data-step="4">Drafted the reply — waiting for your tap to send</div>
                 </div>
               </div>
+              <div class="homebar"></div>
+             </div>
             </div>
             <p class="cap">Illustration of a trigger rule firing — not a screenshot.</p>
           </div>
@@ -355,6 +392,25 @@
       <p>Claude, GPT, Gemini or another provider, under your own API key. Nothing is billed
       through us, because there is no us in the loop.</p>
     </div>
+  </div>
+</section>
+
+<section id="shots" class="wrap">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <h2 class="h2 rv">The app itself.</h2>
+  <p class="sub rv d1">Screenshots from a running build — not mockups. Trigger rules are the
+  part you will not find upstream.</p>
+  <div class="shots rv d2">
+    <figure><img src="shots/notification-triggers.jpg" alt="Notification trigger rules list" loading="lazy" width="540" height="1200">
+      <figcaption>Trigger rules</figcaption></figure>
+    <figure><img src="shots/trigger-rule-editor.jpg" alt="Editing a trigger rule" loading="lazy" width="540" height="1200">
+      <figcaption>Rule editor</figcaption></figure>
+    <figure><img src="shots/chat-tools.jpg" alt="Chat with the tool menu open" loading="lazy" width="540" height="1200">
+      <figcaption>Chat and tools</figcaption></figure>
+    <figure><img src="shots/shell-and-browser.jpg" alt="Shell and browser menu" loading="lazy" width="540" height="1200">
+      <figcaption>Shell and browser</figcaption></figure>
+    <figure><img src="shots/welcome.jpg" alt="Onboarding" loading="lazy" width="540" height="1200">
+      <figcaption>First run</figcaption></figure>
   </div>
 </section>
 
