@@ -131,3 +131,10 @@ collection — the same treatment as a browser.
       **Owner action** — cannot be automated.
 - [ ] Developer account ($25, owner) — organization type, after D-U-N-S.
       **Owner action** — payment + identity verification.
+      **In progress (2026-07-29)**: org signup started as neulketing@gmail.com,
+      steps 완료: account type(company/business) → Android dev ID → developer
+      name "neulketing". Stopped at the payments-profile step: a NEW payments
+      profile must be created for REDACTED with the D-U-N-S number (필수),
+      NOT the existing "퍼그" profile (different entity). The $25 payment
+      comes after. Resume: play.google.com/console/signup continues where it
+      left off once the D-U-N-S arrives.
