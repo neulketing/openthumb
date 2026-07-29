@@ -263,7 +263,6 @@
     <span class="sp"></span>
     <a class="lnk hide-sm" href="#autonomy">Autonomy</a>
     <a class="lnk hide-sm" href="#shots">Screens</a>
-    <a class="lnk hide-sm" href="#fleet">Fleet</a>
     <a class="lnk hide-sm" href="#start">Get started</a>
     <a class="pill" href="https://github.com/neulketing/openthumb">GitHub</a>
   </div>
@@ -425,13 +424,14 @@
 
 <section id="fleet" class="wrap">
   <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <h2 class="h2 rv">One host. Many phones.</h2>
-  <p class="sub rv d1">Every build serves JSON-RPC on device-local <code>127.0.0.1:5321</code>.
-  <code>openthumb-fleet</code> forwards a host port per device over adb and fans one prompt
-  out across all of them.</p>
+  <h2 class="h2 rv">For developers: more than one.</h2>
+  <p class="sub rv d1">OpenThumb is an app for your phone. This part is a lab tool, and you can
+  ignore it. Debug builds serve JSON-RPC on device-local <code>127.0.0.1:5321</code>, so
+  <code>openthumb-fleet</code> can forward a host port per device over adb and drive several
+  test phones from one laptop.</p>
   <div class="term rv d2" id="term">
-    <div class="bar"><i></i><i></i><i></i><span>three Galaxy Note8s, Android 9</span></div>
-<pre><span class="ln"><span class="p">$</span> openthumb-fleet status</span><span class="ln">REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1</span><span class="ln"> </span><span class="ln"><span class="p">$</span> openthumb-fleet prompt <span class="c">"summarise today's notifications"</span></span><span class="ln"><span class="c"># every device, concurrently</span></span></pre>
+    <div class="bar"><i></i><i></i><i></i><span>test devices, Android 9</span></div>
+<pre><span class="ln"><span class="p">$</span> openthumb-fleet status</span><span class="ln">&lt;serial&gt;                 android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">&lt;serial&gt;                 android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">&lt;serial&gt;                 android=9 sdk=28 sandbox=up device=samsung SM-N950U1</span><span class="ln"> </span><span class="ln"><span class="p">$</span> openthumb-fleet prompt <span class="c">"summarise today's notifications"</span></span><span class="ln"><span class="c"># every device, concurrently</span></span></pre>
   </div>
 </section>
 
