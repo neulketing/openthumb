@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -49,6 +50,7 @@ fun ApprovalSettingsDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var mode by remember { mutableStateOf(OutboundApproval.mode(context)) }
     var expiry by remember { mutableStateOf(OutboundApproval.expiryMinutes(context)) }
+    var allow by remember { mutableStateOf(OutboundApproval.allowlist(context)) }
     val waiting = remember(mode) { OutboundApproval.pending(context) }
 
     AlertDialog(
@@ -74,6 +76,20 @@ fun ApprovalSettingsDialog(onDismiss: () -> Unit) {
                     title = stringOf(R.string.approval_mode_allowlist),
                     detail = stringOf(R.string.approval_mode_allowlist_desc),
                 ) { mode = OutboundApproval.Mode.ALLOWLIST; OutboundApproval.setMode(context, mode) }
+
+                // The picker lives under the mode that needs it. Choosing
+                // "except for chosen apps" without being able to choose any is
+                // not a setting, it is a mode that quietly behaves like the one
+                // above it.
+                if (mode == OutboundApproval.Mode.ALLOWLIST) {
+                    AllowlistPicker(
+                        selected = allow,
+                        onToggle = { pkg ->
+                            allow = if (pkg in allow) allow - pkg else allow + pkg
+                            OutboundApproval.setAllowlist(context, allow)
+                        },
+                    )
+                }
 
                 ModeChoice(
                     selected = mode == OutboundApproval.Mode.NEVER,
@@ -123,6 +139,54 @@ fun ApprovalSettingsDialog(onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )
+}
+
+
+/**
+ * Which apps may be answered without asking.
+ *
+ * Only apps that can actually receive a reply are offered: a rule can fire on a
+ * bank alert, but there is nowhere to send an answer, so listing it here would
+ * be an option that does nothing. The list is what the phone currently has
+ * installed with a launcher entry, which is the set a person recognises.
+ */
+@Composable
+private fun AllowlistPicker(selected: Set<String>, onToggle: (String) -> Unit) {
+    val context = LocalContext.current
+    val apps = remember {
+        val pm = context.packageManager
+        pm.getInstalledApplications(0)
+            .filter { pm.getLaunchIntentForPackage(it.packageName) != null }
+            .map { it.packageName to pm.getApplicationLabel(it).toString() }
+            .sortedBy { it.second.lowercase() }
+    }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 40.dp, top = 4.dp, bottom = 8.dp),
+    ) {
+        if (selected.isNotEmpty()) {
+            Text(
+                selected.size.toString() + " chosen",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        LazyColumn(Modifier.heightIn(max = 220.dp)) {
+            items(apps) { (pkg, label) ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(selected = pkg in selected) { onToggle(pkg) }
+                        .padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = pkg in selected, onCheckedChange = { onToggle(pkg) })
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
 }
 
 @Composable

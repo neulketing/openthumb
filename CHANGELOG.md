@@ -54,6 +54,12 @@ section into the version heading, the release notes and the store changelog.
   which an approved reply can never find its conversation again. Verified to
   have detection power by removing the tightening rule — exactly that check
   fails.
+- *Ask except for chosen apps* can now choose apps. The mode was selectable
+  with no way to put anything on the list, which made it behave exactly like
+  *Ask every time* — a setting that silently does nothing. Picking it now
+  reveals the installed apps with checkboxes, and only apps with a launcher
+  entry are offered, since a rule can fire on a bank alert but there is nowhere
+  to send a reply.
 - `minis://settings/triggers` opens the notification-trigger screen, and the
   approval notification links there. The screen had no deep link at all, so
   tapping a draft did nothing and the only way to see how many were waiting was
