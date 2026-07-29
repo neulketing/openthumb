@@ -5,6 +5,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedReader
@@ -26,6 +27,9 @@ class DebugServer(
 ) {
     companion object {
         private const val TAG = "DebugServer"
+
+        /** Largest request body accepted. Bigger ones are refused with 413. */
+        const val MAX_BODY_BYTES = 32 * 1024 * 1024
 
         /**
          * [T-android-debugserver-auth] Remote-connection auth decision, kept
@@ -102,7 +106,10 @@ class DebugServer(
                 while (!stopped) {
                     try {
                         val client = ss.accept()
-                        launch { handleConnection(client) }
+                        // SupervisorJob per connection: an Error escaping one
+                        // request (OOM, StackOverflow) must not cancel the
+                        // accept loop and silence the whole server.
+                        launch(SupervisorJob(coroutineContext[Job])) { handleConnection(client) }
                     } catch (e: Exception) {
                         if (!stopped) Log.w(TAG, "Accept error: ${e.message}")
                     }
@@ -236,6 +243,16 @@ class DebugServer(
 
                 if (contentLength <= 0) {
                     sendResponse(writer, 400, rpcHandler.errorJSON(-32700, "Empty body"))
+                    return
+                }
+                // Content-Length is attacker-controlled: a single header
+                // claiming 2GB allocated a 2GB ByteArray, and the resulting
+                // OutOfMemoryError is an Error, not an Exception, so the catch
+                // below never saw it — it killed the connection coroutine and
+                // with it the accept loop, leaving the whole debug server dead
+                // until the app restarted.
+                if (contentLength > MAX_BODY_BYTES) {
+                    sendResponse(writer, 413, rpcHandler.errorJSON(-32600, "Body too large"))
                     return
                 }
 

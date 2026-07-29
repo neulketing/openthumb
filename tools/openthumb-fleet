@@ -50,7 +50,12 @@ fleet_serials() {
 # derived from the index so repeat runs reuse the same mapping instead of
 # leaking a new forward on every invocation.
 ensure_forward() {
-  local serial="$1" index="$2" port=$((BASE_PORT + index))
+  # Two statements on purpose: bash expands every word of a `local` before
+  # the builtin runs, so a port computed on the same line would read the
+  # CALLER's `index`, not the one just assigned. It only works today because
+  # every caller happens to name that variable `index`.
+  local serial="$1" index="$2"
+  local port=$((BASE_PORT + index))
   adb -s "$serial" forward "tcp:$port" "tcp:$DEVICE_PORT" >/dev/null 2>&1 || return 1
   echo "$port"
 }

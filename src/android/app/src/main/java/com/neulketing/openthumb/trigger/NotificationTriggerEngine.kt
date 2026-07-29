@@ -9,6 +9,7 @@ import com.neulketing.openthumb.scheduled.ScheduledAgentRunner
 import com.neulketing.openthumb.scheduled.ScheduledRepeatMode
 import com.neulketing.openthumb.scheduled.ScheduledTargetMode
 import com.neulketing.openthumb.scheduled.ScheduledTask
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,7 +52,19 @@ object NotificationTriggerEngine {
     const val TEST_PACKAGE = "openthumb.test"
 
     private val inFlight = AtomicInteger(0)
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * A trigger run must never take the process down with it. SupervisorJob
+     * only stops a failure from cancelling siblings — the exception still
+     * reaches the thread's default handler and crashes the app, and the
+     * notification listener dies with it. `startForegroundService` alone can
+     * throw on Android 12+ when the system declines a background start, so
+     * this is a reachable path, not a theoretical one.
+     */
+    private val crashGuard = CoroutineExceptionHandler { _, t ->
+        AppLogger.warning(TAG, "trigger run failed: ${t.message}")
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + crashGuard)
 
     /**
      * Called from the notification listener's binder thread. Must never
@@ -89,6 +102,15 @@ object NotificationTriggerEngine {
         if (candidates.isEmpty()) return
 
         for (rule in candidates) {
+            // Checked before the cooldown is claimed: a reply rule matched
+            // against a notification with no reply action (a bank push, a
+            // delivery alert) would otherwise burn a full agent run — up to
+            // ten minutes and real inference — to produce an answer with
+            // nowhere to go, and spend the rule's cooldown doing it.
+            if (rule.replyToNotification && !NotificationReplier.canReply(sbn)) {
+                AppLogger.info(TAG, "rule ${rule.id} skipped: $pkg notification has no reply action")
+                continue
+            }
             val claimed = claim(store, rule) ?: continue             // gate 3
             if (inFlight.get() >= MAX_CONCURRENT_RUNS) {             // gate 4
                 AppLogger.warning(TAG, "rule ${rule.id} matched but $MAX_CONCURRENT_RUNS runs in flight — dropped")
@@ -185,7 +207,11 @@ object NotificationTriggerEngine {
      * thrown: the trigger run already succeeded and losing the reply must not
      * mark it failed.
      */
-    private suspend fun replyWithAnswer(context: Context, sessionId: String, sbn: StatusBarNotification) {
+    private suspend fun replyWithAnswer(
+        context: Context,
+        sessionId: String,
+        sbn: StatusBarNotification,
+    ): Boolean {
         val answer = runCatching { lastAssistantText(context, sessionId) }
             .getOrElse { t ->
                 AppLogger.warning(TAG, "reply lookup failed: ${t.message}")
@@ -193,9 +219,9 @@ object NotificationTriggerEngine {
             }
         if (answer.isNullOrBlank()) {
             AppLogger.info(TAG, "no assistant text in $sessionId — nothing to reply")
-            return
+            return false
         }
-        NotificationReplier.reply(context, sbn, answer)
+        return NotificationReplier.reply(context, sbn, answer)
     }
 
     /**
@@ -207,8 +233,13 @@ object NotificationTriggerEngine {
         val app = context.applicationContext as? MinisApp ?: return null
         val message = app.chatRepository.loadMessages(sessionId)
             .lastOrNull { it.role == "assistant" } ?: return null
-        val parts = runCatching { JSONArray(message.partsJson) }.getOrNull()
-            ?: return message.partsJson.takeIf { it.isNotBlank() }
+        // No raw fallback. Whatever this returns is sent into someone's chat,
+        // so an unparseable payload must produce no reply at all rather than
+        // deliver a stored JSON blob to the other person.
+        val parts = runCatching { JSONArray(message.partsJson) }.getOrElse {
+            AppLogger.warning(TAG, "assistant payload in $sessionId is not a parts array — no reply sent")
+            return null
+        }
         val sb = StringBuilder()
         for (i in 0 until parts.length()) {
             val part = parts.optJSONObject(i) ?: continue
@@ -252,8 +283,14 @@ object NotificationTriggerEngine {
                 val sessionId = ScheduledAgentRunner.run(context, task, waitForCompletion = true)
                 ok = sessionId != null
                 if (ok && rule.replyToNotification && sbn != null) {
-                    replyWithAnswer(context, sessionId!!, sbn)
+                    // A run that produced an answer nobody received is not a
+                    // success: the user reads the run log and assumes the other
+                    // side got it.
+                    ok = replyWithAnswer(context, sessionId!!, sbn)
                 }
+            } catch (t: Throwable) {
+                AppLogger.warning(TAG, "rule ${rule.id} run failed: ${t.message}")
+                ok = false
             } finally {
                 inFlight.decrementAndGet()
                 val doneMs = System.currentTimeMillis()

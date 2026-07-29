@@ -63,6 +63,23 @@ jobs:
         working-directory: src/android
         run: ./gradlew :app:lintDebug
 
+      # The fork's own regression tests (request parsing, provider probe URL,
+      # trigger rules) were never executed by CI, so a refactor could break
+      # them and still show a green badge.
+      # Scoped to the packages this fork owns. Three inherited suites
+      # (provider.AnthropicProviderTest, provider.OpenAIProviderTest,
+      # sandbox.TerminalSanitizerTest) fail on the upstream code we forked
+      # from and have not been touched since the rebrand commit; running them
+      # here would paint the badge red for someone else's breakage and teach
+      # everyone to ignore it. Fixing them belongs upstream — tracked in
+      # docs/upstream-test-baseline.md.
+      - name: Unit tests
+        working-directory: src/android
+        run: |
+          ./gradlew :app:testDebugUnitTest \
+            --tests 'com.neulketing.openthumb.trigger.*' \
+            --tests 'com.neulketing.openthumb.debug.*'
+
       # The distributable build. Debug APKs start the JSON-RPC debug server
       # (MinisApp gates it on BuildConfig.DEBUG), so handing one to end users
       # would open a file/log/chat surface on their phone — releases must ship

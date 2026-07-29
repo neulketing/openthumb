@@ -19,4 +19,4 @@ jobs:
       # suffix. Severity is capped at "error" so inherited style findings in
       # upstream scripts do not block; real breakage still fails the job.
       - name: Run shellcheck
-        run: shellcheck --severity=error $(grep -rlE '^#!.*\b(ba)?sh\b' scripts tools 2>/dev/null)
+        run: shellcheck --severity=warning $(grep -rlE '^#!.*\b(ba)?sh\b' scripts tools 2>/dev/null)

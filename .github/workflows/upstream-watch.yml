@@ -38,28 +38,35 @@ jobs:
         if: steps.diff.outputs.changed == '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Via env, never inlined into `run:`. The tag name comes from the
+          # UPSTREAM repository, so a crafted release tag would otherwise be
+          # substituted into the shell before it parses — arbitrary code on a
+          # runner holding contents:write and a push step.
+          LATEST: $LATEST
         run: |
           gh issue create \
-            --title "Upstream ${{ steps.diff.outputs.latest }} released — merge review" \
-            --body "OpenMinis/OpenMinis published a new release: **${{ steps.diff.outputs.latest }}** (previous marker: $(cat docs/upstream-last-seen.txt 2>/dev/null || echo none)).
+            --title "Upstream $LATEST released — merge review" \
+            --body "OpenMinis/OpenMinis published a new release: **$LATEST** (previous marker: $(cat docs/upstream-last-seen.txt 2>/dev/null || echo none)).
 
           Review what changed upstream, decide merge or skip, then close this issue and commit the updated \`docs/upstream-last-seen.txt\`.
 
-          https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}
+          https://github.com/OpenMinis/OpenMinis/releases/tag/$LATEST
 
           _Filed by .github/workflows/upstream-watch.yml_" \
             --label upstream || gh issue create \
-            --title "Upstream ${{ steps.diff.outputs.latest }} released — merge review" \
-            --body "OpenMinis/OpenMinis published **${{ steps.diff.outputs.latest }}**. Review for merge. https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}"
+            --title "Upstream $LATEST released — merge review" \
+            --body "OpenMinis/OpenMinis published **$LATEST**. Review for merge. https://github.com/OpenMinis/OpenMinis/releases/tag/$LATEST"
 
       - name: Advance the marker
         if: steps.diff.outputs.changed == '1'
+        env:
+          LATEST: ${{ steps.diff.outputs.latest }}
         run: |
-          echo "${{ steps.diff.outputs.latest }}" > docs/upstream-last-seen.txt
+          echo "$LATEST" > docs/upstream-last-seen.txt
           git config user.name "openthumb-bot"
           git config user.email "bot@neulketing.github.io"
           git add docs/upstream-last-seen.txt
-          git commit -m "chore(upstream): last seen ${{ steps.diff.outputs.latest }} [skip ci]" || true
+          git commit -m "chore(upstream): last seen $LATEST [skip ci]" || true
           git push
 
       - name: Detect SMTP credentials
@@ -81,11 +88,11 @@ jobs:
           server_port: 465
           username: ${{ secrets.GMAIL_USER }}
           password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: "[OpenThumb] upstream released ${{ steps.diff.outputs.latest }} — merge review needed"
+          subject: "[OpenThumb] upstream released $LATEST — merge review needed"
           to: neulketing@gmail.com
           from: OpenThumb CI <${{ secrets.GMAIL_USER }}>
           body: |
-            OpenMinis/OpenMinis published a new release: ${{ steps.diff.outputs.latest }}
+            OpenMinis/OpenMinis published a new release: $LATEST
 
             A merge-review issue was opened on neulketing/openthumb.
-            https://github.com/OpenMinis/OpenMinis/releases/tag/${{ steps.diff.outputs.latest }}
+            https://github.com/OpenMinis/OpenMinis/releases/tag/$LATEST

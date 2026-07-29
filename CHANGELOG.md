@@ -3,6 +3,49 @@
 All notable changes to OpenThumb. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning is independent of upstream (OpenMinis) since 1.0.0.
 
+## [1.0.2] — 2026-07-29
+
+Follow-up to 1.0.1, from a full audit of the fork's own code. Two crash/DoS
+paths and one that could put raw JSON into someone else's chat.
+
+### Fixed
+- **A failing trigger run no longer crashes the app.** The run coroutine had
+  no catch and the scope no handler, so any exception — `startForegroundService`
+  being refused on Android 12+, for one — propagated to the thread's default
+  handler and killed the process, taking the notification listener with it.
+- **Replies never send a raw payload.** If an assistant message failed to
+  parse, the fallback returned the stored JSON string, which then went out as
+  the reply body into the other person's chat. Unparseable payloads now send
+  nothing.
+- **A reply failure is recorded as a failure.** The run log marked a run `ok`
+  whenever a session existed, even when the reply was never delivered — the
+  user read "it ran" while the other side got silence.
+- **Rules that reply skip notifications that cannot be replied to.**
+  `canReply` existed but was never called, so a bank or delivery push burned a
+  full agent run (up to ten minutes, real inference) and the rule's cooldown to
+  produce an answer with nowhere to go.
+- **The debug server survives a hostile request.** `Content-Length` was
+  trusted without limit: one header claiming 2GB allocated a 2GB array, and the
+  resulting `OutOfMemoryError` is an `Error` — the catch never saw it, the
+  connection coroutine died, and it took the accept loop with it, killing the
+  server until the app restarted. Bodies are now capped at 32MB and each
+  connection runs under its own supervisor.
+- **Upstream tag names can no longer run code in CI.** `upstream-watch`
+  interpolated the upstream release tag directly into `run:` blocks on a job
+  holding `contents: write`; the tag is now passed through the environment.
+- **`ensure_forward` computes the right port.** `local serial="$1" index="$2"
+  port=$((BASE_PORT + index))` read the *caller's* `index`, since bash expands
+  every word before `local` runs. It worked only because every caller happens
+  to use that variable name — renaming one would have sent all devices' RPC to
+  the first phone while labelling the output with each device's serial.
+
+### Changed
+- CI runs the fork's unit tests (`trigger.*`, `debug.*`) — it never ran any.
+  Three inherited suites fail on upstream code and are excluded by name;
+  see `docs/upstream-test-baseline.md`.
+- ShellCheck runs at `--severity=warning`. At `error` it filtered out the only
+  real defect in the fleet script (SC2318, above).
+
 ## [1.0.1] — 2026-07-29
 
 A safety and correctness patch. **Anyone who installed the v1.0.0 APK should
