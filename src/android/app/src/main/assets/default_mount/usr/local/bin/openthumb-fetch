@@ -1,4 +1,32 @@
 #!/bin/sh
-# Fetch a URL and say whether what came back is actually the page.
+# openthumb-fetch — fetch a web page and say whether what came back is the page.
 # Implementation: /usr/local/lib/openthumb-fetch (see main.py --help).
+#
+# Thin sh wrapper, same shape as minis-mcp-cli: the Alpine rootfs ships with 15
+# packages and python3 is not one of them, so the runtime is installed on first
+# use. The Python itself needs nothing beyond the standard library; curl_cffi is
+# optional and only adds TLS impersonation.
+#
+# Measured on a Galaxy Note8 (Android 9, PRoot, Alpine 3.21.3): `apk add` fails
+# there with IO ERROR while busybox wget fetches the same URL over HTTPS
+# without trouble, over both https and http mirrors and with both IPv6 and IPv4
+# nameservers. So the install below is a best effort, not a guarantee, and the
+# failure path matters more than the happy one — see docs/sandbox-python.md.
+
+LOG=/var/minis/openthumb-fetch.log
+
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] installing python3" >> "$LOG" 2>/dev/null
+  apk add --quiet python3 >> "$LOG" 2>&1
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  # Say what is wrong on stdout as JSON. The caller is an agent parsing this,
+  # and anything else here — a shell error, an empty body, a non-zero exit with
+  # no explanation — reads as "the site is unreachable", which is the one
+  # conclusion this whole tool exists to prevent.
+  printf '%s\n' '{"ok": false, "verdict": "unknown", "reasons": ["python3 is not installed in the sandbox and apk could not install it"], "untried_routes": ["browser_use: navigate to the URL in the app'\''s WebView, then get_readable. This is a runtime problem on the phone, NOT the site refusing you — do not report the page as blocked.", "shell: apk add python3, and read /var/minis/openthumb-fetch.log if it fails"], "must_use_browser": true}'
+  exit 2
+fi
+
 exec python3 /usr/local/lib/openthumb-fetch/main.py "$@"

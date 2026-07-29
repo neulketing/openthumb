@@ -54,6 +54,17 @@ product is published under FUG. The app is still called OpenThumb.
   keyed by host and stores the host inside the file as well, so a cookie can
   never be attached to a request for a different site; the files are 0600
   because session cookies are credentials.
+- **It degrades honestly when it cannot start.** The Alpine rootfs ships 15
+  packages and python3 is not one of them, and on a Galaxy Note8 `apk` cannot
+  install it — network is fine (busybox wget fetches the same mirror over
+  HTTPS), but apk's own fetch fails with IO ERROR over http and https alike and
+  with both IPv6 and IPv4 nameservers. The wrapper tries `apk add`, and when
+  that fails prints a JSON object saying so and escalating to `browser_use`,
+  stating outright that this is a runtime problem on the phone rather than the
+  site refusing the request. Verified on the device: valid JSON, exit 2. The
+  same limitation applies to the inherited `minis-mcp-cli`, which installs
+  itself the same way. Measurements and the two possible fixes are in
+  `docs/sandbox-python.md`.
 - Ported from insane-search (MIT, github.com/fivetaku/insane-search). Pure
   standard library — CSS selectors are matched with `html.parser` rather than
   BeautifulSoup so nothing has to be installed on the phone. `curl_cffi` is used
