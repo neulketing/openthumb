@@ -34,6 +34,14 @@ else
     echo "Downloading Alpine Linux ${ALPINE_RELEASE} aarch64 minirootfs..."
     curl -fSL -o "$ROOTFS_FILE" "$ALPINE_URL"
     echo "✓ Downloaded: $ROOTFS_FILE ($(du -h "$ROOTFS_FILE" | cut -f1))"
+
+    # python3 has to be in the image, because it cannot be added later: apk's
+    # fetch fails inside the app's PRoot sandbox on real hardware even though
+    # the network is fine there (docs/sandbox-python.md). Costs ~11MB
+    # compressed and is what openthumb-fetch and minis-mcp-cli run on.
+    ALPINE_VERSION="$ALPINE_VERSION" \
+        python3 "$SCRIPT_DIR/rootfs_add_packages.py" "$ROOTFS_FILE" python3
+    echo "✓ Rootfs with python3: $(du -h "$ROOTFS_FILE" | cut -f1)"
 fi
 
 # --- PRoot binary ---

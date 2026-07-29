@@ -52,18 +52,59 @@ phone rather than the site refusing the request. Reporting a page as blocked
 because the fetcher could not start is exactly the failure the tool exists to
 prevent, so the degraded path is the one that had to be right.
 
-## Fixes, neither of them free
+## The fix that shipped
 
-**Ship python3 inside the rootfs.** `deps/prepare_alpine_rootfs.sh` builds the
-image on the host, where apk works, so `apk add --root` at build time would
-solve it for every device with no runtime dependency at all. It costs roughly
-45MB on a 33MB APK — the app more than doubles — so it is the owner's call, not
-a detail to decide in passing.
+`scripts/rootfs_add_packages.py` bakes python3 into the rootfs at build time,
+where the network works and nothing has to be resolved on a phone.
+`scripts/prepare_android_sandbox.sh` calls it right after downloading the
+minirootfs, so every build carries it.
 
-**Install packages with wget instead of apk.** `wget` works, and an `.apk` file
-is a tarball; fetching python3 and its dependencies and unpacking them by hand
-would work. It means resolving a dependency graph in shell, which is a package
-manager, which is why apk exists. Not recommended.
+It uses neither apk nor Docker. apk-tools is a Linux binary and the target is
+aarch64, so a macOS build host cannot run it; Docker would make the image
+depend on whether Docker happened to be running, and a rootfs that differs
+between a developer's build and CI's is worse than no rootfs at all. An `.apk`
+is a gzipped tar and `APKINDEX` is flat text, so resolving and unpacking needs
+only curl and the standard library — identical on every host.
 
-Until one of those lands, the fetcher runs on any device where python3 is
-present and degrades honestly everywhere else.
+Measured cost, resolving python3's full closure:
+
+```
+alpine-minirootfs-3.21.3-aarch64      3.7 MB
++ python3 3.12.13 and 17 dependencies  14.6 MB    (913 files)
+```
+
+About 11MB, which takes the APK from 33MB to roughly 44MB.
+
+### Verified on the device
+
+Extracted into a Note8's rootfs and driven through the debug server:
+
+```
+$ python3 -V
+Python 3.12.13
+
+$ python3 /usr/local/lib/openthumb-fetch/test_fetch.py
+all checks passed                     (69 checks, exit 0)
+
+$ openthumb-fetch https://example.com
+{"ok": true, "status": 200, "verdict": "weak_ok",
+ "reasons": ["small_but_complete:559"], "via": "urllib",
+ "content": "Example Domain Example Domain This domain is for use in ...",
+ "extraction": "visible"}              exit 0
+
+$ openthumb-fetch https://example.com/nope
+{"ok": false, "status": 404, "verdict": "not_found", ...}
+```
+
+One thing to know when unpacking a rootfs by hand for testing: Android's
+toybox `tar` does not preserve the execute bit, so `python3` lands as 644 and
+fails with "Permission denied" rather than "not found". The build-time path
+does not have this problem — the app unpacks the image itself.
+
+## What is still not fixed
+
+apk still cannot install anything from inside the sandbox. Baking packages in
+at build time sidesteps it; it does not repair it. Anything a user wants to
+`apk add` at runtime will still fail, and `minis-mcp-cli` — inherited from
+upstream, and installing itself the same way — now finds the python3 it needs
+but would still fail at its `pip install httpx` step.

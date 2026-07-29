@@ -63,8 +63,17 @@ product is published under FUG. The app is still called OpenThumb.
   stating outright that this is a runtime problem on the phone rather than the
   site refusing the request. Verified on the device: valid JSON, exit 2. The
   same limitation applies to the inherited `minis-mcp-cli`, which installs
-  itself the same way. Measurements and the two possible fixes are in
-  `docs/sandbox-python.md`.
+  itself the same way.
+- **python3 is baked into the rootfs at build time**, since it cannot be added
+  later. `scripts/rootfs_add_packages.py` resolves an Alpine package's full
+  dependency closure and unpacks it into the image using nothing but curl and
+  the standard library — not apk, which is a Linux binary a macOS build host
+  cannot run, and not Docker, which would make the shipped image depend on
+  whether a daemon happened to be running. Measured: 3.7MB to 14.6MB for
+  python3 3.12.13 and its 17 dependencies, taking the APK from 33MB to about
+  44MB. Verified on a Note8: python3 runs, all 69 checks pass on the phone, and
+  `openthumb-fetch https://example.com` returns the page with the text
+  extracted. Details in `docs/sandbox-python.md`.
 - Ported from insane-search (MIT, github.com/fivetaku/insane-search). Pure
   standard library — CSS selectors are matched with `html.parser` rather than
   BeautifulSoup so nothing has to be installed on the phone. `curl_cffi` is used
