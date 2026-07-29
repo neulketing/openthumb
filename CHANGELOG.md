@@ -8,6 +8,18 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+### Fixed
+- **The app could not start when an older build was still installed.** The
+  native-offload endpoint bound the abstract socket `native-offload`, and the
+  Linux abstract namespace is global to the device rather than per-app — so
+  whichever OpenThumb started first claimed it and the other died in
+  `Application.onCreate` before drawing anything. Changing the application ID
+  puts every existing user in exactly that state, because the new id installs
+  beside the old rather than over it. The socket is now named after the
+  application id. Verified on a Note8 with 1.0.x and this build running at the
+  same time: both processes alive, no crash, bound as
+  `com.fug.openthumb.native-offload`.
+
 ### Added
 - **Nothing the agent writes reaches another person without someone saying
   yes.** The trigger engine had five gates — quiet hours, an active window, a

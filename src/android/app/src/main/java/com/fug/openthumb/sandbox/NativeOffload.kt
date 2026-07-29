@@ -1,6 +1,7 @@
 package com.fug.openthumb.sandbox
 
 import android.net.LocalServerSocket
+import com.fug.openthumb.BuildConfig
 import android.net.LocalSocket
 import android.util.Log
 import java.io.DataInputStream
@@ -52,7 +53,20 @@ fun interface NativeOffloadHandler {
 
 object NativeOffloadServer {
     private const val TAG = "NativeOffloadServer"
-    private const val SOCKET_NAME = "native-offload"
+    // Namespaced by application id, because the Linux abstract socket
+    // namespace is global to the device rather than per-app. A bare
+    // "native-offload" is claimed by whichever OpenThumb build started first,
+    // and the other one dies in Application.onCreate before it draws anything.
+    //
+    // Observed on a Note8 with 1.0.x (com.neulketing.openthumb) and 1.1.0
+    // (com.fug.openthumb) side by side — which is exactly the state the
+    // application-id change puts users in, since the new id installs beside the
+    // old rather than over it:
+    //
+    //   java.io.IOException: failed to bind abstract socket 'native-offload'
+    //       at NativeOffloadServer.start(NativeOffload.kt:94)
+    //       at MinisApp.onCreate(MinisApp.kt:429)
+    private const val SOCKET_NAME = BuildConfig.APPLICATION_ID + ".native-offload"
     private const val MAGIC_REQ = 0x46464F4E  // 'N' 'O' 'F' 'F' little-endian
     private const val MAGIC_RSP = 0x52464F4E  // 'N' 'O' 'F' 'R'
     private const val VERSION = 1
