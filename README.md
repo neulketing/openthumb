@@ -148,7 +148,7 @@ Two things worth knowing before you rely on it:
   stored API keys. `openthumb-fleet` reads each device's token with `run-as`
   and sends it for you; that is the privilege adb has and another app does
   not. Read it by hand with
-  `adb shell run-as com.neulketing.openthumb cat files/debug_server_token`.
+  `adb shell run-as com.fug.openthumb cat files/debug_server_token`.
 
 ## Android 8 and 9 support
 

@@ -3,7 +3,7 @@
 *Last updated: 2026-07-28*
 
 OpenThumb is an on-device AI agent. This policy covers the OpenThumb Android
-app (`com.neulketing.openthumb`) distributed from this repository.
+app (`com.fug.openthumb`) distributed from this repository.
 
 ## What we collect
 

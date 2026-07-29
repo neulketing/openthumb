@@ -32,7 +32,7 @@ case "\$1" in
   shell)
     cat >/dev/null            # drain stdin, like the real adb
     case "\$*" in
-      *"pm list packages"*) echo "package:com.neulketing.openthumb" ;;
+      *"pm list packages"*) echo "package:com.fug.openthumb" ;;
       *debug_server_token*)  echo "token-\$serial" ;;
     esac
     ;;

@@ -8,6 +8,46 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+**The application ID changes to `com.fug.openthumb`, so 1.1.0 installs beside
+1.0.x rather than over it.** Android treats a different application ID as a
+different app entirely. Uninstall the old one after checking anything you want
+to keep — settings and provider credentials do not carry across. Doing this now
+is deliberate: the ID is fixed forever once the app is on Google Play, and the
+product is published under FUG. The app is still called OpenThumb.
+
+### Added
+- `openthumb-fetch` in the sandbox — fetch a page and be told whether what came
+  back is actually the page. A WAF challenge, a consent wall and a bot
+  interstitial all arrive as HTTP 200 with an HTML body, and an agent that
+  trusts the status code summarises the interstitial as if it were the article.
+  Seven checks decide: status semantics, structural WAF markers, caller-supplied
+  stub sizes, JSON awareness, CSS selectors as positive proof, soft markers with
+  the Akamai sensor cookie, and content density.
+- A failed fetch never returns a bare failure. It names `untried_routes` — the
+  escalation steps the fetcher structurally could not take — so "the site blocks
+  us" cannot be reported while the phone's own WebView, which holds the real TLS
+  stack and cookie jar, has not been tried. `429` is classified as transient
+  rather than a wall, which is the single most common cause of a premature
+  give-up. An empty list is the permission to fail honestly.
+- The ladder is inverted from the upstream desktop tool: here the browser is the
+  first escalation and cheap HTTP is the probe under it, because on a phone the
+  WebView *is* the real client.
+- **The fetcher returns readable text, not markup.** A measured Threads profile
+  is 861KB of HTML carrying 1.6KB of words — 516x. Returning the raw body would
+  spend an on-device model's whole context on one page, and truncating instead
+  drops whatever was past the cut, usually the article. Three sources compete
+  and the most complete wins: schema.org `articleBody` (which carries the text
+  even when the visible DOM is a JavaScript shell), the `<article>`/`<main>`
+  block with navigation and footers removed, or all visible text. `--raw` still
+  returns the HTML for the cases that need it.
+- Ported from insane-search (MIT, github.com/fivetaku/insane-search). Pure
+  standard library — CSS selectors are matched with `html.parser` rather than
+  BeautifulSoup so nothing has to be installed on the phone. `curl_cffi` is used
+  for TLS impersonation when importable; its absence costs capability, never
+  correctness. `scripts/test-fetch.sh` runs 58 offline checks, wired into CI
+  ahead of the build so a broken verdict fails in seconds rather than after the
+  NDK compile.
+
 ## [1.0.6] — 2026-07-30
 
 **Installing over 1.0.5 or earlier will fail — uninstall first.** Every release

@@ -19,7 +19,7 @@ failures, not fork regressions.
 
 The fix belongs upstream. Until then:
 
-- CI runs `com.neulketing.openthumb.trigger.*` and `com.neulketing.openthumb.debug.*`
+- CI runs `com.fug.openthumb.trigger.*` and `com.fug.openthumb.debug.*`
   — the packages this fork actually owns.
 - Run the full suite locally (`./gradlew :app:testDebugUnitTest`) when touching
   provider or sandbox code, and compare against the counts above rather than

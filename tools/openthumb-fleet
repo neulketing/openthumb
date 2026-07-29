@@ -23,14 +23,14 @@
 #                                         model, so a fresh fleet can answer at all
 #   openthumb-fleet cancel                stop in-flight runs
 #
-# Env: OPENTHUMB_PKG (default com.neulketing.openthumb)
+# Env: OPENTHUMB_PKG (default com.fug.openthumb)
 #      OPENTHUMB_BASE_PORT (default 15321) — host ports are BASE+index
 #      OPENTHUMB_TIMEOUT (default 30, seconds per call)
 #      OPENTHUMB_WAIT_TIMEOUT (default 600, seconds for run/collect waits)
 #      OPENTHUMB_FLEET_DIR (default ~/.openthumb/fleet) — queue + results
 set -uo pipefail
 
-PKG="${OPENTHUMB_PKG:-com.neulketing.openthumb}"
+PKG="${OPENTHUMB_PKG:-com.fug.openthumb}"
 BASE_PORT="${OPENTHUMB_BASE_PORT:-15321}"
 DEVICE_PORT=5321
 FLEET_DIR="${OPENTHUMB_FLEET_DIR:-$HOME/.openthumb/fleet}"

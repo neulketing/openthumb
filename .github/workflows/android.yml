@@ -36,6 +36,12 @@ jobs:
           # build_proot.sh otherwise looks under ~/Library/Android/sdk/ndk (macOS only).
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
 
+      # Runs before the build: it needs nothing but python3, and a broken fetch
+      # verdict is worth failing on in seconds rather than after a 20-minute NDK
+      # build. Same file the phone runs from its sandbox.
+      - name: Fetch verdict checks
+        run: bash scripts/test-fetch.sh
+
       - name: Prepare build inputs
         run: |
           # -n: never clobber a checked-in file that already has real values.
@@ -77,8 +83,8 @@ jobs:
         working-directory: src/android
         run: |
           ./gradlew :app:testDebugUnitTest \
-            --tests 'com.neulketing.openthumb.trigger.*' \
-            --tests 'com.neulketing.openthumb.debug.*'
+            --tests 'com.fug.openthumb.trigger.*' \
+            --tests 'com.fug.openthumb.debug.*'
 
       # The distributable build. Debug APKs start the JSON-RPC debug server
       # (MinisApp gates it on BuildConfig.DEBUG), so handing one to end users

@@ -23,7 +23,7 @@ fun customizationValue(key: String): String =
     (appCustomization.getProperty(key) ?: "").replace("\"", "\\\"")
 
 android {
-    namespace = "com.neulketing.openthumb"
+    namespace = "com.fug.openthumb"
     // Distribution artifacts carry the product name: openthumb-debug.apk /
     // openthumb-release.aab (CI artifact path references the debug one).
     base {
@@ -38,7 +38,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.neulketing.openthumb"
+        applicationId = "com.fug.openthumb"
         minSdk = 26
         targetSdk = 35
         versionCode = 27

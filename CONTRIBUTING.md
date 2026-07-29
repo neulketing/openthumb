@@ -12,7 +12,7 @@ providers, the sandbox, the UI, iOS — please report it to
 reach far more users and flow back into this fork on the next sync.
 
 Bring it here when it is about fork-specific code: `tools/openthumb-fleet`, the
-rebranded package (`com.neulketing.openthumb`), or a fix upstream has declined.
+rebranded package (`com.fug.openthumb`), or a fix upstream has declined.
 Note that upstream does not accept pull requests — it is a release mirror — so a
 patch rejected there on those grounds is still welcome here.
 
@@ -36,7 +36,7 @@ pull request against `main`.
 ## The JNI / package-rename trap
 
 JNI entry points encode the Java package path in the C symbol name:
-`com.neulketing.openthumb.sandbox.PtyBridge.forkExec` is exported from
+`com.fug.openthumb.sandbox.PtyBridge.forkExec` is exported from
 `src/android/app/src/main/cpp/pty_bridge.c` as
 `Java_com_neulketing_openthumb_sandbox_PtyBridge_forkExec`.
 

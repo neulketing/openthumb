@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fetch a URL and say whether what came back is actually the page.
+# Implementation: /usr/local/lib/openthumb-fetch (see main.py --help).
+exec python3 /usr/local/lib/openthumb-fetch/main.py "$@"
