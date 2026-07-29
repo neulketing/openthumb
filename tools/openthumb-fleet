@@ -10,12 +10,17 @@
 #   openthumb-fleet health                rpc reachability + sandbox + battery per device
 #   openthumb-fleet call <method> [json]  raw JSON-RPC against every device
 #   openthumb-fleet prompt "<text>"       send a prompt, print each device's sessionId
-#   openthumb-fleet run "<text>"          prompt and WAIT per device; results land in
-#                                         $OPENTHUMB_FLEET_DIR/results/
-#   openthumb-fleet collect <sessionId>   poll every device until the session stops
+#   openthumb-fleet run "<text>"          prompt every device at once, then wait for
+#                                         each; results land in $OPENTHUMB_FLEET_DIR/results/
+#   openthumb-fleet collect <sessionId>   poll ONE session id across every device.
+#                                         `prompt` hands back a different id per
+#                                         device, so this is for a session you
+#                                         dispatched yourself — `run` is the fleet path.
 #   openthumb-fleet enqueue "<text>"      append a job to the queue
 #   openthumb-fleet jobs                  list queued jobs
 #   openthumb-fleet drain                 run queued jobs one at a time (see `run`)
+#   openthumb-fleet provision             give every device the same provider +
+#                                         model, so a fresh fleet can answer at all
 #   openthumb-fleet cancel                stop in-flight runs
 #
 # Env: OPENTHUMB_PKG (default com.neulketing.openthumb)
@@ -67,15 +72,21 @@ ensure_forward() {
 # Cached on disk rather than in an associative array: macOS still ships bash
 # 3.2, where `declare -A` does not exist and every lookup would then trip
 # `set -u`.
+# Reinstalling the app regenerates the token, so a cache that is only ever
+# written goes stale into a permanent 401. `rpc` re-reads on Unauthorized by
+# passing refresh=1.
 device_token() {
-  local serial="$1"
+  local serial="$1" refresh="${2:-}"
   local cache="$FLEET_DIR/tokens/$serial"
-  if [ -s "$cache" ]; then
+  if [ -z "$refresh" ] && [ -s "$cache" ]; then
     cat "$cache"
     return 0
   fi
   mkdir -p "$FLEET_DIR/tokens"
-  adb -s "$serial" shell run-as "$PKG" cat files/debug_server_token 2>/dev/null \
+  # `</dev/null` for the same reason as in fleet_serials: this runs inside a
+  # `while read serial` loop and adb would otherwise consume the rest of it,
+  # silently truncating the fleet to the devices seen before the first cache miss.
+  adb -s "$serial" shell run-as "$PKG" cat files/debug_server_token </dev/null 2>/dev/null \
     | tr -d '\r\n' > "$cache"
   cat "$cache"
 }
@@ -87,12 +98,21 @@ rpc() {
   local body="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$method\""
   [ -n "$params" ] && body="$body,\"params\":$params"
   body="$body}"
-  local token=""
+  local token="" resp=""
   [ -n "$serial" ] && token=$(device_token "$serial")
-  curl -s -m "${OPENTHUMB_TIMEOUT:-30}" "http://127.0.0.1:$port" \
+  resp=$(curl -s -m "${OPENTHUMB_TIMEOUT:-30}" "http://127.0.0.1:$port" \
     -H 'Content-Type: application/json' \
     ${token:+-H "X-Minis-Token: $token"} \
-    -d "$body"
+    -d "$body")
+  # Stale cached token (the app was reinstalled): re-read it and retry once.
+  if [ -n "$serial" ] && case "$resp" in *'"code":-32000'*Unauthorized*) true ;; *) false ;; esac; then
+    token=$(device_token "$serial" refresh)
+    resp=$(curl -s -m "${OPENTHUMB_TIMEOUT:-30}" "http://127.0.0.1:$port" \
+      -H 'Content-Type: application/json' \
+      ${token:+-H "X-Minis-Token: $token"} \
+      -d "$body")
+  fi
+  printf '%s' "$resp"
 }
 
 format_status() {
@@ -163,14 +183,13 @@ fleet_health() {
   [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
 }
 
-# chat.prompt on every device with wait=true, one result file per device under
-# results/<jobId>-<serial>.json, plus a one-line summary on stdout. $1 = prompt
-# text, $2 = job id used in result filenames.
-fleet_run() {
-  local text_json job_id="$2"
-  text_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1")
-  mkdir -p "$RESULTS_DIR"
-  local index=0 found=0 serial port resp outfile
+# Give every device the same provider instance and model, so a fresh fleet can
+# answer prompts without touching each phone's Settings by hand. Idempotent by
+# label: a device that already has an instance with that label is left alone.
+# The API key is read from the environment and never echoed.
+fleet_provision() {
+  local label="$1" ptype="$2" key="$3" baseurl="${4:-}" model="${5:-}"
+  local index=0 found=0 serial port resp iid eid params
   while read -r serial; do
     [ -n "$serial" ] || continue
     found=1
@@ -178,30 +197,169 @@ fleet_run() {
       printf '%-24s ERROR    adb forward failed\n' "$serial"
       index=$((index + 1)); continue
     fi
-    resp=$(OPENTHUMB_TIMEOUT="${OPENTHUMB_WAIT_TIMEOUT:-600}" \
-      rpc "$port" chat.prompt "{\"prompt\":$text_json,\"wait\":true,\"waitTimeout\":${OPENTHUMB_WAIT_TIMEOUT:-600}}" "$serial")
+    index=$((index + 1))
+    resp=$(rpc "$port" provider.instances.list "" "$serial")
     if [ -z "$resp" ]; then
       printf '%-24s OFFLINE  no debug server (app stopped, or release build)\n' "$serial"
-    else
-      outfile="$RESULTS_DIR/${job_id}-${serial}.json"
-      printf '%s\n' "$resp" > "$outfile"
-      printf '%-24s %s\n' "$serial" "$(printf '%s\n' "$resp" | python3 -c '
+      continue
+    fi
+    if printf '%s' "$resp" | LABEL="$label" python3 -c '
+import json,os,sys
+label = os.environ["LABEL"]
+try: xs = json.load(sys.stdin)["result"]["instances"]
+except Exception: sys.exit(1)
+sys.exit(0 if any(i.get("label") == label for i in xs) else 1)'; then
+      printf '%-24s SKIP     already has "%s"\n' "$serial" "$label"
+      continue
+    fi
+    params=$(LABEL="$label" PTYPE="$ptype" KEY="$key" BASEURL="$baseurl" \
+      APPENDV1="${OPENTHUMB_PROVIDER_APPEND_V1:-}" python3 -c '
+import json,os
+p = {"providerType": os.environ["PTYPE"], "label": os.environ["LABEL"],
+     "credentialType": "apiKey", "apiKey": os.environ["KEY"]}
+if os.environ.get("BASEURL"):
+    p["customBaseURL"] = os.environ["BASEURL"]
+    p["seedBuiltInModels"] = False
+    # A hand-written base URL is normally already complete; opt back in explicitly
+    # for endpoints that really do want /v1 appended.
+    p["appendV1Suffix"] = os.environ.get("APPENDV1") == "1"
+print(json.dumps(p))')
+    resp=$(rpc "$port" provider.instances.create "$params" "$serial")
+    iid=$(printf '%s' "$resp" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin)["result"]["instance"]["id"])
+except Exception: pass')
+    if [ -z "$iid" ]; then
+      printf '%-24s FAIL     create: %s\n' "$serial" "$(printf '%s' "$resp" | head -c 160)"
+      continue
+    fi
+    if [ -z "$model" ]; then
+      printf '%-24s OK       instance=%s\n' "$serial" "$iid"
+      continue
+    fi
+    params=$(IID="$iid" MODEL="$model" python3 -c '
+import json,os
+print(json.dumps({"instanceId": os.environ["IID"], "modelId": os.environ["MODEL"]}))')
+    resp=$(rpc "$port" provider.models.add "$params" "$serial")
+    eid=$(printf '%s' "$resp" | python3 -c '
 import json,sys
 try:
-    r = json.load(sys.stdin)
-except Exception:
-    print("BAD RESPONSE"); sys.exit()
-if "error" in r:
-    print("ERROR    %s" % r["error"].get("message","?")); sys.exit()
-res = r.get("result", {})
-text = (res.get("responseText") or "").replace("\n"," ")[:80]
-print("%-8s %s" % (res.get("status","?"), text))
-')"
-      printf '         → %s\n' "$outfile"
+    r = json.load(sys.stdin)["result"]
+    print(r.get("id") or r.get("entryId") or r.get("entry",{}).get("id",""))
+except Exception: pass')
+    if [ -z "$eid" ]; then
+      printf '%-24s PARTIAL  instance=%s model add failed: %s\n' \
+        "$serial" "$iid" "$(printf '%s' "$resp" | head -c 120)"
+      continue
     fi
-    index=$((index + 1))
+    rpc "$port" provider.models.setAgentLoop \
+      "$(EID="$eid" python3 -c 'import json,os; print(json.dumps({"entryId": os.environ["EID"], "inLoop": True}))')" \
+      "$serial" >/dev/null
+    printf '%-24s OK       instance=%s model=%s\n' "$serial" "$iid" "$model"
   done < <(fleet_serials)
   [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
+}
+
+# chat.prompt on every device, one result file per device under
+# results/<jobId>-<serial>.json, plus a one-line summary on stdout. $1 = prompt
+# text, $2 = job id used in result filenames.
+#
+# Two phases, because a blocking `wait=true` per device would serialise the
+# fleet: 16 phones × a ten-minute agent run is a 2h40m job for work the phones
+# could all do at once. Phase 1 fires every prompt with wait=false so the whole
+# fleet thinks simultaneously; phase 2 polls each device for *its own* session
+# id. Wall-clock is then the slowest single device, not the sum.
+fleet_run() {
+  local text_json job_id="$2"
+  text_json=$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1")
+  mkdir -p "$RESULTS_DIR"
+
+  # Phase 1 — dispatch. `pending` accumulates "serial port sessionId" per device.
+  local index=0 found=0 serial port resp sid pending=""
+  while read -r serial; do
+    [ -n "$serial" ] || continue
+    found=1
+    if ! port=$(ensure_forward "$serial" "$index"); then
+      printf '%-24s ERROR    adb forward failed\n' "$serial"
+      index=$((index + 1)); continue
+    fi
+    index=$((index + 1))
+    resp=$(rpc "$port" chat.prompt "{\"prompt\":$text_json,\"wait\":false}" "$serial")
+    if [ -z "$resp" ]; then
+      printf '%-24s OFFLINE  no debug server (app stopped, or release build)\n' "$serial"
+      continue
+    fi
+    sid=$(printf '%s' "$resp" | python3 -c '
+import json,sys
+try: print(json.load(sys.stdin)["result"]["sessionId"])
+except Exception: pass')
+    if [ -z "$sid" ]; then
+      printf '%-24s ERROR    %s\n' "$serial" "$(printf '%s' "$resp" | head -c 120)"
+      continue
+    fi
+    printf '%-24s dispatched %s\n' "$serial" "$sid"
+    pending="$pending$serial $port $sid
+"
+  done < <(fleet_serials)
+  [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
+  [ -n "$pending" ] || { echo "openthumb-fleet: nothing dispatched" >&2; return 1; }
+
+  # Phase 2 — harvest. Each device is polled on the session it actually returned.
+  #
+  # `isRunning` alone is not enough to call a device done: right after an async
+  # chat.prompt the tracker has not flipped to running yet, so the first poll
+  # lands in the gap and harvests an empty transcript. A device counts as
+  # finished only once it is idle AND has produced an assistant message; a run
+  # that never produces one stays pending and is reported as a TIMEOUT rather
+  # than as an empty success.
+  local deadline=$((SECONDS + ${OPENTHUMB_WAIT_TIMEOUT:-600})) rc=0
+  local still outfile tmpfile
+  tmpfile="$RESULTS_DIR/.partial.$$"
+  while [ -n "$pending" ] && [ $SECONDS -lt $deadline ]; do
+    still=""
+    while read -r serial port sid; do
+      [ -n "$serial" ] || continue
+      resp=$(rpc "$port" chat.session.status "{\"sessionId\":\"$sid\"}" "$serial")
+      if printf '%s' "$resp" | python3 -c '
+import json,sys
+try: sys.exit(0 if json.load(sys.stdin)["result"]["isRunning"] else 1)
+except Exception: sys.exit(1)'; then
+        still="$still$serial $port $sid
+"
+        continue
+      fi
+      rpc "$port" chat.messages.list \
+        "{\"sessionId\":\"$sid\",\"roles\":[\"assistant\"],\"includeTools\":false}" "$serial" \
+        > "$tmpfile"
+      if ! python3 -c '
+import json,sys
+try: sys.exit(0 if json.load(open(sys.argv[1]))["result"]["messages"] else 1)
+except Exception: sys.exit(1)' "$tmpfile"; then
+        still="$still$serial $port $sid
+"                                  # idle but silent — it has not started yet
+        continue
+      fi
+      outfile="$RESULTS_DIR/${job_id}-${serial}.json"
+      mv "$tmpfile" "$outfile"
+      printf '%-24s %s\n' "$serial" "$(python3 -c '
+import json,sys
+msgs = json.load(open(sys.argv[1]))["result"]["messages"]
+print("done     %s" % (msgs[-1].get("content") or "").replace("\n", " ")[:80])' "$outfile")"
+      printf '         → %s\n' "$outfile"
+    done <<< "$pending"
+    pending="$still"
+    [ -n "$pending" ] && sleep 3
+  done
+  rm -f "$tmpfile"
+
+  if [ -n "$pending" ]; then
+    # Name what was dropped: a silent partial result reads as a full sweep.
+    printf '%s' "$pending" | while read -r serial _ sid; do
+      [ -n "$serial" ] && printf '%-24s TIMEOUT  still running %s\n' "$serial" "$sid"
+    done
+    rc=1
+  fi
+  return $rc
 }
 
 # Poll chat.session.status on every device until isRunning flips false.
@@ -244,7 +402,8 @@ print("done  %s" % (r.get("lastMessage") or "")[:80])
   return 1
 }
 
-usage() { sed -n '2,27p' "$0" | sed 's/^# \{0,1\}//'; }
+### usage prints the header comment block — the range ends one line before `set -uo pipefail`.
+usage() { sed -n "2,$(($(grep -n '^set -uo pipefail' "$0" | cut -d: -f1) - 1))p" "$0" | sed 's/^# \{0,1\}//'; }
 
 case "${1:-}" in
   devices)
@@ -321,6 +480,22 @@ for line in open(sys.argv[1]):
       fi
     done < "$tmp"
     rm -f "$tmp"
+    ;;
+  provision)
+    [ -n "${OPENTHUMB_PROVIDER_KEY:-}" ] || {
+      cat >&2 <<'MSG'
+usage: OPENTHUMB_PROVIDER_KEY=<api-key> openthumb-fleet provision
+  OPENTHUMB_PROVIDER_KEY    required — API key, read from env so it never lands in shell history
+  OPENTHUMB_PROVIDER_LABEL  default "fleet"
+  OPENTHUMB_PROVIDER_TYPE   default "openAI" (see `openthumb-fleet call provider.types`)
+  OPENTHUMB_PROVIDER_BASE   optional custom base URL; setting it disables built-in model seeding
+  OPENTHUMB_PROVIDER_APPEND_V1  set to 1 to append /v1 to a custom base URL (default: no)
+  OPENTHUMB_PROVIDER_MODEL  optional model id to add and expose to the agent loop
+MSG
+      exit 1
+    }
+    fleet_provision "${OPENTHUMB_PROVIDER_LABEL:-fleet}" "${OPENTHUMB_PROVIDER_TYPE:-openAI}" \
+      "$OPENTHUMB_PROVIDER_KEY" "${OPENTHUMB_PROVIDER_BASE:-}" "${OPENTHUMB_PROVIDER_MODEL:-}"
     ;;
   cancel) fleet_each chat.session.cancel ;;
   ""|-h|--help|help) usage ;;
