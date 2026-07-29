@@ -32,21 +32,24 @@ class DebugServer(
         const val MAX_BODY_BYTES = 32 * 1024 * 1024
 
         /**
-         * [T-android-debugserver-auth] Remote-connection auth decision, kept
-         * pure for unit testing. Loopback connections (adb forward — the
-         * developer's own machine over USB) stay token-free so the local
-         * tooling keeps working unchanged; any NON-loopback (LAN) connection
-         * must present the device token. Rationale: Android debug builds are
-         * never distributed (release channel ships assembleRelease without
-         * this server), but the dev workflow leaves the device reachable on
-         * the LAN for remote-worker e2e — an unauthenticated 0.0.0.0 RPC
-         * surface there can read logs/files and burn API quota. The iOS
-         * protocol-v1 encrypted envelope (358e3ded) is deliberately NOT
-         * ported: with no distribution surface the token gate is the
-         * proportionate hardening (evaluated in the A8 batch report).
+         * [T-android-debugserver-auth] Connection auth decision, kept pure for
+         * unit testing. **Every** connection must present the device token,
+         * loopback included.
+         *
+         * Loopback used to be exempt on the reasoning that 127.0.0.1 meant
+         * "adb forward, i.e. the developer's own machine". It does not: any
+         * app on the phone holding INTERNET — which is nearly all of them —
+         * can open a loopback socket, and this RPC surface exposes
+         * `provider.export` (stored API keys), `debug.readFile` and sandbox
+         * command execution. The exemption made those readable by any
+         * installed app, and `Access-Control-Allow-Origin: *` extended the
+         * same reach to any web page the device's browser loaded.
+         *
+         * Requiring the token everywhere keeps the adb workflow working — adb
+         * can read it with `run-as`, which is exactly the privilege a
+         * co-installed app does not have — and closes both paths.
          */
         fun isAuthorized(isLoopback: Boolean, providedToken: String?, expectedToken: String): Boolean {
-            if (isLoopback) return true
             if (expectedToken.isEmpty()) return false
             val provided = providedToken ?: return false
             if (provided.length != expectedToken.length) return false
@@ -366,7 +369,10 @@ class DebugServer(
         writer.print("Content-Type: $contentType\r\n")
         writer.print("Content-Length: ${bytes.size}\r\n")
         writer.print("Connection: close\r\n")
-        writer.print("Access-Control-Allow-Origin: *\r\n")
+        // No Access-Control-Allow-Origin: this is a device-local developer
+        // RPC and the clients are curl/adb, not browsers. With the wildcard,
+        // any page the phone's browser loaded could call it cross-origin and
+        // read the response — including provider.export.
         writer.print("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
         writer.print("Access-Control-Allow-Headers: Content-Type, X-Minis-Token, Authorization\r\n")
         writer.print("\r\n")
@@ -376,7 +382,6 @@ class DebugServer(
 
     private fun sendCorsPreflightResponse(writer: PrintWriter) {
         writer.print("HTTP/1.1 204 No Content\r\n")
-        writer.print("Access-Control-Allow-Origin: *\r\n")
         writer.print("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
         writer.print("Access-Control-Allow-Headers: Content-Type, X-Minis-Token, Authorization\r\n")
         writer.print("Access-Control-Max-Age: 86400\r\n")

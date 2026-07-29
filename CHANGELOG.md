@@ -3,6 +3,29 @@
 All notable changes to OpenThumb. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning is independent of upstream (OpenMinis) since 1.0.0.
 
+## [1.0.4] — 2026-07-29
+
+Closes the last finding from the fork audit: the debug server's own auth.
+
+### Security
+- **The debug server now requires its token on every connection, loopback
+  included.** Loopback was exempt on the assumption that 127.0.0.1 meant "adb
+  forward, i.e. the developer's machine". It does not: any app on the phone
+  holding INTERNET can open a loopback socket, and this RPC exposes
+  `provider.export` (stored API keys), `debug.readFile` and sandbox command
+  execution. adb keeps working because it can read the token with `run-as` —
+  precisely the privilege a co-installed app lacks. Verified on a Note8: an
+  unauthenticated `provider.export` over adb-forwarded loopback now returns
+  401, and `openthumb-fleet status` still reports normally.
+- **`Access-Control-Allow-Origin: *` removed.** It let any page the phone's
+  browser loaded call this RPC cross-origin and read the response.
+
+### Changed
+- `openthumb-fleet` reads each device's token via `run-as` and sends it with
+  every call, cached under `$OPENTHUMB_FLEET_DIR/tokens/`. Plain files rather
+  than an associative array — macOS still ships bash 3.2, where `declare -A`
+  does not exist and the lookup would trip `set -u`.
+
 ## [1.0.3] — 2026-07-29
 
 ### Fixed

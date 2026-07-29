@@ -14,9 +14,14 @@ class DebugServerAuthTest {
     private val token = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4"
 
     @Test
-    fun `loopback is exempt regardless of token`() {
-        assertTrue(DebugServer.isAuthorized(isLoopback = true, providedToken = null, expectedToken = token))
-        assertTrue(DebugServer.isAuthorized(isLoopback = true, providedToken = "wrong", expectedToken = token))
+    fun `loopback still needs the token`() {
+        // The old contract exempted loopback, which let any co-installed app
+        // with INTERNET reach provider.export over 127.0.0.1. adb keeps
+        // working because it can read the token with run-as; another app
+        // cannot.
+        assertFalse(DebugServer.isAuthorized(isLoopback = true, providedToken = null, expectedToken = token))
+        assertFalse(DebugServer.isAuthorized(isLoopback = true, providedToken = "wrong", expectedToken = token))
+        assertTrue(DebugServer.isAuthorized(isLoopback = true, providedToken = token, expectedToken = token))
     }
 
     @Test

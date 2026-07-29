@@ -60,15 +60,39 @@ ensure_forward() {
   echo "$port"
 }
 
+# Per-device auth token, cached for the run. The debug server requires it on
+# every connection including loopback (a co-installed app can reach 127.0.0.1
+# too, and this RPC exposes provider.export). `run-as` is the privilege adb
+# has and such an app does not, so reading it here is the intended path.
+# Cached on disk rather than in an associative array: macOS still ships bash
+# 3.2, where `declare -A` does not exist and every lookup would then trip
+# `set -u`.
+device_token() {
+  local serial="$1"
+  local cache="$FLEET_DIR/tokens/$serial"
+  if [ -s "$cache" ]; then
+    cat "$cache"
+    return 0
+  fi
+  mkdir -p "$FLEET_DIR/tokens"
+  adb -s "$serial" shell run-as "$PKG" cat files/debug_server_token 2>/dev/null \
+    | tr -d '\r\n' > "$cache"
+  cat "$cache"
+}
+
 # One JSON-RPC call. Prints the raw response body; empty means the app is not
 # running, or is a release build (those ship no debug server at all).
 rpc() {
-  local port="$1" method="$2" params="${3:-}"
+  local port="$1" method="$2" params="${3:-}" serial="${4:-}"
   local body="{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$method\""
   [ -n "$params" ] && body="$body,\"params\":$params"
   body="$body}"
+  local token=""
+  [ -n "$serial" ] && token=$(device_token "$serial")
   curl -s -m "${OPENTHUMB_TIMEOUT:-30}" "http://127.0.0.1:$port" \
-    -H 'Content-Type: application/json' -d "$body"
+    -H 'Content-Type: application/json' \
+    ${token:+-H "X-Minis-Token: $token"} \
+    -d "$body"
 }
 
 format_status() {
@@ -95,7 +119,7 @@ fleet_each() {
       printf '%-24s ERROR    adb forward failed\n' "$serial"
       index=$((index + 1)); continue
     fi
-    resp=$(rpc "$port" "$method" "$params")
+    resp=$(rpc "$port" "$method" "$params" "$serial")
     if [ -z "$resp" ]; then
       printf '%-24s OFFLINE  no debug server on :%s (app stopped, or release build)\n' "$serial" "$port"
     else
@@ -128,7 +152,7 @@ fleet_health() {
       printf '%-24s rpc=down  %s (adb forward failed)\n' "$serial" "$power"
       index=$((index + 1)); continue
     fi
-    resp=$(rpc "$port" debug.appInfo)
+    resp=$(rpc "$port" debug.appInfo "" "$serial")
     if [ -z "$resp" ]; then
       printf '%-24s rpc=down  %s (app stopped, or release build)\n' "$serial" "$power"
     else
@@ -155,7 +179,7 @@ fleet_run() {
       index=$((index + 1)); continue
     fi
     resp=$(OPENTHUMB_TIMEOUT="${OPENTHUMB_WAIT_TIMEOUT:-600}" \
-      rpc "$port" chat.prompt "{\"prompt\":$text_json,\"wait\":true,\"waitTimeout\":${OPENTHUMB_WAIT_TIMEOUT:-600}}")
+      rpc "$port" chat.prompt "{\"prompt\":$text_json,\"wait\":true,\"waitTimeout\":${OPENTHUMB_WAIT_TIMEOUT:-600}}" "$serial")
     if [ -z "$resp" ]; then
       printf '%-24s OFFLINE  no debug server (app stopped, or release build)\n' "$serial"
     else
@@ -193,7 +217,7 @@ fleet_collect() {
     while read -r serial; do
       [ -n "$serial" ] || continue
       port=$(ensure_forward "$serial" "$index") || { index=$((index + 1)); continue; }
-      resp=$(rpc "$port" chat.session.status "{\"sessionId\":\"$sid\"}")
+      resp=$(rpc "$port" chat.session.status "{\"sessionId\":\"$sid\"}" "$serial")
       running=$(printf '%s\n' "$resp" | python3 -c '
 import json,sys
 try: print(json.load(sys.stdin).get("result",{}).get("isRunning"))
