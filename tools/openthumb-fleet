@@ -298,7 +298,7 @@ except Exception: pass')
       continue
     fi
     printf '%-24s dispatched %s\n' "$serial" "$sid"
-    pending="$pending$serial $port $sid
+    pending="$pending$serial $port $sid 0
 "
   done < <(fleet_serials)
   [ "$found" -eq 1 ] || { echo "openthumb-fleet: no attached device has $PKG installed" >&2; return 1; }
@@ -309,22 +309,28 @@ except Exception: pass')
   # `isRunning` alone is not enough to call a device done: right after an async
   # chat.prompt the tracker has not flipped to running yet, so the first poll
   # lands in the gap and harvests an empty transcript. A device counts as
-  # finished only once it is idle AND has produced an assistant message; a run
-  # that never produces one stays pending and is reported as a TIMEOUT rather
-  # than as an empty success.
+  # finished only once it is idle AND has produced an assistant message.
+  #
+  # Idle-and-silent is therefore ambiguous — not started yet, or the agent loop
+  # died before emitting anything (a provider 429 does exactly this, in well
+  # under a second). It resolves by persistence: a real run flips to
+  # isRunning long before IDLE_STRIKES polls elapse, so a device still silent
+  # after that many consecutive polls has failed, and saying so beats waiting
+  # out the full timeout on a session that will never speak.
   local deadline=$((SECONDS + ${OPENTHUMB_WAIT_TIMEOUT:-600})) rc=0
+  local IDLE_STRIKES=3
   local still outfile tmpfile
   tmpfile="$RESULTS_DIR/.partial.$$"
   while [ -n "$pending" ] && [ $SECONDS -lt $deadline ]; do
     still=""
-    while read -r serial port sid; do
+    while read -r serial port sid strikes; do
       [ -n "$serial" ] || continue
       resp=$(rpc "$port" chat.session.status "{\"sessionId\":\"$sid\"}" "$serial")
       if printf '%s' "$resp" | python3 -c '
 import json,sys
 try: sys.exit(0 if json.load(sys.stdin)["result"]["isRunning"] else 1)
 except Exception: sys.exit(1)'; then
-        still="$still$serial $port $sid
+        still="$still$serial $port $sid 0
 "
         continue
       fi
@@ -335,8 +341,14 @@ except Exception: sys.exit(1)'; then
 import json,sys
 try: sys.exit(0 if json.load(open(sys.argv[1]))["result"]["messages"] else 1)
 except Exception: sys.exit(1)' "$tmpfile"; then
-        still="$still$serial $port $sid
-"                                  # idle but silent — it has not started yet
+        strikes=$((strikes + 1))
+        if [ "$strikes" -ge "$IDLE_STRIKES" ]; then
+          printf '%-24s FAILED   agent loop produced nothing (check logcat: provider 429/auth?)\n' "$serial"
+          rc=1
+        else
+          still="$still$serial $port $sid $strikes
+"
+        fi
         continue
       fi
       outfile="$RESULTS_DIR/${job_id}-${serial}.json"
@@ -354,7 +366,7 @@ print("done     %s" % (msgs[-1].get("content") or "").replace("\n", " ")[:80])' 
 
   if [ -n "$pending" ]; then
     # Name what was dropped: a silent partial result reads as a full sweep.
-    printf '%s' "$pending" | while read -r serial _ sid; do
+    printf '%s' "$pending" | while read -r serial _ sid _; do
       [ -n "$serial" ] && printf '%-24s TIMEOUT  still running %s\n' "$serial" "$sid"
     done
     rc=1
