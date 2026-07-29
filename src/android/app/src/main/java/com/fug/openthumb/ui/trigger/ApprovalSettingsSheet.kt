@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
@@ -53,7 +55,14 @@ fun ApprovalSettingsDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text(stringOf(R.string.approval_settings_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Scrollable, because the dialog is taller than a phone in
+            // landscape: measured on a Note8, "Never ask" was cut mid-sentence
+            // and the expiry setting and pending list below it could not be
+            // reached at all.
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 ModeChoice(
                     selected = mode == OutboundApproval.Mode.ALWAYS,
                     title = stringOf(R.string.approval_mode_always),

@@ -86,10 +86,23 @@ object ApprovalNotifier {
             pending(context, ACTION_DISCARD, p.id),
         ).build()
 
+        // Tapping the draft itself opens the list it is waiting in. Without
+        // this the body is dead space, and the only way back into the app is to
+        // find it on the home screen.
+        val open = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(Intent.ACTION_VIEW, android.net.Uri.parse("minis://settings/triggers"))
+                .setPackage(context.packageName)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         val n = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_email)
             .setContentTitle(title)
             .setContentText(p.draft)
+            .setContentIntent(open)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(Notification.CATEGORY_MESSAGE)

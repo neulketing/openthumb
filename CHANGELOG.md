@@ -54,6 +54,13 @@ section into the version heading, the release notes and the store changelog.
   which an approved reply can never find its conversation again. Verified to
   have detection power by removing the tightening rule — exactly that check
   fails.
+- `minis://settings/triggers` opens the notification-trigger screen, and the
+  approval notification links there. The screen had no deep link at all, so
+  tapping a draft did nothing and the only way to see how many were waiting was
+  to find the app on the home screen.
+- The approval settings scroll. On a Note8 the dialog was taller than the
+  screen: *Never ask* was cut mid-sentence, and the expiry setting and the
+  pending list below it could not be reached by any gesture.
 - Drafts expire after 30 minutes by default. An answer to a message from hours
   ago fits the conversation worse than no answer at all.
 

@@ -18,6 +18,7 @@ import com.fug.openthumb.ui.navigation.Routes
  *   minis://settings/model-groups/<groupId>     → Model Group detail
  *   minis://settings/usage                      → Token usage
  *   minis://settings/skills                     → Skills management
+ *   minis://settings/triggers                   → Notification triggers (and pending replies)
  *   minis://settings/memory                     → Memory management
  *   minis://settings/storage                    → Storage management
  *   minis://settings/mount-external             → Mount External Folders list
@@ -175,6 +176,10 @@ object DeepLinkHandler {
             "usage", "usage-stats", "usage_stats" ->
                 DeepLinkAction.OpenSettingsScreen(Routes.USAGE_STATS)
             "skills" -> DeepLinkAction.OpenSettingsScreen(Routes.SKILLS)
+            // The approval notification links here, so tapping the draft opens
+            // the list it is waiting in rather than doing nothing.
+            "triggers", "notification-triggers" ->
+                DeepLinkAction.OpenSettingsScreen(Routes.NOTIFICATION_TRIGGERS)
             "memory" -> DeepLinkAction.OpenSettingsScreen(Routes.MEMORY)
             "storage" -> DeepLinkAction.OpenSettingsScreen(Routes.STORAGE)
             "mount-external", "mount_external", "mounts", "mounted-folders", "mounted_folders" ->
