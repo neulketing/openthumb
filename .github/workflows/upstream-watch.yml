@@ -2,15 +2,20 @@ name: Upstream watch
 
 on:
   schedule:
-    # Every day at 00:17 UTC — off the :00 herd.
+    # Daily at 00:17 UTC — off the :00 herd.
     - cron: "17 0 * * *"
   workflow_dispatch:
 
-# Forks live or die by how fast they notice upstream. Polls OpenMinis/OpenMinis
-# for its newest release tag; when it moves past the tag recorded in
-# docs/upstream-last-seen.txt, opens an issue here (titled for a merge review)
-# and updates the marker file. If SMTP secrets are configured, also emails the
-# maintainer inbox.
+# A fork's real risk is not missing a release; it is drifting for months and
+# finding out only when a merge is unavoidable. So this tracks the default
+# branch, not just tags — measured 2026-07-30, upstream's newest release was
+# 0.20-preview from 13 July while its branch had been pushed on the 25th, and
+# what landed in between was a 300-file publish. Twelve days invisible to a
+# release-only watcher.
+#
+# scripts/upstream_digest.py does the work and crosses each upstream commit
+# with the files this fork has rewritten, because those are both the merge
+# conflicts and the places we made a deliberate choice worth re-reading.
 jobs:
   watch:
     runs-on: ubuntu-latest
@@ -19,59 +24,69 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the digest needs a merge-base against upstream
 
-      - name: Compare upstream latest with last seen
-        id: diff
+      - name: Build the digest
+        id: digest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          latest=$(gh api repos/OpenMinis/OpenMinis/releases --jq 'map(select(.draft|not))[0].tag_name' || echo "")
-          [ -n "$latest" ] || { echo "upstream releases API empty — nothing to do"; exit 0; }
-          seen=$(cat docs/upstream-last-seen.txt 2>/dev/null || echo "none")
-          echo "latest=$latest seen=$seen"
-          if [ "$latest" != "$seen" ]; then
-            echo "changed=1" >> "$GITHUB_OUTPUT"
-            echo "latest=$latest" >> "$GITHUB_OUTPUT"
-          fi
+          python3 scripts/upstream_digest.py --json > digest.json
+          python3 scripts/upstream_digest.py > digest.txt || true
+          cat digest.txt
+          head=$(python3 -c "import json;print(json.load(open('digest.json'))['head'])")
+          n=$(python3 -c "import json;print(len(json.load(open('digest.json'))['new_commits']))")
+          marker=$(cat docs/upstream-last-seen.txt 2>/dev/null || echo none)
+          {
+            echo "head=$head"
+            echo "count=$n"
+            echo "marker=$marker"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$n" -gt 0 ]; then echo "changed=1" >> "$GITHUB_OUTPUT"; fi
 
       - name: Open merge-review issue
-        if: steps.diff.outputs.changed == '1'
+        if: steps.digest.outputs.changed == '1'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Via env, never inlined into `run:`. The tag name comes from the
-          # UPSTREAM repository, so a crafted release tag would otherwise be
-          # substituted into the shell before it parses — arbitrary code on a
-          # runner holding contents:write and a push step.
-          LATEST: $LATEST
+          # Through the environment, never interpolated into `run:`. Commit
+          # subjects and tag names come from the UPSTREAM repository, so a
+          # crafted one would otherwise be substituted into the shell before it
+          # parses — arbitrary code on a runner holding contents:write.
+          COUNT: ${{ steps.digest.outputs.count }}
+          HEAD_SHA: ${{ steps.digest.outputs.head }}
+          MARKER: ${{ steps.digest.outputs.marker }}
         run: |
-          gh issue create \
-            --title "Upstream $LATEST released — merge review" \
-            --body "OpenMinis/OpenMinis published a new release: **$LATEST** (previous marker: $(cat docs/upstream-last-seen.txt 2>/dev/null || echo none)).
-
-          Review what changed upstream, decide merge or skip, then close this issue and commit the updated \`docs/upstream-last-seen.txt\`.
-
-          https://github.com/OpenMinis/OpenMinis/releases/tag/$LATEST
-
-          _Filed by .github/workflows/upstream-watch.yml_" \
-            --label upstream || gh issue create \
-            --title "Upstream $LATEST released — merge review" \
-            --body "OpenMinis/OpenMinis published **$LATEST**. Review for merge. https://github.com/OpenMinis/OpenMinis/releases/tag/$LATEST"
+          {
+            printf 'Upstream moved from `%s` to `%s`.\n\n' "$MARKER" "$HEAD_SHA"
+            printf '```\n'
+            cat digest.txt
+            printf '\n```\n\n'
+            printf 'A `!` marks a commit landing on a file this fork rewrote.\n'
+            printf 'Decide merge or skip for each, then close this issue.\n\n'
+            printf 'https://github.com/OpenMinis/OpenMinis/commits/main\n\n'
+            printf '_Filed by .github/workflows/upstream-watch.yml_\n'
+          } > body.md
+          gh issue create --title "Upstream: $COUNT new commits — merge review" \
+            --body-file body.md --label upstream \
+          || gh issue create --title "Upstream: $COUNT new commits — merge review" \
+            --body-file body.md
 
       - name: Advance the marker
-        if: steps.diff.outputs.changed == '1'
+        if: steps.digest.outputs.changed == '1'
         env:
-          LATEST: ${{ steps.diff.outputs.latest }}
+          HEAD_SHA: ${{ steps.digest.outputs.head }}
         run: |
-          echo "$LATEST" > docs/upstream-last-seen.txt
+          printf '%s\n' "$HEAD_SHA" > docs/upstream-last-seen.txt
           git config user.name "openthumb-bot"
           git config user.email "bot@neulketing.github.io"
           git add docs/upstream-last-seen.txt
-          git commit -m "chore(upstream): last seen $LATEST [skip ci]" || true
+          git commit -m "chore(upstream): last seen $HEAD_SHA [skip ci]" || exit 0
           git push
 
       - name: Detect SMTP credentials
         id: creds
-        if: steps.diff.outputs.changed == '1'
+        if: steps.digest.outputs.changed == '1'
         env:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
@@ -81,18 +96,14 @@ jobs:
           fi
 
       - name: Email the maintainer inbox
-        if: steps.diff.outputs.changed == '1' && steps.creds.outputs.ok == '1'
+        if: steps.digest.outputs.changed == '1' && steps.creds.outputs.ok == '1'
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 465
           username: ${{ secrets.GMAIL_USER }}
           password: ${{ secrets.GMAIL_APP_PASSWORD }}
-          subject: "[OpenThumb] upstream released $LATEST — merge review needed"
+          subject: "[OpenThumb] upstream moved — ${{ steps.digest.outputs.count }} new commits"
           to: neulketing@gmail.com
           from: OpenThumb CI <${{ secrets.GMAIL_USER }}>
-          body: |
-            OpenMinis/OpenMinis published a new release: $LATEST
-
-            A merge-review issue was opened on neulketing/openthumb.
-            https://github.com/OpenMinis/OpenMinis/releases/tag/$LATEST
+          body: file://digest.txt
