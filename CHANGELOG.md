@@ -3,6 +3,31 @@
 All notable changes to OpenThumb. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning is independent of upstream (OpenMinis) since 1.0.0.
 
+## [1.0.5] — 2026-07-29
+
+Documentation, not code. Three things the fork already did but never said.
+
+### Changed
+- **README leads with the individual case.** The headline was "One host. Many
+  phones", which described the fleet and left a person with one spare phone
+  reading someone else's use case. Reviving a drawer phone and answering in the
+  messenger a message came from are now stated first; the fleet follows.
+- **Account sign-in is documented.** The app ships OAuth for Claude, OpenAI,
+  Gemini, xAI, Kimi, OpenRouter and Antigravity — every user-facing document
+  said "your own API keys" and mentioned OAuth zero times, so a reader had no
+  way to know a subscription they already pay for can drive it.
+- **The RPC auth note matches reality.** It still said "no authentication",
+  which stopped being true in 1.0.4.
+- Notification replies and the release-APK build are listed in the fork's
+  delta table.
+
+### Added
+- `docs/recipes.md` — starter trigger rules with the exact package name, match
+  and prompt for each: reply in KakaoTalk/SMS, meeting-hours auto-reply, filing
+  delivery alerts, bank notifications into a ledger, and the morning digest
+  that reads what the triggers collected. The rules screen opened on an empty
+  list with a free-text prompt box and no example anywhere.
+
 ## [1.0.4] — 2026-07-29
 
 Closes the last finding from the fork audit: the debug server's own auth.

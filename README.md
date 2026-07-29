@@ -5,7 +5,7 @@
   <img alt="OpenThumb" src="assets/openthumb-banner-light.svg" width="440">
 </picture>
 
-**One host. Many phones. Each one running a real AI agent.**
+**A real AI agent on your own phone — including the one in your drawer.**
 
 [openthumb website](https://neulketing.github.io/openthumb/) ·
 [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
@@ -18,8 +18,21 @@
 </div>
 
 An on-device AI agent — a full Alpine Linux shell, browser automation, and
-device integrations, running *on the phone*. OpenThumb adds the part we needed
-and upstream does not target: **driving a rack of them at once.**
+device integrations, running *on the phone*.
+
+Two things this fork adds that upstream does not target:
+
+- **The spare phone in your drawer can run it.** Upstream crashes on startup on
+  Android 8 and 9; that is fixed here, so a Galaxy Note8-era handset works as a
+  dedicated agent instead of being e-waste. It also answers in the messenger
+  the message came from — the agent replies through the notification's own
+  quick-reply action, so KakaoTalk, SMS, LINE or Telegram becomes a two-way
+  channel to it.
+- **A rack of them can be driven at once**, over the built-in JSON-RPC server.
+
+You bring the model: **your own API key, or a plain account sign-in** — the app
+ships OAuth for Claude, OpenAI, Gemini, xAI, Kimi, OpenRouter and Antigravity,
+so a subscription you already pay for can drive it without per-token billing.
 
 ```console
 $ openthumb-fleet status
@@ -50,7 +63,8 @@ unmodified.
 | **fork** | [Notification triggers](#notification-triggers) — the agent wakes on the notifications you choose and handles them, unattended |
 | **fork** | [`tools/openthumb-fleet`](tools/openthumb-fleet) — multi-device orchestration over the built-in JSON-RPC server |
 | **fork** | [Android 8/9 startup crash fix](#android-8-and-9-support) |
-| **fork** | CI that actually builds the APK and runs `lintDebug` (upstream has none) |
+| **fork** | Replies in the messenger the notification came from — KakaoTalk, SMS, LINE, Telegram |
+| **fork** | CI that builds debug and release APKs and runs this fork's unit tests (upstream has none) |
 | **fork** | [`scripts/rebrand.sh`](scripts/rebrand.sh) — reproducible package rename, JNI symbols included |
 | **fork** | [Privacy policy](PRIVACY.md) (nothing collected) · [distribution channels](docs/distribution.md) |
 
@@ -88,6 +102,9 @@ notification, so a rule can be proven before it is armed.
 Requires Notification access, which Android only grants by hand — the rules
 screen links straight to that settings page.
 
+**[Recipes →](docs/recipes.md)** — ready-made rules for replying in KakaoTalk
+or SMS, filing delivery alerts, and turning bank notifications into a ledger.
+
 ## The fleet tool
 
 Every debug build already serves JSON-RPC on device-local `127.0.0.1:5321` —
@@ -123,9 +140,12 @@ Two things worth knowing before you rely on it:
 
 - **Debug builds only.** Release builds ship no debug server, by design. A
   fleet is a lab, not a product surface.
-- **The RPC has no authentication.** It is bound to device-localhost and
-  reached through `adb`, so physical/USB access is the boundary. Do not expose
-  that port to a network.
+- **Every call needs the device token** (since 1.0.4), loopback included — an
+  app installed on the phone can reach `127.0.0.1` too, and this RPC exposes
+  stored API keys. `openthumb-fleet` reads each device's token with `run-as`
+  and sends it for you; that is the privilege adb has and another app does
+  not. Read it by hand with
+  `adb shell run-as com.neulketing.openthumb cat files/debug_server_token`.
 
 ## Android 8 and 9 support
 
