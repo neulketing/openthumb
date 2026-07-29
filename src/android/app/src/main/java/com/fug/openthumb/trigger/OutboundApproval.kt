@@ -138,23 +138,40 @@ object OutboundApproval {
      * it: a rule marked as needing approval waits even in [Mode.NEVER], because
      * the person who marked it knew something the global setting does not.
      */
-    fun autoSendAllowed(context: Context, rule: NotificationTriggerRule?, pkg: String): Boolean {
-        if (rule?.requireApproval == true) return false
-        return when (mode(context)) {
+    fun autoSendAllowed(context: Context, rule: NotificationTriggerRule?, pkg: String): Boolean =
+        decide(mode(context), rule?.requireApproval == true, pkg, allowlist(context))
+
+    /**
+     * The decision itself, with no Android in it, so it can be tested directly.
+     * Everything above is where the inputs come from; this is what they mean.
+     */
+    fun decide(
+        mode: Mode,
+        ruleRequiresApproval: Boolean,
+        pkg: String,
+        allowlist: Set<String>,
+    ): Boolean {
+        if (ruleRequiresApproval) return false
+        return when (mode) {
             Mode.ALWAYS -> false
             Mode.NEVER -> true
-            Mode.ALLOWLIST -> pkg in allowlist(context)
+            Mode.ALLOWLIST -> pkg in allowlist
         }
     }
+
+    /** True when a draft queued at [createdAt] is too old to still be worth sending. */
+    fun isExpired(createdAt: Long, nowMs: Long, expiryMinutes: Int): Boolean =
+        nowMs - createdAt > expiryMinutes * 60_000L
 
     // ---- the queue ------------------------------------------------------
 
     /** Drafts still waiting, newest first, with expired ones already dropped. */
     @Synchronized
     fun pending(context: Context): List<Pending> {
-        val cutoff = System.currentTimeMillis() - expiryMinutes(context) * 60_000L
+        val now = System.currentTimeMillis()
+        val minutes = expiryMinutes(context)
         val all = readPending(context)
-        val live = all.filter { it.createdAt >= cutoff }
+        val live = all.filterNot { isExpired(it.createdAt, now, minutes) }
         if (live.size != all.size) {
             for (p in all - live.toSet()) record(context, p, "expired")
             writePending(context, live)

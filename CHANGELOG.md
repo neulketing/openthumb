@@ -34,6 +34,14 @@ section into the version heading, the release notes and the store changelog.
   every decision — sent, edited, discarded, expired — appends to
   `outbound-ledger.jsonl` and is readable in the app. A log holding only
   successes cannot answer the question people actually have.
+- The decision itself is a pure function with no Android in it, and nine checks
+  cover the cases where being wrong is expensive: an unreadable stored setting
+  falls back to asking rather than sending, `com.allowed.evil` does not inherit
+  `com.allowed`'s permission, a rule's own flag holds a reply under every mode
+  including *Never ask*, and a queued draft keeps the notification key without
+  which an approved reply can never find its conversation again. Verified to
+  have detection power by removing the tightening rule — exactly that check
+  fails.
 - Drafts expire after 30 minutes by default. An answer to a message from hours
   ago fits the conversation worse than no answer at all.
 
