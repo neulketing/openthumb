@@ -40,11 +40,25 @@ product is published under FUG. The app is still called OpenThumb.
   even when the visible DOM is a JavaScript shell), the `<article>`/`<main>`
   block with navigation and footers removed, or all visible text. `--raw` still
   returns the HTML for the cases that need it.
+- **A fetch interrupted by Doze resumes instead of restarting.** Android
+  suspends background work, and a fetch that walks several URL variants is long
+  enough to be killed partway — with no record of what was already tried, the
+  next run starts over and dies at the same place forever. Each attempt is now
+  appended to a journal as it finishes, and a resumed run skips what the journal
+  covers. Measured: 2.68s for a first pass, 0.14s to resume it. The journal
+  expires after ten minutes so a lifted block is retried, and `--forget` starts
+  clean.
+- **Cookies are kept per host, so clearing a challenge once pays off.** Hand the
+  WebView's cookies in with `--cookies` after `browser_use` gets past a
+  challenge and later fetches to that host start already solved. Storage is
+  keyed by host and stores the host inside the file as well, so a cookie can
+  never be attached to a request for a different site; the files are 0600
+  because session cookies are credentials.
 - Ported from insane-search (MIT, github.com/fivetaku/insane-search). Pure
   standard library — CSS selectors are matched with `html.parser` rather than
   BeautifulSoup so nothing has to be installed on the phone. `curl_cffi` is used
   for TLS impersonation when importable; its absence costs capability, never
-  correctness. `scripts/test-fetch.sh` runs 58 offline checks, wired into CI
+  correctness. `scripts/test-fetch.sh` runs 69 offline checks, wired into CI
   ahead of the build so a broken verdict fails in seconds rather than after the
   NDK compile.
 

@@ -16,6 +16,7 @@ import sys
 
 import extract
 import fetcher
+import state
 
 
 def _parse_cookies(raw: str) -> dict:
@@ -47,6 +48,17 @@ def main(argv=None) -> int:
                    help="try only the URL as given, no variants")
     p.add_argument("--pause", type=float, default=0.0, metavar="SEC",
                    help="wait between variants; use when a host rate-limits")
+    p.add_argument("--no-resume", action="store_true",
+                   help="do not skip variants a previous run already tried. "
+                        "Resuming is on because Android suspends background "
+                        "work, and a fetch restarted from scratch every time "
+                        "gets killed at the same place forever.")
+    p.add_argument("--no-cookie-store", action="store_true",
+                   help="do not reuse or keep cookies for this host. Cookies "
+                        "are stored per host and never sent to another.")
+    p.add_argument("--forget", action="store_true",
+                   help="drop this host's stored cookies and resume journal, "
+                        "then fetch clean")
     p.add_argument("--text", action="store_true", help="print the body, not JSON")
     p.add_argument("--raw", action="store_true",
                    help="return the HTML instead of the readable text. Costs "
@@ -62,6 +74,9 @@ def main(argv=None) -> int:
     if args.referer:
         headers["Referer"] = args.referer
 
+    if args.forget:
+        state.forget_cookies(args.url)
+
     result = fetcher.fetch(
         args.url,
         success_selectors=args.selector or None,
@@ -71,6 +86,8 @@ def main(argv=None) -> int:
         timeout=args.timeout,
         first_only=args.first_only,
         pause=args.pause,
+        resume=not (args.no_resume or args.forget),
+        cookie_store=not args.no_cookie_store,
     )
 
     # Readable text is the default because the raw body is mostly script: a

@@ -13,6 +13,7 @@ not be reported as a wall, and a 600-byte page that is genuinely a page.
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -214,6 +215,54 @@ ck("nested json-ld graphs are searched",
 ck("an empty document does not crash", extract.extract("")["text"], "")
 ck("broken markup still yields text",
    "survives" in extract.extract("<div><p>text survives<div")["text"], True)
+
+# --- cookies stay on their own host, and the journal resumes ---------------
+import shutil  # noqa: E402
+import tempfile  # noqa: E402
+
+_tmp = tempfile.mkdtemp(prefix="openthumb-fetch-test-")
+os.environ["OPENTHUMB_FETCH_STATE"] = _tmp
+import state  # noqa: E402
+state.STATE_DIR = _tmp
+
+state.save_cookies("https://a.test/page", {"sid": "secret"})
+ck("cookies come back for their own host",
+   state.load_cookies("https://a.test/other"), {"sid": "secret"})
+ck("cookies never cross to another host",
+   state.load_cookies("https://b.test/page"), {})
+ck("a host that looks similar is still another host",
+   state.load_cookies("https://a.test.evil.com/page"), {})
+ck("cookies are not world-readable",
+   oct(os.stat(os.path.join(_tmp, "cookies",
+       state._safe("a.test") + ".json")).st_mode)[-3:], "600")
+state.forget_cookies("https://a.test/page")
+ck("forget drops them", state.load_cookies("https://a.test/page"), {})
+
+j = state.Journal("https://a.test/p", "fp")
+ck("a fresh journal knows nothing", j.seen("https://a.test/p"), None)
+j.record({"url": "https://a.test/p", "verdict": "challenge"})
+ck("a reopened journal remembers",
+   state.Journal("https://a.test/p", "fp").seen("https://a.test/p")["verdict"],
+   "challenge")
+ck("different rules start a different journal",
+   state.Journal("https://a.test/p", "other-fp").seen("https://a.test/p"), None)
+with open(j.path, "a", encoding="utf-8") as fh:
+    fh.write('{"url": "https://a.test/q", "verdi')  # killed mid-write
+ck("a run killed mid-write does not break resume",
+   state.Journal("https://a.test/p", "fp").seen("https://a.test/p")["verdict"],
+   "challenge")
+j.clear()
+ck("clearing the journal forgets everything",
+   state.Journal("https://a.test/p", "fp").seen("https://a.test/p"), None)
+
+# A stale journal must not make the fetcher skip a route that now works.
+j2 = state.Journal("https://a.test/stale", "fp")
+j2.record({"url": "https://a.test/stale", "verdict": "challenge"})
+os.utime(j2.path, (0, time.time() - state.JOURNAL_TTL - 60))
+ck("a journal past its TTL is discarded",
+   state.Journal("https://a.test/stale", "fp").seen("https://a.test/stale"), None)
+
+shutil.rmtree(_tmp, ignore_errors=True)
 
 print("all checks passed" if not FAILED else "%d FAILED: %s" % (len(FAILED), FAILED))
 sys.exit(1 if FAILED else 0)

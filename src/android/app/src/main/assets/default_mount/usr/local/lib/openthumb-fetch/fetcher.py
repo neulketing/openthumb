@@ -21,6 +21,7 @@ import zlib
 from http.cookiejar import CookieJar
 
 import routes
+import state
 import urls
 from verdict import TERMINAL_NONSUCCESS, Response, Verdict, validate
 
@@ -107,7 +108,7 @@ def fetch_once(url, *, headers=None, cookies=None, timeout=DEFAULT_TIMEOUT,
 
 def fetch(url, *, success_selectors=None, known_bad_sizes=None, headers=None,
           cookies=None, timeout=DEFAULT_TIMEOUT, order=None, first_only=False,
-          pause=0.0) -> dict:
+          pause=0.0, resume=True, cookie_store=True) -> dict:
     """Try each URL variant until one is a terminal success, or the wall is real.
 
     Returns a dict, not an object, because its consumer is an LLM reading JSON.
@@ -116,61 +117,97 @@ def fetch(url, *, success_selectors=None, known_bad_sizes=None, headers=None,
     if first_only:
         variants = variants[:1]
 
-    attempts, best, best_val, best_name = [], None, None, ""
+    # Cookies handed in win over stored ones — the caller just cleared a
+    # challenge in the WebView and knows more than the cache does.
+    if cookies:
+        state.save_cookies(url, cookies)
+    merged = state.load_cookies(url) if cookie_store else {}
+    merged.update(cookies or {})
+    merged = merged or None
+
+    # Anything that changes how a response is judged belongs in the key, or a
+    # resumed run would inherit verdicts reached under different rules.
+    fingerprint = repr((sorted(success_selectors or []), sorted(known_bad_sizes or []),
+                        sorted((headers or {}).items()), bool(merged), first_only))
+    journal = state.Journal(url, fingerprint, enabled=resume)
+
+    attempts, best_resp, best = [], None, None
     stop_reason = "exhausted"
 
     for i, (name, candidate) in enumerate(variants):
-        if pause and i:
-            time.sleep(pause)
-        resp = fetch_once(candidate, headers=headers, cookies=cookies,
-                          timeout=timeout)
-        val = validate(resp, success_selectors=success_selectors,
-                       known_bad_sizes=known_bad_sizes)
-        attempts.append({
-            "transform": name, "url": candidate, "via": resp.via,
-            "status": val.status, "verdict": val.verdict.value,
-            "bytes": val.body_size, "reasons": val.reasons,
-        })
+        prior = journal.seen(candidate)
+        if prior:
+            # Already tried, and it did not succeed — a successful run clears
+            # the journal. Skipping is the whole point: this is what makes a
+            # fetch killed by Doze make progress instead of restarting. The
+            # verdict still counts, or a fully resumed run would report nothing.
+            attempt, resp = dict(prior, resumed=True), None
+        else:
+            if pause and i:
+                time.sleep(pause)
+            resp = fetch_once(candidate, headers=headers, cookies=merged,
+                              timeout=timeout)
+            val = validate(resp, success_selectors=success_selectors,
+                           known_bad_sizes=known_bad_sizes)
+            attempt = {
+                "transform": name, "url": candidate, "via": resp.via,
+                "status": val.status, "verdict": val.verdict.value,
+                "bytes": val.body_size, "reasons": val.reasons,
+            }
+            if val.ok:
+                attempts.append(attempt)
+                journal.clear()
+                if cookie_store and resp.cookies:
+                    state.save_cookies(candidate, resp.cookies)
+                return _result(True, resp, attempt, attempts, "success", True)
+            journal.record(attempt)
 
-        if val.ok:
-            return _result(True, resp, val, name, attempts, "success", True)
+        attempts.append(attempt)
 
-        # Keep the least-bad response so a caller who wants to look at the body
-        # of a challenge page still can.
-        if best_val is None or _rank(val.verdict) > _rank(best_val.verdict):
-            best, best_val, best_name = resp, val, name
+        # Keep the least-bad attempt, and its body when we have one, so a caller
+        # who wants to look at the challenge page still can.
+        if best is None or _rank(attempt["verdict"]) > _rank(best["verdict"]):
+            best, best_resp = attempt, resp
 
-        if val.verdict in TERMINAL_NONSUCCESS:
-            stop_reason = val.verdict.value
+        if attempt["verdict"] in _TERMINAL_VALUES:
+            stop_reason = attempt["verdict"]
             break
     else:
         stop_reason = "exhausted"
 
     exhausted = stop_reason == "exhausted" and not first_only
-    return _result(False, best, best_val, best_name, attempts, stop_reason, exhausted)
+    return _result(False, best_resp, best, attempts, stop_reason, exhausted)
 
 
+_TERMINAL_VALUES = frozenset(v.value for v in TERMINAL_NONSUCCESS)
+
+# How informative a non-success is. A challenge page has a body worth showing;
+# a 404 has nothing. Ordered so the least useless attempt is the one reported.
 _RANK = {
-    Verdict.SUSPECT_OK: 5, Verdict.CHALLENGE: 4, Verdict.BLOCKED: 3,
-    Verdict.RATE_LIMITED: 2, Verdict.AUTH_REQUIRED: 1, Verdict.NOT_FOUND: 1,
-    Verdict.UNKNOWN: 0,
+    Verdict.SUSPECT_OK.value: 5, Verdict.CHALLENGE.value: 4,
+    Verdict.BLOCKED.value: 3, Verdict.RATE_LIMITED.value: 2,
+    Verdict.AUTH_REQUIRED.value: 1, Verdict.NOT_FOUND.value: 1,
+    Verdict.UNKNOWN.value: 0,
 }
 
 
-def _rank(v) -> int:
-    return _RANK.get(v, 0)
+def _rank(verdict: str) -> int:
+    return _RANK.get(verdict, 0)
 
 
-def _result(ok, resp, val, transform, attempts, stop_reason, exhausted) -> dict:
+def _result(ok, resp, best, attempts, stop_reason, exhausted) -> dict:
+    best = best or {}
     out = {
         "ok": ok,
-        "url": resp.url if resp else "",
-        "transform": transform,
-        "status": val.status if val else 0,
-        "verdict": val.verdict.value if val else Verdict.UNKNOWN.value,
-        "reasons": val.reasons if val else [],
-        "bytes": val.body_size if val else 0,
-        "via": resp.via if resp else "",
+        "url": resp.url if resp else best.get("url", ""),
+        "transform": best.get("transform", ""),
+        "status": best.get("status", 0),
+        "verdict": best.get("verdict", Verdict.UNKNOWN.value),
+        "reasons": best.get("reasons", []),
+        "bytes": best.get("bytes", 0),
+        "via": best.get("via", ""),
+        # Empty when the attempt came from the journal — the body was not kept,
+        # only the verdict. Say so rather than implying the page was blank.
         "content": resp.text if resp else "",
         "attempts": attempts,
         "stop_reason": stop_reason,
