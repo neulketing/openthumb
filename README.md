@@ -20,29 +20,27 @@
 An on-device AI agent — a full Alpine Linux shell, browser automation, and
 device integrations, running *on the phone*.
 
-Two things this fork adds that upstream does not target:
+What this fork is for: **one phone, yours, working on its own.** Upstream's
+agent answers when you talk to it. This one also acts when you don't — it wakes
+on the notifications you choose and handles them while you are away.
+
+Two things that follow, which upstream does not target:
 
 - **The spare phone in your drawer can run it.** Upstream crashes on startup on
   Android 8 and 9; that is fixed here, so a Galaxy Note8-era handset works as a
-  dedicated agent instead of being e-waste. It also answers in the messenger
-  the message came from — the agent replies through the notification's own
-  quick-reply action, so KakaoTalk, SMS, LINE or Telegram becomes a two-way
-  channel to it.
-- **A rack of them can be driven at once**, over the built-in JSON-RPC server.
+  dedicated agent instead of being e-waste.
+- **It answers in the messenger the message came from.** The agent replies
+  through the notification's own quick-reply action, so KakaoTalk, SMS, LINE or
+  Telegram becomes a two-way channel to it — no per-app integration.
 
 You bring the model: **your own API key, or a plain account sign-in** — the app
 ships OAuth for Claude, OpenAI, Gemini, xAI, Kimi, OpenRouter and Antigravity,
 so a subscription you already pay for can drive it without per-token billing.
 
-```console
-$ openthumb-fleet status
-REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
-REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U
-REDACTED-SERIAL     android=9 sdk=28 sandbox=up device=samsung SM-N950U1
-```
-
-> That is real output from three Galaxy Note8s on Android 9 — devices upstream
-> crashes on. See [Android 8 and 9 support](#android-8-and-9-support).
+Verified running on Galaxy Note8 hardware (Android 9, API 28) — see
+[Android 8 and 9 support](#android-8-and-9-support). If you end up with more
+than one phone, [`tools/openthumb-fleet`](#the-fleet-tool) drives them from a
+laptop; it is a development aid, not what the app is for.
 
 ---
 
@@ -106,6 +104,11 @@ screen links straight to that settings page.
 or SMS, filing delivery alerts, and turning bank notifications into a ledger.
 
 ## The fleet tool
+
+A lab utility, not the product. OpenThumb is an app for one person's phone;
+this is here because developing for that phone is easier when you can drive
+several at once from a laptop, and because debug builds already expose the
+server that makes it possible. Skip this section if you have one phone.
 
 Every debug build already serves JSON-RPC on device-local `127.0.0.1:5321` —
 that is upstream's work, and it is the whole reason this fork is small. The

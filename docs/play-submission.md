@@ -123,18 +123,15 @@ collection — the same treatment as a browser.
 - [x] Screenshots — 6 phone shots at 1080x2400, `fastlane/.../phoneScreenshots/`
       (captured on an arm64 API-35 emulator; retake on a real device before launch if you want photographic status bars)
 - [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
-- [~] D-U-N-S number — **requested 2026-07-29** via Apple's lookup form as
-      "REDACTED" (HQ: Gangseo-gu, Busan). No existing D&B record, so a new
-      registration was submitted; D&B responds within 5 business days (watch
-      neulketing@gmail.com). Free via Apple's lookup form (works for non-US
-      businesses; the number is shared with Google). Needs an Apple ID sign-in.
-      **Owner action** — cannot be automated.
+- [~] D-U-N-S number — requested. A company-type Play account needs one, and
+      Apple's lookup form issues it free (it works for non-US businesses and
+      the number is shared with Google); D&B answers within 5 business days.
+      Needs an Apple ID sign-in. **Owner action** — cannot be automated.
 - [ ] Developer account ($25, owner) — organization type, after D-U-N-S.
-      **Owner action** — payment + identity verification.
-      **In progress (2026-07-29)**: org signup started as neulketing@gmail.com,
-      steps 완료: account type(company/business) → Android dev ID → developer
-      name "neulketing". Stopped at the payments-profile step: a NEW payments
-      profile must be created for REDACTED with the D-U-N-S number (필수),
-      NOT the existing "퍼그" profile (different entity). The $25 payment
-      comes after. Resume: play.google.com/console/signup continues where it
-      left off once the D-U-N-S arrives.
+      **Owner action** — payment + identity verification. The signup stops at
+      the payments-profile step until the D-U-N-S arrives, then resumes where
+      it left off at play.google.com/console/signup.
+
+> Account-level specifics — which legal entity, which payments profile, who
+> signs — are operator details, not project documentation. They live in the
+> operator's own notes, not in this repository.
