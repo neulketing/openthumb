@@ -3,6 +3,18 @@
 All notable changes to OpenThumb. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning is independent of upstream (OpenMinis) since 1.0.0.
 
+## [1.0.3] — 2026-07-29
+
+### Fixed
+- **ShellCheck CI is green again and still catches real defects.** 1.0.2 raised
+  the severity to `warning` so the fleet script's caller-scope port bug (SC2318)
+  would surface, but that also surfaced inherited SC2034/SC2154 noise from the
+  upstream build scripts and turned the job red. The check now splits by
+  ownership: `tools/` (this fork's) at `warning`, `scripts/` (inherited) at
+  `error`. Both verified locally at exit 0.
+- The discovered file list is no longer split blind — a path containing a
+  space fails the step with a message instead of checking the wrong files.
+
 ## [1.0.2] — 2026-07-29
 
 Follow-up to 1.0.1, from a full audit of the fork's own code. Two crash/DoS
