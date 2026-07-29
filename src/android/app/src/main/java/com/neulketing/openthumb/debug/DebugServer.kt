@@ -126,8 +126,14 @@ class DebugServer(
         socket.use { s ->
             try {
                 s.soTimeout = 30_000
-                val reader = BufferedReader(InputStreamReader(s.getInputStream()))
+                // Headers are parsed off the raw stream rather than a
+                // BufferedReader: a buffered reader pulls whole chunks, so it
+                // swallows the head of the body and leaves the byte-exact body
+                // read below unable to find it. Header lines are short, so
+                // reading them a byte at a time costs nothing.
+                val input = s.getInputStream()
                 val writer = PrintWriter(s.getOutputStream(), true)
+                val reader = HeaderLineReader(input)
 
                 // Read HTTP request line
                 val requestLine = reader.readLine() ?: return
@@ -233,15 +239,24 @@ class DebugServer(
                     return
                 }
 
-                // Read body
-                val body = CharArray(contentLength)
+                // Read body.
+                //
+                // Content-Length counts BYTES, so the loop has to count bytes
+                // too. Filling a CharArray instead stalls on any non-ASCII
+                // payload: one Korean character is three UTF-8 bytes, so the
+                // reader runs out of input long before `totalRead` reaches the
+                // byte count, blocks for more that never arrives, and dies on
+                // the 30s socket timeout — the caller sees an empty response
+                // with no error. ASCII-only bodies happen to work, which is
+                // why this hid until a Korean prompt was sent.
+                val body = ByteArray(contentLength)
                 var totalRead = 0
                 while (totalRead < contentLength) {
-                    val n = reader.read(body, totalRead, contentLength - totalRead)
+                    val n = input.read(body, totalRead, contentLength - totalRead)
                     if (n < 0) break
                     totalRead += n
                 }
-                val jsonBody = String(body, 0, totalRead)
+                val jsonBody = String(body, 0, totalRead, Charsets.UTF_8)
 
                 val responseJSON = runBlocking {
                     rpcHandler.handle(jsonBody)
@@ -351,5 +366,26 @@ class DebugServer(
         writer.print("Connection: close\r\n")
         writer.print("\r\n")
         writer.flush()
+    }
+}
+
+/**
+ * Minimal HTTP header-line reader over a raw stream.
+ *
+ * Reads one byte at a time and stops at CRLF/LF, so it never buffers past the
+ * blank line that ends the headers. That is the point: the body after it must
+ * be read as an exact byte count (Content-Length), which a chunk-buffering
+ * reader would make impossible.
+ */
+private class HeaderLineReader(private val input: java.io.InputStream) {
+    /** Next header line without its terminator, or null at end of stream. */
+    fun readLine(): String? {
+        val buf = java.io.ByteArrayOutputStream(128)
+        while (true) {
+            val b = input.read()
+            if (b < 0) return if (buf.size() == 0) null else buf.toString("UTF-8")
+            if (b == '\n'.code) return buf.toString("UTF-8").removeSuffix("\r")
+            buf.write(b)
+        }
     }
 }
