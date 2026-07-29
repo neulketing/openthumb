@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.0.6] — 2026-07-30
+
 ### Added
 - `scripts/bump-version.sh` — moves `versionName`, `versionCode`, the CHANGELOG
   heading, the F-Droid changelog and the version on the landing page together.
