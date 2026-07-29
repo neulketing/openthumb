@@ -84,4 +84,18 @@ git commit -q -m "chore(release): v$new"
 # stays local and the release silently never happens.
 git tag -a "v$new" -m "OpenThumb $new"
 
-printf 'tagged v%s. publish with:  git push origin main --follow-tags\n' "$new"
+cat <<EOF
+tagged v$new. publish with:
+
+  git push origin main --follow-tags
+
+Then check that the release actually started:
+
+  gh run list --workflow Release --limit 1
+
+A tag push that raises no workflow run looks exactly like a successful release
+until someone goes looking for the APK — observed on v1.1.0, where the tag
+reached the remote and nothing ran. If the list is empty, start it by hand:
+
+  gh workflow run release.yml --ref v$new
+EOF
