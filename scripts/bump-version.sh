@@ -79,6 +79,9 @@ edit "$SITE" -e "s|<!--v-->[^<]*<!--/v-->|<!--v-->v$new<!--/v-->|"
 
 git add -A -- "$GRADLE" "$CHANGELOG" "$SITE" "$FASTLANE"
 git commit -q -m "chore(release): v$new"
-git tag "v$new"
+# Annotated, because `git push --follow-tags` — the command printed below and
+# the one people reach for — pushes annotated tags only. A lightweight tag
+# stays local and the release silently never happens.
+git tag -a "v$new" -m "OpenThumb $new"
 
 printf 'tagged v%s. publish with:  git push origin main --follow-tags\n' "$new"

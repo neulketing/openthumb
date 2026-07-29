@@ -18,7 +18,10 @@ section into the version heading, the release notes and the store changelog.
   checks that all of them move.
 - `.github/workflows/release.yml` — a tag push publishes the release, with the
   notes read out of this file and a check that the tag agrees with the
-  `versionName` it was cut from.
+  `versionName` it was cut from. The tag is annotated: `git push --follow-tags`
+  skips lightweight ones, so a lightweight tag would stay local and the release
+  would never fire — which is exactly what happened on the first attempt at
+  this version.
 - The landing page links the changelog, and shows which version is current.
 
 ### Fixed

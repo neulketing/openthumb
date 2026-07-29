@@ -61,6 +61,9 @@ ck "store changelog named after versionCode" \
 ck "site version rewritten" \
    "$(sed -n 's/.*<!--v-->\(.*\)<!--\/v-->.*/\1/p' docs/index.html)" "v$want_name"
 ck "tag created" "$(git tag)" "v$want_name"
+# Lightweight tags are skipped by `git push --follow-tags`, so the tag stays
+# local and the release never fires. Observed on v1.0.6.
+ck "tag is annotated" "$(git cat-file -t "v$want_name")" "tag"
 
 # The release workflow slices its notes out of the same file; a heading it
 # cannot match publishes an empty release.
