@@ -8,6 +8,35 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+### Added
+- **Nothing the agent writes reaches another person without someone saying
+  yes.** The trigger engine had five gates — quiet hours, an active window, a
+  per-rule cooldown, a concurrency cap, and a check that the notification can be
+  replied to at all — and every one of them limits how *often* a reply is sent.
+  None looked at what it says. So an agent that misread a message answered a
+  real person, at speed, and the first anyone heard of it was the reply already
+  in the thread. Replies now stop at a draft until the person whose name is on
+  them decides.
+- **The decision arrives where you already are.** The draft comes as a
+  notification with Send and Discard on it and an inline edit box, so correcting
+  a draft and approving it is one gesture rather than two screens. It shows the
+  reply in full rather than a summary — reading what is about to be sent is the
+  entire point — and it cannot be swiped away, because dismissing a question is
+  not an answer.
+- **Three settings, written as consequences.** *Ask every time* is the default,
+  because a gate that ships off is not a gate. *Ask except for chosen apps*
+  sends automatically only where you said to. *Never ask* is honest about when
+  it is reasonable: when your rules answer nobody but you. A rule can also carry
+  `requireApproval`, which only ever tightens — a rule marked that way waits even
+  in *Never ask*, because whoever marked it knew something the global setting
+  does not.
+- **A record of what it tried to send, not only what it sent.** Every draft and
+  every decision — sent, edited, discarded, expired — appends to
+  `outbound-ledger.jsonl` and is readable in the app. A log holding only
+  successes cannot answer the question people actually have.
+- Drafts expire after 30 minutes by default. An answer to a message from hours
+  ago fits the conversation worse than no answer at all.
+
 ## [1.1.0] — 2026-07-30
 
 **The application ID changes to `com.fug.openthumb`, so 1.1.0 installs beside

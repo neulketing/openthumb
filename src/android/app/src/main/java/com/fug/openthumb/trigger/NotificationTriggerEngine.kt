@@ -211,6 +211,7 @@ object NotificationTriggerEngine {
         context: Context,
         sessionId: String,
         sbn: StatusBarNotification,
+        rule: NotificationTriggerRule,
     ): Boolean {
         val answer = runCatching { lastAssistantText(context, sessionId) }
             .getOrElse { t ->
@@ -221,6 +222,30 @@ object NotificationTriggerEngine {
             AppLogger.info(TAG, "no assistant text in $sessionId — nothing to reply")
             return false
         }
+
+        // The one place text leaves this device for another person. Every gate
+        // above limits how often that happens; this is the only one that lets
+        // someone see what it says first.
+        if (!OutboundApproval.autoSendAllowed(context, rule, sbn.packageName)) {
+            val extras = sbn.notification?.extras
+            val pending = OutboundApproval.enqueue(
+                context = context,
+                rule = rule,
+                pkg = sbn.packageName,
+                conversation = extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)
+                    ?.toString().orEmpty(),
+                sbnKey = sbn.key,
+                incoming = extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)
+                    ?.toString().orEmpty(),
+                draft = answer,
+            )
+            ApprovalNotifier.post(context, pending)
+            AppLogger.info(TAG, "reply for rule ${rule.id} is waiting for approval")
+            // The run itself succeeded — it produced a draft, and a draft
+            // awaiting a decision is the intended outcome, not a failure.
+            return true
+        }
+
         return NotificationReplier.reply(context, sbn, answer)
     }
 
@@ -286,7 +311,7 @@ object NotificationTriggerEngine {
                     // A run that produced an answer nobody received is not a
                     // success: the user reads the run log and assumes the other
                     // side got it.
-                    ok = replyWithAnswer(context, sessionId!!, sbn)
+                    ok = replyWithAnswer(context, sessionId!!, sbn, rule)
                 }
             } catch (t: Throwable) {
                 AppLogger.warning(TAG, "rule ${rule.id} run failed: ${t.message}")

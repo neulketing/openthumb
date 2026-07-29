@@ -1527,4 +1527,26 @@
     <string name="browser_downloads_cancel">Cancel download</string>
     <string name="browser_downloads_failed">Failed</string>
     <string name="browser_downloads_open">Open</string>
+
+    <!-- Outbound approval: the gate between what the agent wrote and another person. -->
+    <string name="approval_channel_name">Reply approvals</string>
+    <string name="approval_channel_description">Asks before a reply the agent wrote is sent to someone.</string>
+    <string name="approval_title">Send this reply in %1$s?</string>
+    <string name="approval_body_with_conversation">To %1$s\n\n%2$s</string>
+    <string name="approval_send">Send</string>
+    <string name="approval_discard">Discard</string>
+    <string name="approval_edit_hint">Edit before sending</string>
+    <string name="approval_settings_title">Reply approval</string>
+    <string name="approval_mode_always">Ask every time</string>
+    <string name="approval_mode_always_desc">Nothing is sent until you read it. Recommended.</string>
+    <string name="approval_mode_allowlist">Ask except for chosen apps</string>
+    <string name="approval_mode_allowlist_desc">Replies in apps you pick send themselves; everything else waits.</string>
+    <string name="approval_mode_never">Never ask</string>
+    <string name="approval_mode_never_desc">Replies send as soon as they are written. Only sensible when your rules answer nobody but you.</string>
+    <string name="approval_pending_title">Waiting for you</string>
+    <string name="approval_pending_empty">Nothing waiting.</string>
+    <string name="approval_expiry_title">Drop unanswered drafts after</string>
+    <string name="approval_expiry_desc">A reply to a message from hours ago fits the conversation worse than no reply at all.</string>
+    <string name="approval_ledger_title">Sent and discarded</string>
+    <string name="approval_ledger_empty">No replies have been drafted yet.</string>
 </resources>

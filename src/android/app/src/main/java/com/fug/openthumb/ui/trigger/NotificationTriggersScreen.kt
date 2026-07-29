@@ -21,7 +21,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -31,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import com.fug.openthumb.trigger.OutboundApproval
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -77,6 +82,9 @@ fun NotificationTriggersScreen(onBack: () -> Unit) {
     var pendingDelete by remember { mutableStateOf<NotificationTriggerRule?>(null) }
     var showHistory by remember { mutableStateOf(false) }
     var showQuietHours by remember { mutableStateOf(false) }
+    var showApproval by remember { mutableStateOf(false) }
+    var showLedger by remember { mutableStateOf(false) }
+    val waiting = OutboundApproval.pending(context)
 
     Scaffold(
         topBar = {
@@ -90,6 +98,18 @@ fun NotificationTriggersScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showApproval = true }) {
+                        // Badged rather than silent: a queued draft that nobody
+                        // sees is the same as a reply that never happened.
+                        BadgedBox(badge = {
+                            if (waiting.isNotEmpty()) Badge { Text("${waiting.size}") }
+                        }) {
+                            Icon(Icons.Filled.Shield, contentDescription = "Reply approval")
+                        }
+                    }
+                    IconButton(onClick = { showLedger = true }) {
+                        Icon(Icons.Filled.ReceiptLong, contentDescription = "Sent and discarded")
+                    }
                     IconButton(onClick = { showQuietHours = true }) {
                         Icon(Icons.Filled.NightsStay, contentDescription = "Quiet hours")
                     }
@@ -211,6 +231,10 @@ fun NotificationTriggersScreen(onBack: () -> Unit) {
     if (showHistory) {
         RunHistoryDialog(runStore = runStore, onDismiss = { showHistory = false })
     }
+
+    if (showApproval) ApprovalSettingsDialog { showApproval = false }
+
+    if (showLedger) ApprovalLedgerDialog { showLedger = false }
 
     if (showQuietHours) {
         QuietHoursDialog(store = store, onDismiss = { showQuietHours = false })

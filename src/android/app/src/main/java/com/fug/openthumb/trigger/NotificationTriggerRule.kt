@@ -43,6 +43,13 @@ data class NotificationTriggerRule(
      * has nowhere sensible to reply to.
      */
     val replyToNotification: Boolean = false,
+    /**
+     * Hold this rule's replies for a decision even when the global approval
+     * mode would send them. Tightening only — it can never make a reply skip a
+     * gate the global setting applies, because the person who set it here knew
+     * something about this rule that the global setting does not.
+     */
+    val requireApproval: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val lastFiredAt: Long? = null,
 ) {
@@ -59,6 +66,7 @@ data class NotificationTriggerRule(
         if (activeEndMin != null) put("activeEndMin", activeEndMin)
         put("createdAt", createdAt)
         if (replyToNotification) put("replyToNotification", true)
+        if (requireApproval) put("requireApproval", true)
         if (lastFiredAt != null) put("lastFiredAt", lastFiredAt)
     }
 
@@ -76,6 +84,7 @@ data class NotificationTriggerRule(
             activeStartMin = if (o.has("activeStartMin")) o.optInt("activeStartMin") else null,
             activeEndMin = if (o.has("activeEndMin")) o.optInt("activeEndMin") else null,
             replyToNotification = o.optBoolean("replyToNotification", false),
+            requireApproval = o.optBoolean("requireApproval", false),
             createdAt = o.optLong("createdAt"),
             lastFiredAt = if (o.has("lastFiredAt")) o.optLong("lastFiredAt") else null,
         )

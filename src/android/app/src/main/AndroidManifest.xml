@@ -533,5 +533,17 @@
                 android:resource="@xml/minis_accessibility_service" />
         </service>
 
+
+        <!-- Send / Discard from the reply-approval notification. Not exported:
+             only the notification's own PendingIntents may reach it, or any app
+             on the phone could approve a reply on the user's behalf. -->
+        <receiver
+            android:name=".trigger.ApprovalReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.fug.openthumb.APPROVAL_SEND" />
+                <action android:name="com.fug.openthumb.APPROVAL_DISCARD" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
