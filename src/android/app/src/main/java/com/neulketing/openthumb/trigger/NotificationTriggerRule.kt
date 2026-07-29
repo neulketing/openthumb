@@ -35,6 +35,14 @@ data class NotificationTriggerRule(
      */
     val activeStartMin: Int? = null,
     val activeEndMin: Int? = null,
+    /**
+     * Post the agent's answer back into the conversation the notification came
+     * from, via the notification's own reply action ([NotificationReplier]).
+     * Turns a messenger into a two-way channel to the agent instead of a
+     * one-way trigger. Off by default: a rule that fires on, say, a bank alert
+     * has nowhere sensible to reply to.
+     */
+    val replyToNotification: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val lastFiredAt: Long? = null,
 ) {
@@ -50,6 +58,7 @@ data class NotificationTriggerRule(
         if (activeStartMin != null) put("activeStartMin", activeStartMin)
         if (activeEndMin != null) put("activeEndMin", activeEndMin)
         put("createdAt", createdAt)
+        if (replyToNotification) put("replyToNotification", true)
         if (lastFiredAt != null) put("lastFiredAt", lastFiredAt)
     }
 
@@ -66,6 +75,7 @@ data class NotificationTriggerRule(
             enabled = o.optBoolean("enabled", true),
             activeStartMin = if (o.has("activeStartMin")) o.optInt("activeStartMin") else null,
             activeEndMin = if (o.has("activeEndMin")) o.optInt("activeEndMin") else null,
+            replyToNotification = o.optBoolean("replyToNotification", false),
             createdAt = o.optLong("createdAt"),
             lastFiredAt = if (o.has("lastFiredAt")) o.optLong("lastFiredAt") else null,
         )

@@ -149,4 +149,19 @@ class NotificationTriggerRuleTest {
         assertEquals(1080, back.activeEndMin)
         assertEquals(r, back)
     }
+
+    // -- reply opt-in -----------------------------------------------------
+
+    @Test
+    fun `replyToNotification defaults off and survives a JSON round-trip`() {
+        val off = rule()
+        assertFalse(off.replyToNotification)
+        // Absent key must decode as off, so rules written before the field
+        // existed keep their one-way behaviour instead of silently answering.
+        assertFalse(off.toJson().has("replyToNotification"))
+        assertFalse(NotificationTriggerRule.fromJson(off.toJson()).replyToNotification)
+
+        val on = rule().copy(replyToNotification = true)
+        assertTrue(NotificationTriggerRule.fromJson(on.toJson()).replyToNotification)
+    }
 }

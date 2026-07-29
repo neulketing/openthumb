@@ -3,6 +3,7 @@ package com.neulketing.openthumb.trigger
 import android.app.Notification
 import android.content.Context
 import android.service.notification.StatusBarNotification
+import com.neulketing.openthumb.MinisApp
 import com.neulketing.openthumb.logging.AppLogger
 import com.neulketing.openthumb.scheduled.ScheduledAgentRunner
 import com.neulketing.openthumb.scheduled.ScheduledRepeatMode
@@ -12,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -92,7 +94,7 @@ object NotificationTriggerEngine {
                 AppLogger.warning(TAG, "rule ${rule.id} matched but $MAX_CONCURRENT_RUNS runs in flight — dropped")
                 continue
             }
-            dispatch(context, claimed, pkg, title, text, sbn.postTime)
+            dispatch(context, claimed, pkg, title, text, sbn.postTime, sbn)
         }
     }
 
@@ -177,6 +179,44 @@ object NotificationTriggerEngine {
         return claimed
     }
 
+    /**
+     * Read what the agent actually said in [sessionId] and post it back into
+     * the conversation [sbn] came from. Reply failures are logged, never
+     * thrown: the trigger run already succeeded and losing the reply must not
+     * mark it failed.
+     */
+    private suspend fun replyWithAnswer(context: Context, sessionId: String, sbn: StatusBarNotification) {
+        val answer = runCatching { lastAssistantText(context, sessionId) }
+            .getOrElse { t ->
+                AppLogger.warning(TAG, "reply lookup failed: ${t.message}")
+                null
+            }
+        if (answer.isNullOrBlank()) {
+            AppLogger.info(TAG, "no assistant text in $sessionId — nothing to reply")
+            return
+        }
+        NotificationReplier.reply(context, sbn, answer)
+    }
+
+    /**
+     * Flattened text of the newest assistant message. `partsJson` is an array
+     * of typed blocks; only `text` blocks are speakable — tool calls and
+     * attachments have no place in a chat reply.
+     */
+    private suspend fun lastAssistantText(context: Context, sessionId: String): String? {
+        val app = context.applicationContext as? MinisApp ?: return null
+        val message = app.chatRepository.loadMessages(sessionId)
+            .lastOrNull { it.role == "assistant" } ?: return null
+        val parts = runCatching { JSONArray(message.partsJson) }.getOrNull()
+            ?: return message.partsJson.takeIf { it.isNotBlank() }
+        val sb = StringBuilder()
+        for (i in 0 until parts.length()) {
+            val part = parts.optJSONObject(i) ?: continue
+            if (part.optString("type") == "text") sb.append(part.optString("value", ""))
+        }
+        return sb.toString().takeIf { it.isNotBlank() }
+    }
+
     private fun dispatch(
         context: Context,
         rule: NotificationTriggerRule,
@@ -184,6 +224,12 @@ object NotificationTriggerEngine {
         title: String,
         text: String,
         postedAtMs: Long,
+        /**
+         * Source notification, present only on the live path. Needed to reply
+         * into the originating conversation; null for "Test this rule", which
+         * has no conversation to answer.
+         */
+        sbn: StatusBarNotification? = null,
     ) {
         val prompt = NotificationTriggerRule.renderPrompt(rule, pkg, title, text)
         // Synthetic task: id is namespaced so ScheduledTaskManager.markFired
@@ -203,7 +249,11 @@ object NotificationTriggerEngine {
         scope.launch {
             var ok = false
             try {
-                ok = ScheduledAgentRunner.run(context, task, waitForCompletion = true) != null
+                val sessionId = ScheduledAgentRunner.run(context, task, waitForCompletion = true)
+                ok = sessionId != null
+                if (ok && rule.replyToNotification && sbn != null) {
+                    replyWithAnswer(context, sessionId!!, sbn)
+                }
             } finally {
                 inFlight.decrementAndGet()
                 val doneMs = System.currentTimeMillis()
