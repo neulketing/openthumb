@@ -123,7 +123,10 @@ collection — the same treatment as a browser.
 - [x] Screenshots — 6 phone shots at 1080x2400, `fastlane/.../phoneScreenshots/`
       (captured on an arm64 API-35 emulator; retake on a real device before launch if you want photographic status bars)
 - [x] Feature graphic 1024×500 + icon 512×512 — `fastlane/metadata/android/en-US/images/`
-- [ ] D-U-N-S number — free via Apple's lookup form (works for non-US
+- [~] D-U-N-S number — **requested 2026-07-29** via Apple's lookup form as
+      "REDACTED" (HQ: Gangseo-gu, Busan). No existing D&B record, so a new
+      registration was submitted; D&B responds within 5 business days (watch
+      neulketing@gmail.com). Free via Apple's lookup form (works for non-US
       businesses; the number is shared with Google). Needs an Apple ID sign-in.
       **Owner action** — cannot be automated.
 - [ ] Developer account ($25, owner) — organization type, after D-U-N-S.
