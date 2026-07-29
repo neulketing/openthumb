@@ -214,15 +214,26 @@ internal object ProviderMutationMethods {
             ProviderType.xAI -> "https://api.x.ai/v1"
             ProviderType.kimiCode -> "https://api.kimi.com/coding/v1"
         }
+        // A custom base URL is the API root the user configured, and
+        // `effectiveBaseURL` has already applied their `appendV1Suffix`
+        // choice. Re-deriving a /v1 suffix here applies that decision twice
+        // and overrides it: an endpoint whose root ends in something else
+        // (z.ai's /paas/v4, set with appendV1Suffix=false) got probed at
+        // /paas/v4/v1/models and reported as unreachable while real chat
+        // traffic to the same instance worked fine. Only the built-in
+        // defaults below get suffix inference.
+        val isCustomBase = instance.effectiveBaseURL != null
+        val openAICompatibleProbe =
+            if (isCustomBase || baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
         val probeURL = when (instance.providerType) {
-            ProviderType.anthropic -> "$baseURL/v1/models"
+            ProviderType.anthropic -> if (isCustomBase) "$baseURL/models" else "$baseURL/v1/models"
             ProviderType.gemini -> "$baseURL/v1beta/models?key=" + (repo.loadApiKey(id) ?: "")
-            ProviderType.openAI -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
+            ProviderType.openAI -> openAICompatibleProbe
             ProviderType.openRouter -> "$baseURL/models"
             // xAI exposes an OpenAI-compatible /models endpoint at the same base.
-            ProviderType.xAI -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
+            ProviderType.xAI -> openAICompatibleProbe
             // Kimi Coding: OpenAI-compatible /models under /coding/v1.
-            ProviderType.kimiCode -> if (baseURL.endsWith("/v1")) "$baseURL/models" else "$baseURL/v1/models"
+            ProviderType.kimiCode -> openAICompatibleProbe
         }
         val client = okhttp3.OkHttpClient.Builder()
             .connectTimeout(timeoutMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)

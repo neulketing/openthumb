@@ -1,0 +1,62 @@
+name: Release APK
+
+# Attaches the distributable APK to a published release.
+#
+# This exists because v1.0.0 shipped a DEBUG apk as its only asset. Debug
+# builds start the JSON-RPC debug server (MinisApp gates it on
+# BuildConfig.DEBUG), and that server exposes provider.export — the stored API
+# keys — to any process on the device over loopback, where the token check is
+# waived. Handing that build to end users leaks their keys. Releases now build
+# and attach the release variant instead.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare build inputs
+        run: |
+          cp -n src/android/app/provider-customization.properties.example \
+                src/android/app/provider-customization.properties || true
+          mkdir -p .claude/skills/debug-server
+
+      - name: Build native dependencies
+        run: |
+          ./deps/build_proot.sh
+          ./scripts/prepare_android_sandbox.sh
+
+      - name: Assemble release APK
+        working-directory: src/android
+        run: ./gradlew :app:assembleRelease
+
+      # Named so nobody mistakes it for the fleet/debug build again.
+      - name: Stage asset
+        run: |
+          src=$(ls src/android/app/build/outputs/apk/release/*.apk | head -1)
+          cp "$src" "OpenThumb-${GITHUB_REF_NAME#v}-release.apk"
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" OpenThumb-*-release.apk --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: OpenThumb-*-release.apk

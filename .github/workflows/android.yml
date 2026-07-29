@@ -63,7 +63,20 @@ jobs:
         working-directory: src/android
         run: ./gradlew :app:lintDebug
 
+      # The distributable build. Debug APKs start the JSON-RPC debug server
+      # (MinisApp gates it on BuildConfig.DEBUG), so handing one to end users
+      # would open a file/log/chat surface on their phone — releases must ship
+      # this artifact, never the debug one.
+      - name: Assemble release APK
+        working-directory: src/android
+        run: ./gradlew :app:assembleRelease
+
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: src/android/app/build/outputs/apk/debug/openthumb-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: src/android/app/build/outputs/apk/release/*.apk

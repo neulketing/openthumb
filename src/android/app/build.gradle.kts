@@ -41,11 +41,11 @@ android {
         applicationId = "com.neulketing.openthumb"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
+        versionCode = 22
         // Own version line, decoupled from upstream's: OpenThumb 1.0.0 is
         // OpenMinis 0.20-preview + the fork's changes. Never reuse upstream's
         // preview numbers — both projects hit 0.21-preview the same week.
-        versionName = "1.0.0"
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

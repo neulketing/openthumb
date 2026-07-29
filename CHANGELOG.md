@@ -3,6 +3,43 @@
 All notable changes to OpenThumb. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning is independent of upstream (OpenMinis) since 1.0.0.
 
+## [1.0.1] — 2026-07-29
+
+A safety and correctness patch. **Anyone who installed the v1.0.0 APK should
+replace it**: that release attached a debug build, and debug builds run the
+JSON-RPC debug server.
+
+### Fixed
+- **Releases no longer ship a debug APK.** v1.0.0's only asset was
+  `OpenThumb-1.0.0-debug.apk`. Debug builds start the debug server (gated on
+  `BuildConfig.DEBUG`), which binds `0.0.0.0:5321` and waives the token check
+  for loopback callers — so any app on the phone with INTERNET permission
+  could call `provider.export` and read the stored API keys. CI now assembles
+  the release variant too, and a new `release-apk` workflow attaches it to
+  published releases.
+- **Non-ASCII request bodies no longer hang the debug server.** The body was
+  read into a `CharArray` sized by `Content-Length`, which counts bytes: one
+  Korean character is three UTF-8 bytes, so the read never reached the count,
+  blocked, and died on the 30s socket timeout — the caller saw an empty
+  response with no error. Every Korean `chat.prompt` failed while English ones
+  worked. Headers now parse off the raw stream and the body is read by byte
+  count. Verified on a Galaxy Note8 (Android 9).
+- **Provider connectivity test stops failing valid endpoints.** The probe
+  re-derived a `/v1` suffix that `effectiveBaseURL` had already applied from
+  the instance's `appendV1Suffix` setting, so an OpenAI-compatible root that
+  ends in something else (z.ai's `/paas/v4`) was probed at `…/v4/v1/models`
+  and reported unreachable while real chat traffic to it worked.
+
+### Added
+- **Agent replies into the conversation a notification came from.** A trigger
+  rule can opt in with `replyToNotification` (default off); the agent's answer
+  is posted through the notification's own quick-reply action, so any
+  messenger that ships one — KakaoTalk, SMS, LINE, Telegram — becomes a
+  two-way channel to the on-device agent. Public Android notification contract
+  only: no accessibility injection, no per-app protocol.
+- Regression tests for the request-body parsing and the provider probe URL,
+  plus a round-trip test for the new rule field.
+
 ## [1.0.0] — 2026-07-29
 
 OpenThumb's own version line begins. The fork's user-visible identity is now

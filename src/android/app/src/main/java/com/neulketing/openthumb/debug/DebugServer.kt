@@ -377,7 +377,7 @@ class DebugServer(
  * be read as an exact byte count (Content-Length), which a chunk-buffering
  * reader would make impossible.
  */
-private class HeaderLineReader(private val input: java.io.InputStream) {
+internal class HeaderLineReader(private val input: java.io.InputStream) {
     /** Next header line without its terminator, or null at end of stream. */
     fun readLine(): String? {
         val buf = java.io.ByteArrayOutputStream(128)
