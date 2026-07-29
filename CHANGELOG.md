@@ -10,6 +10,14 @@ section into the version heading, the release notes and the store changelog.
 
 ## [1.0.6] — 2026-07-30
 
+**Installing over 1.0.5 or earlier will fail — uninstall first.** Every release
+up to 1.0.5 was signed with an Android debug key, because the signing config
+falls back to one whenever the release keystore is absent. 1.0.6 is the first
+build signed with OpenThumb's own key, and Android refuses to replace an app
+with a build carrying a different certificate. Your settings and provider
+credentials do not survive the uninstall; export or re-enter them. This is a
+one-time break — 1.0.7 onward upgrade normally.
+
 ### Added
 - `scripts/bump-version.sh` — moves `versionName`, `versionCode`, the CHANGELOG
   heading, the F-Droid changelog and the version on the landing page together.
