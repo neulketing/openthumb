@@ -1,0 +1,51 @@
+name: Release
+
+# Publishing is the tag push. Releases used to be created by hand, which is how
+# a tag could disagree with the versionName it was cut from and how notes could
+# differ from the CHANGELOG entry for the same version. Both are now checked
+# here, and the notes are read out of CHANGELOG.md rather than retyped.
+#
+# Creating the release fires the existing `release: published` workflows —
+# Release APK attaches the build, Release announcement mails the notes.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag matches versionName
+        run: |
+          want=${GITHUB_REF_NAME#v}
+          have=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' src/android/app/build.gradle.kts)
+          if [ "$want" != "$have" ]; then
+            echo "tag $GITHUB_REF_NAME was cut from versionName $have — they must agree" >&2
+            exit 1
+          fi
+
+      - name: Notes from CHANGELOG
+        run: |
+          awk -v v="${GITHUB_REF_NAME#v}" '
+            $0 == "## [" v "]" || index($0, "## [" v "] ") == 1 { p = 1; next }
+            p && /^## / { exit }
+            p
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "CHANGELOG.md has no section for ${GITHUB_REF_NAME#v}" >&2
+            exit 1
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "OpenThumb ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md

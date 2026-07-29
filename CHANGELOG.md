@@ -3,6 +3,30 @@
 All notable changes to OpenThumb. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versioning is independent of upstream (OpenMinis) since 1.0.0.
 
+Write what changed under `[Unreleased]`; `scripts/bump-version.sh` turns that
+section into the version heading, the release notes and the store changelog.
+
+## [Unreleased]
+
+### Added
+- `scripts/bump-version.sh` — moves `versionName`, `versionCode`, the CHANGELOG
+  heading, the F-Droid changelog and the version on the landing page together.
+  They were four hand edits before, and fastlane still carried a changelog for
+  versionCode 21 while the app shipped 26. `scripts/test-bump-version.sh`
+  checks that all of them move.
+- `.github/workflows/release.yml` — a tag push publishes the release, with the
+  notes read out of this file and a check that the tag agrees with the
+  `versionName` it was cut from.
+- The landing page links the changelog, and shows which version is current.
+
+### Fixed
+- **Release APK could be published signed with a throwaway key.** Without the
+  keystore secrets `build.gradle.kts` falls back to the debug config, and CI
+  runners generate a fresh debug key per run — so a published build could not
+  be upgraded onto by anyone holding an earlier one. The workflow now signs
+  from secrets when they exist and fails rather than attaching a debug-signed
+  APK.
+
 ## [1.0.5] — 2026-07-29
 
 Documentation, not code. Three things the fork already did but never said.
