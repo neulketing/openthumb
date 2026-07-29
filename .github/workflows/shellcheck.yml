@@ -37,3 +37,9 @@ jobs:
           case "$files" in *' '*) echo "space in a path — this step needs -print0"; exit 1;; esac
           # shellcheck disable=SC2086
           shellcheck --severity=error $files
+
+      # Runs against a stub adb, so no phones are needed. Guards the failure
+      # mode shellcheck cannot see: a command inside the device loop eating
+      # stdin, which truncates the fleet silently rather than erroring.
+      - name: Fleet tool smoke test
+        run: tools/test-openthumb-fleet.sh
