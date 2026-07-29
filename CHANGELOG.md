@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-07-30
+
 **The application ID changes to `com.fug.openthumb`, so 1.1.0 installs beside
 1.0.x rather than over it.** Android treats a different application ID as a
 different app entirely. Uninstall the old one after checking anything you want
