@@ -1,25 +1,32 @@
 name: Release
 
-# Publishing is the tag push. Releases used to be created by hand, which is how
-# a tag could disagree with the versionName it was cut from and how notes could
-# differ from the CHANGELOG entry for the same version. Both are now checked
-# here, and the notes are read out of CHANGELOG.md rather than retyped.
+# Publishing is the tag push: this builds the signed APK, creates the release
+# with notes taken from CHANGELOG.md, and mails them out.
 #
-# Creating the release fires the existing `release: published` workflows —
-# Release APK attaches the build, Release announcement mails the notes.
+# It is one workflow rather than three because a release created with
+# GITHUB_TOKEN does not raise the `release: published` event — GitHub suppresses
+# it to stop workflows triggering each other. The APK build and the announcement
+# used to hang off that event, so automating release creation silently stopped
+# both: v1.0.6 was published with no asset and no mail.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 45
+    outputs:
+      notes: ${{ steps.notes.outputs.body }}
+      url: ${{ steps.publish.outputs.url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Tag matches versionName
         run: |
@@ -31,6 +38,7 @@ jobs:
           fi
 
       - name: Notes from CHANGELOG
+        id: notes
         run: |
           awk -v v="${GITHUB_REF_NAME#v}" '
             $0 == "## [" v "]" || index($0, "## [" v "] ") == 1 { p = 1; next }
@@ -41,11 +49,121 @@ jobs:
             echo "CHANGELOG.md has no section for ${GITHUB_REF_NAME#v}" >&2
             exit 1
           fi
+          {
+            echo 'body<<CHANGELOG_EOF'
+            cat notes.md
+            echo CHANGELOG_EOF
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Create release
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare build inputs
+        run: |
+          cp -n src/android/app/provider-customization.properties.example \
+                src/android/app/provider-customization.properties || true
+          mkdir -p .claude/skills/debug-server
+
+      - name: Build native dependencies
+        run: |
+          ./deps/build_proot.sh
+          ./scripts/prepare_android_sandbox.sh
+
+      # build.gradle.kts falls back to the debug key when OPENTHUMB_KEYSTORE is
+      # unset. The runner generates a fresh debug key on every run, so builds
+      # published that way are signed by a different certificate each time and
+      # nobody who installed an earlier one can upgrade onto them.
+      - name: Configure release signing
+        env:
+          KEYSTORE_B64: ${{ secrets.OPENTHUMB_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "no release keystore configured"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "OPENTHUMB_KEYSTORE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Assemble release APK
+        working-directory: src/android
+        env:
+          OPENTHUMB_KEYSTORE_PASS: ${{ secrets.OPENTHUMB_KEYSTORE_PASS }}
+          OPENTHUMB_KEY_ALIAS: ${{ secrets.OPENTHUMB_KEY_ALIAS }}
+        run: ./gradlew :app:assembleRelease
+
+      # Named so nobody mistakes it for the fleet/debug build again.
+      - name: Stage asset
+        run: |
+          src=$(ls src/android/app/build/outputs/apk/release/*.apk | head -1)
+          cp "$src" "OpenThumb-${GITHUB_REF_NAME#v}-release.apk"
+
+      # Checks the artifact rather than the secret: a keystore that failed to
+      # decode, or an alias typo that sent gradle back to the debug config,
+      # both land here looking like a successful build.
+      - name: Refuse to publish a debug-signed APK
+        run: |
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
+          dn=$("$apksigner" verify --print-certs OpenThumb-*-release.apk \
+               | sed -n 's/^Signer #1 certificate DN: //p')
+          echo "signed by: $dn"
+          case "$dn" in
+            *"CN=Android Debug"*)
+              echo "::error::Signed with the runner's throwaway debug key. Set the" \
+                   "OPENTHUMB_KEYSTORE_B64, OPENTHUMB_KEYSTORE_PASS and" \
+                   "OPENTHUMB_KEY_ALIAS secrets, or attach a locally signed APK by hand."
+              exit 1 ;;
+          esac
+
+      - name: Publish
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$GITHUB_REF_NAME" OpenThumb-*-release.apk \
             --title "OpenThumb ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md
+          echo "url=$(gh release view "$GITHUB_REF_NAME" --json url --jq .url)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: OpenThumb-*-release.apk
+
+  # Mails the notes to the maintainer inbox. Skips cleanly when the SMTP
+  # secrets are not configured (forks, local tests) — secrets can't be
+  # referenced in job-level `if`, so detection goes through an env probe.
+  announce:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Detect SMTP credentials
+        id: creds
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          if [ -n "$GMAIL_USER" ] && [ -n "$GMAIL_APP_PASSWORD" ]; then
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "SMTP secrets not set — skipping announcement"
+          fi
+
+      - name: Send announcement email
+        if: steps.creds.outputs.ok == '1'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          subject: "[OpenThumb] ${{ github.ref_name }} published"
+          to: neulketing@gmail.com
+          from: OpenThumb CI <${{ secrets.GMAIL_USER }}>
+          body: |
+            ${{ needs.release.outputs.notes }}
+
+            ---
+            ${{ needs.release.outputs.url }}

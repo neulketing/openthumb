@@ -16,12 +16,14 @@ section into the version heading, the release notes and the store changelog.
   They were four hand edits before, and fastlane still carried a changelog for
   versionCode 21 while the app shipped 26. `scripts/test-bump-version.sh`
   checks that all of them move.
-- `.github/workflows/release.yml` — a tag push publishes the release, with the
-  notes read out of this file and a check that the tag agrees with the
-  `versionName` it was cut from. The tag is annotated: `git push --follow-tags`
-  skips lightweight ones, so a lightweight tag would stay local and the release
-  would never fire — which is exactly what happened on the first attempt at
-  this version.
+- `.github/workflows/release.yml` — a tag push builds the signed APK, publishes
+  the release with the notes read out of this file, and mails them. It checks
+  that the tag agrees with the `versionName` it was cut from, and the tag is
+  annotated because `git push --follow-tags` skips lightweight ones — a
+  lightweight tag stays local and the release never fires.
+  `release-apk.yml` and `release-announce.yml` are folded into it: both hung off
+  `release: published`, which a release created with `GITHUB_TOKEN` does not
+  raise, so automating release creation would have silently stopped both.
 - The landing page links the changelog, and shows which version is current.
 
 ### Fixed
