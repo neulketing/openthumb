@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-07-30
+
 ### Fixed
 - **The app could not start when an older build was still installed.** The
   native-offload endpoint bound the abstract socket `native-offload`, and the

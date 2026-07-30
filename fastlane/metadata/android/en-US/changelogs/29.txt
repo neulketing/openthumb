@@ -1,0 +1,61 @@
+-- Fixed
+- The app could not start when an older build was still installed. The
+  native-offload endpoint bound the abstract socket native-offload, and the
+  Linux abstract namespace is global to the device rather than per-app — so
+  whichever OpenThumb started first claimed it and the other died in
+  Application.onCreate before drawing anything. Changing the application ID
+  puts every existing user in exactly that state, because the new id installs
+  beside the old rather than over it. The socket is now named after the
+  application id. Verified on a Note8 with 1.0.x and this build running at the
+  same time: both processes alive, no crash, bound as
+  com.fug.openthumb.native-offload.
+
+-- Added
+- Nothing the agent writes reaches another person without someone saying
+  yes. The trigger engine had five gates — quiet hours, an active window, a
+  per-rule cooldown, a concurrency cap, and a check that the notification can be
+  replied to at all — and every one of them limits how *often* a reply is sent.
+  None looked at what it says. So an agent that misread a message answered a
+  real person, at speed, and the first anyone heard of it was the reply already
+  in the thread. Replies now stop at a draft until the person whose name is on
+  them decides.
+- The decision arrives where you already are. The draft comes as a
+  notification with Send and Discard on it and an inline edit box, so correcting
+  a draft and approving it is one gesture rather than two screens. It shows the
+  reply in full rather than a summary — reading what is about to be sent is the
+  entire point — and it cannot be swiped away, because dismissing a question is
+  not an answer.
+- Three settings, written as consequences. *Ask every time* is the default,
+  because a gate that ships off is not a gate. *Ask except for chosen apps*
+  sends automatically only where you said to. *Never ask* is honest about when
+  it is reasonable: when your rules answer nobody but you. A rule can also carry
+  requireApproval, which only ever tightens — a rule marked that way waits even
+  in *Never ask*, because whoever marked it knew something the global setting
+  does not.
+- A record of what it tried to send, not only what it sent. Every draft and
+  every decision — sent, edited, discarded, expired — appends to
+  outbound-ledger.jsonl and is readable in the app. A log holding only
+  successes cannot answer the question people actually have.
+- The decision itself is a pure function with no Android in it, and nine checks
+  cover the cases where being wrong is expensive: an unreadable stored setting
+  falls back to asking rather than sending, com.allowed.evil does not inherit
+  com.allowed's permission, a rule's own flag holds a reply under every mode
+  including *Never ask*, and a queued draft keeps the notification key without
+  which an approved reply can never find its conversation again. Verified to
+  have detection power by removing the tightening rule — exactly that check
+  fails.
+- *Ask except for chosen apps* can now choose apps. The mode was selectable
+  with no way to put anything on the list, which made it behave exactly like
+  *Ask every time* — a setting that silently does nothing. Picking it now
+  reveals the installed apps with checkboxes, and only apps with a launcher
+  entry are offered, since a rule can fire on a bank alert but there is nowhere
+  to send a reply.
+- minis://settings/triggers opens the notification-trigger screen, and the
+  approval notification links there. The screen had no deep link at all, so
+  tapping a draft did nothing and the only way to see how many were waiting was
+  to find the app on the home screen.
+- The approval settings scroll. On a Note8 the dialog was taller than the
+  screen: *Never ask* was cut mid-sentence, and the expiry setting and the
+  pending list below it could not be reached by any gesture.
+- Drafts expire after 30 minutes by default. An answer to a message from hours
+  ago fits the conversation worse than no answer at all.
