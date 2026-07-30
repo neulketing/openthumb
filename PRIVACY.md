@@ -20,7 +20,8 @@ Only what you configure it to send:
   or another). Their privacy policies apply. Your API keys are stored on the
   device and sent only to the matching provider.
 - **Sync (optional, off by default)** — only if you enter the URL and token of
-  a sync server you operate yourself (see `tools/sync-worker/`), the app
+  a sync server you operate yourself (`tools/sync-worker/` on Cloudflare, or
+  `tools/sync-server/` on your own machine with no account anywhere), the app
   uploads your trigger rules, trigger run history and scheduled tasks to that
   server. Chats are not synced in v1. The token is stored on the device and
   sent only to your server. You can turn sync off or wipe the settings at any

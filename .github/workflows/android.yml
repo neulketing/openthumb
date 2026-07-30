@@ -42,6 +42,12 @@ jobs:
       - name: Fetch verdict checks
         run: bash scripts/test-fetch.sh
 
+      # The point is that a device cannot tell the two sync backends apart, so
+      # a drift between them has to fail the build, not be discovered by a user
+      # whose phone stops syncing after they switch.
+      - name: Sync backend contract checks
+        run: python3 tools/sync-server/test_sync_server.py
+
       - name: Prepare build inputs
         run: |
           # -n: never clobber a checked-in file that already has real values.

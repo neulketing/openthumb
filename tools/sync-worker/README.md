@@ -7,6 +7,11 @@ sync between devices, you deploy this Cloudflare Worker to your own
 Cloudflare account and point the app at it. The data lives in your D1
 database and your R2 bucket; nobody else operates it.
 
+If you would rather not have a Cloudflare account, `tools/sync-server/` is the
+same contract as a single Python file on a machine you already own — same
+endpoints, same token, same conflict rule, so the app cannot tell which one it
+is talking to.
+
 Auth is a single bearer token that you generate. There are no accounts,
 no multi-user support and no analytics. The worker never logs payload
 contents.

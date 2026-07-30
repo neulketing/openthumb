@@ -10,6 +10,20 @@ section into the version heading, the release notes and the store changelog.
 
 ## [1.1.1] — 2026-07-30
 
+- **Sync no longer requires a Cloudflare account.** `tools/sync-server/` is the
+  same backend as a single Python file on a machine you already own: SQLite
+  where the worker uses D1, a directory where it uses R2, and no dependencies at
+  all. Same three endpoints, same bearer token, same 64 KB inline limit, same
+  last-write-wins rule, so the app cannot tell which one it is talking to and
+  switching means changing a URL. 36 checks written from the worker's own source
+  run in CI, because the thing worth testing is not that the server works but
+  that the two cannot drift apart.
+- The server refuses to bind a non-loopback address without TLS rather than
+  quietly putting the bearer token on the network in cleartext; the README gives
+  three ways to reach it from a phone, in the order most people should try them.
+  Blob filenames are hashed from `kind` and `id`, so an id — which is user data
+  arriving from the network — never becomes a filesystem path.
+
 ### Fixed
 - **The app could not start when an older build was still installed.** The
   native-offload endpoint bound the abstract socket `native-offload`, and the
