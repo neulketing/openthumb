@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-07-30
+
 ### Added
 - **The sandbox image can be fetched at first run instead of bundled**, which is
   what F-Droid requires: it builds every app from source and will not ship a

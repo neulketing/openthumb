@@ -1,0 +1,24 @@
+-- Added
+- The sandbox image can be fetched at first run instead of bundled, which is
+  what F-Droid requires: it builds every app from source and will not ship a
+  tarball of several hundred precompiled executables it cannot rebuild. The
+  projects that do get in — Termux, UserLAnd — all download theirs. Which path a
+  build uses is decided by what the APK holds: the asset is used when present and
+  the image is downloaded when absent, so nothing in gradle has to know and
+  existing builds behave exactly as before.
+- The download is verified against a SHA-256 compiled into the app, and a
+  mismatch deletes the file and fails. This is not belt-and-braces: without it,
+  whoever can answer for that URL picks which native binaries land in the
+  sandbox. An empty digest disables the download path entirely rather than
+  accepting anything, so a build that forgot to set one fails loudly.
+- Resumable via HTTP Range, because 14 MB on a phone is long enough for Doze or
+  a walk out of Wi-Fi range to interrupt, and restarting from zero turns a slow
+  install into one that never finishes. A server that ignores the range and
+  sends the whole file discards the partial bytes rather than splicing two
+  copies together.
+- Downloading is a separate install state from Extracting. One is waiting on
+  a network and can be retried or resumed, the other is waiting on the device; a
+  single bar for both tells the user nothing about which is stuck.
+- scripts/publish-rootfs.sh builds the image, prints its digest, and refuses
+  to publish while that digest disagrees with the constant in the app — an app
+  shipping the wrong digest rejects its own image.
