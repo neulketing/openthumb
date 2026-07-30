@@ -144,6 +144,14 @@ object RootfsSource {
 
             val remaining = conn.contentLengthLong
             val total = if (remaining > 0) have + remaining else -1L
+            // Says whether this run resumed and from where. Without it, an
+            // install that keeps restarting from zero on a bad connection looks
+            // identical to one that is simply slow.
+            Log.i(
+                TAG,
+                if (have > 0) "resuming at $have of ${if (total > 0) total else -1}"
+                else "downloading ${if (total > 0) total else -1} bytes",
+            )
 
             conn.inputStream.use { input ->
                 java.io.FileOutputStream(part, have > 0).use { out ->

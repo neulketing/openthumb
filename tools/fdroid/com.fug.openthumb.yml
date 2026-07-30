@@ -1,0 +1,113 @@
+# F-Droid build recipe for OpenThumb.
+#
+# Copy this into a fork of https://gitlab.com/fdroid/fdroiddata as
+# metadata/com.fug.openthumb.yml and open a merge request. It is kept here so
+# the recipe and the code it builds move together — a recipe that only exists in
+# someone else's repository silently rots the first time the build changes.
+#
+# Read tools/fdroid/README.md before submitting: two declarations below are
+# judgements, not facts, and a reviewer will ask about both.
+
+Categories:
+  - System
+  - Internet
+License: GPL-3.0-only
+AuthorName: neulketing
+AuthorEmail: neulketing@gmail.com
+WebSite: https://neulketing.github.io/openthumb/
+SourceCode: https://github.com/neulketing/openthumb
+IssueTracker: https://github.com/neulketing/openthumb/issues
+Changelog: https://github.com/neulketing/openthumb/blob/HEAD/CHANGELOG.md
+
+# NonFreeNet, not NonFreeDep: nothing proprietary is linked or bundled, but the
+# app's purpose is to drive a language model, and every provider it can reach is
+# a proprietary network service. A user supplies their own credentials; the app
+# ships none and works with a self-hosted OpenAI-compatible endpoint too, which
+# is why this is the only anti-feature listed.
+AntiFeatures:
+  - NonFreeNet
+
+AutoName: OpenThumb
+Summary: On-device AI agent that wakes on the notifications you choose
+
+Description: |-
+    An AI agent that runs on your own Android phone rather than on someone's
+    server. It carries a full Alpine Linux userspace through PRoot, so the model
+    gets a shell that can actually install and run things, and it brings your own
+    provider — an API key, or an account you already pay for over OAuth.
+
+    What separates it from a chat app is that it acts when you are not looking.
+    You pick which notifications matter; a matching one wakes the agent, which
+    reads it, does the work, and — if you allow it — answers in the app the
+    message came from. Nothing is sent until you have read the draft: every reply
+    stops at an approval notification with Send and Discard on it, and every
+    draft and decision is written to a ledger you can read.
+
+    Runs on hardware from 2017. The upstream project crashes at startup on
+    Android 8 and 9; that is fixed here, so a phone in a drawer is a usable host.
+
+    No accounts, no telemetry, no analytics, and no server operated by us. Sync
+    between your own devices is optional, off until you configure it, and points
+    at a backend you run — either a Cloudflare Worker or a single Python file on
+    a machine you own. Both are in the repository.
+
+    <b>What it needs from you</b>
+
+    * A provider credential. Without one the app installs and opens, and the
+      agent cannot answer.
+    * Notification access, if you want triggers. The app is fully usable without
+      it; only the trigger engine goes quiet.
+    * A first-run download. This build does not bundle the ~14 MB Alpine image;
+      it fetches it and verifies its checksum before unpacking.
+
+RepoType: git
+Repo: https://github.com/neulketing/openthumb.git
+
+Builds:
+  - versionName: 1.3.0
+    versionCode: 31
+    commit: v1.3.0
+    subdir: src/android/app
+    submodules: true
+    gradle:
+      - yes
+    ndk: 28.0.13004108
+    output: build/outputs/apk/release/*.apk
+    prebuild:
+      # Provider customisation is injected at build time and only the template is
+      # published; an empty value compiles and the feature that needs it says so
+      # at runtime. Only Claude OAuth sign-in is affected — API keys and every
+      # other provider work untouched.
+      - cp -n ../app/provider-customization.properties.example ../app/provider-customization.properties || true
+      # Declared as a task input and gitignored, so it does not exist on a fresh
+      # clone.
+      - mkdir -p ../../../.claude/skills/debug-server
+    build:
+      # PRoot is built from its source submodule — no downloaded binary. This is
+      # the same script the project's own CI runs, so the F-Droid build and the
+      # upstream build produce the binary the same way.
+      #
+      # scripts/prepare_android_sandbox.sh is deliberately NOT run: it would
+      # download the prebuilt Alpine image into assets/. Leaving it out is what
+      # makes the app fetch and verify the image at first run instead, which is
+      # the whole reason this recipe can exist.
+      - cd ../../.. && ./deps/build_proot.sh
+
+MaintainerNotes: |-
+    Two things a reviewer will reasonably question.
+
+    The Alpine image is not built from source and is not bundled. It is fetched
+    at first run from a release of this repository and checked against a SHA-256
+    compiled into the app; a mismatch is discarded rather than unpacked. Building
+    a distro rootfs from source is not something this project can do, and it is
+    the same position Termux and UserLAnd are in.
+
+    PRoot and its talloc dependency are built from source by deps/build_proot.sh,
+    which is what CI uses. The repository also contains a fallback that unpacks a
+    Termux .deb; the build recipe above never reaches it, because build_proot.sh
+    produces the binary first.
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags ^v[0-9.]+$
+CurrentVersion: 1.3.0
+CurrentVersionCode: 31
