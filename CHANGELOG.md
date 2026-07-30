@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-07-30
+
 ### Added
 - **Sync no longer requires a Cloudflare account.** `tools/sync-server/` is the
   same backend as a single Python file on a machine you already own: SQLite
