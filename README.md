@@ -7,13 +7,20 @@
 
 **A real AI agent on your own phone — including the one in your drawer.**
 
-[openthumb website](https://neulketing.github.io/openthumb/) ·
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=IBM+Plex+Mono&weight=500&size=19&pause=1400&color=C9683A&center=true&vCenter=true&width=640&lines=A+full+Alpine+Linux+shell%2C+on+the+phone;Wakes+on+the+notifications+you+choose;Answers+in+the+app+the+message+came+from;Nothing+is+sent+until+you+read+it;No+server+of+ours%2C+no+telemetry)](https://neulketing.github.io/openthumb/)
+
+<a href="https://github.com/neulketing/openthumb/releases/latest"><img src="https://img.shields.io/github/v/release/neulketing/openthumb?style=for-the-badge&label=Download%20APK&color=c9683a&logo=android&logoColor=white" alt="Download the latest APK"></a>
+
+[Website](https://neulketing.github.io/openthumb/) ·
 [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Android CI](https://github.com/neulketing/openthumb/actions/workflows/android.yml/badge.svg)](https://github.com/neulketing/openthumb/actions/workflows/android.yml)
 [![Fork of OpenMinis](https://img.shields.io/badge/fork%20of-OpenMinis-8A2BE2)](https://github.com/OpenMinis/OpenMinis)
 [![minSdk 26](https://img.shields.io/badge/minSdk-26%20(Android%208)-3DDC84)](#android-8-and-9-support)
+[![Downloads](https://img.shields.io/github/downloads/neulketing/openthumb/total?label=downloads&color=555)](https://github.com/neulketing/openthumb/releases)
+[![Last commit](https://img.shields.io/github/last-commit/neulketing/openthumb?color=555)](https://github.com/neulketing/openthumb/commits/main)
+[![No telemetry](https://img.shields.io/badge/telemetry-none-success)](PRIVACY.md)
 
 </div>
 
@@ -41,6 +48,30 @@ Verified running on Galaxy Note8 hardware (Android 9, API 28) — see
 [Android 8 and 9 support](#android-8-and-9-support). If you end up with more
 than one phone, [`tools/openthumb-fleet`](#the-fleet-tool) drives them from a
 laptop; it is a development aid, not what the app is for.
+
+---
+
+## Contents
+
+**Start here** — [What this fork is for](#this-is-a-fork--read-this-first) ·
+[Notification triggers](#notification-triggers) ·
+[Android 8 and 9 support](#android-8-and-9-support) ·
+[Building from source](#building-from-source)
+
+**The app** — [What it does](#what-it-does) ·
+[What you can do with it](#what-you-can-do-with-minis) ·
+[Skills](#skills) ·
+[The app itself](#the-app-itself)
+
+**Running more than one** — [The fleet tool](#the-fleet-tool) ·
+[Optional sync](#optional-sync--your-own-backend-off-by-default)
+
+**Everything else** — [Press](#press) ·
+[Beta programme](#beta-programme) ·
+[Repository layout](#repository-layout) ·
+[Acknowledgements](#acknowledgements) ·
+[License](#license) ·
+[Community](#community)
 
 ---
 
