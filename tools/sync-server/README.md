@@ -104,6 +104,6 @@ than the item never existing.
 python3 test_sync_server.py
 ```
 
-36 checks against a real server on a loopback port. Every case is taken from
+39 checks against a real server on a loopback port. Every case is taken from
 `tools/sync-worker/src/index.ts`, because the thing worth testing is not that
 this server works but that a device pointed at either backend cannot tell.

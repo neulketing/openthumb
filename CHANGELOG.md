@@ -15,7 +15,7 @@ section into the version heading, the release notes and the store changelog.
   where the worker uses D1, a directory where it uses R2, and no dependencies at
   all. Same three endpoints, same bearer token, same 64 KB inline limit, same
   last-write-wins rule, so the app cannot tell which one it is talking to and
-  switching means changing a URL. 36 checks written from the worker's own source
+  switching means changing a URL. 39 checks written from the worker's own source
   run in CI, because the thing worth testing is not that the server works but
   that the two cannot drift apart.
 - The server refuses to bind a non-loopback address without TLS rather than

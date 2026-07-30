@@ -167,6 +167,20 @@ try:
     ck("a traversal id still round-trips",
        call("GET", "/sync/item?kind=chat&id=../../escape")[1]["payload"], big)
 
+    # --- the shapes the Android client actually sends -------------------
+    # SyncClient.probe() calls exactly this and treats 200 as "configured".
+    ck("the client health probe answers 200",
+       call("GET", "/sync/list?kind=trigger_rule&since=0")[0], 200)
+    # SyncManager chunks to SyncClient.BATCH_LIMIT = 200, so a full chunk has to
+    # be accepted. Off by one here and every full batch fails while partial ones
+    # succeed — the worst shape of bug to notice from the phone.
+    full = [{"kind": "trigger_run", "id": "b%d" % i, "updatedAt": 10 + i,
+             "payload": {"i": i}} for i in range(200)]
+    ck("a batch of exactly BATCH_LIMIT is accepted",
+       call("POST", "/sync/batch", {"items": full})[1].get("accepted"), 200)
+    ck("all of a full batch is listable",
+       len(call("GET", "/sync/list?kind=trigger_run&since=0")[1]["items"]), 200)
+
     httpd.shutdown()
 finally:
     shutil.rmtree(work, ignore_errors=True)
