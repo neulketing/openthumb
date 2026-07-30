@@ -8,8 +8,7 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
-## [1.1.1] — 2026-07-30
-
+### Added
 - **Sync no longer requires a Cloudflare account.** `tools/sync-server/` is the
   same backend as a single Python file on a machine you already own: SQLite
   where the worker uses D1, a directory where it uses R2, and no dependencies at
@@ -23,6 +22,8 @@ section into the version heading, the release notes and the store changelog.
   three ways to reach it from a phone, in the order most people should try them.
   Blob filenames are hashed from `kind` and `id`, so an id — which is user data
   arriving from the network — never becomes a filesystem path.
+
+## [1.1.1] — 2026-07-30
 
 ### Fixed
 - **The app could not start when an older build was still installed.** The
