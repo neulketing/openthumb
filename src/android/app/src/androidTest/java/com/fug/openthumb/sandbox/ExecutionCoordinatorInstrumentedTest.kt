@@ -45,24 +45,28 @@ class ExecutionCoordinatorInstrumentedTest {
     // ==================== Session mounting ====================
 
     @Test
-    fun executeSetsMountedSessionId() = runBlocking {
+    fun executeGivesTheSessionAShell() = runBlocking {
         skipIfNoBoot()
 
         val sessionId = "session-mount-test"
         ExecutionCoordinator.execute(sessionId, "echo hello")
 
-        assertEquals(sessionId, ExecutionCoordinator.mountedSessionId)
+        assertTrue(sessionId in ExecutionCoordinator.activeSessionIds)
     }
 
     @Test
-    fun executeSwitchesSessionMounts() = runBlocking {
+    fun eachSessionKeepsItsOwnShell() = runBlocking {
         skipIfNoBoot()
 
+        // The coordinator used to mount one session at a time and remount on a
+        // switch; it now holds a shell per session, so running B must not evict
+        // A. A test asserting the old behaviour would pass only by breaking this.
         ExecutionCoordinator.execute("session-A", "echo a")
-        assertEquals("session-A", ExecutionCoordinator.mountedSessionId)
-
         ExecutionCoordinator.execute("session-B", "echo b")
-        assertEquals("session-B", ExecutionCoordinator.mountedSessionId)
+
+        val active = ExecutionCoordinator.activeSessionIds
+        assertTrue("session-A lost its shell", "session-A" in active)
+        assertTrue("session-B has no shell", "session-B" in active)
     }
 
     @Test
@@ -78,7 +82,7 @@ class ExecutionCoordinatorInstrumentedTest {
 
         // Mounts should remain the same (not cleared and re-added)
         assertEquals(mountCount, PRootKernel.bindMounts.size)
-        assertEquals("session-X", ExecutionCoordinator.mountedSessionId)
+        assertTrue("session-X" in ExecutionCoordinator.activeSessionIds)
     }
 
     @Test
@@ -234,13 +238,14 @@ class ExecutionCoordinatorInstrumentedTest {
         skipIfNoBoot()
 
         ExecutionCoordinator.execute("session-terminate", "echo test")
-        assertEquals("session-terminate", ExecutionCoordinator.mountedSessionId)
+        assertTrue("session-terminate" in ExecutionCoordinator.activeSessionIds)
         assertTrue(PRootKernel.bindMounts.isNotEmpty())
 
         ExecutionCoordinator.sessionDidTerminate("session-terminate")
 
-        assertNull(ExecutionCoordinator.mountedSessionId)
-        assertTrue(PRootKernel.bindMounts.isEmpty())
+        // Only this session's shell goes. Asserting bindMounts is empty would be
+        // wrong now: another session's mounts legitimately outlive this one.
+        assertFalse("session-terminate" in ExecutionCoordinator.activeSessionIds)
     }
 
     @Test
@@ -252,14 +257,14 @@ class ExecutionCoordinatorInstrumentedTest {
 
         ExecutionCoordinator.sessionDidTerminate("session-other")
 
-        assertEquals("session-keep", ExecutionCoordinator.mountedSessionId)
+        assertTrue("session-keep" in ExecutionCoordinator.activeSessionIds)
         assertEquals(mountsBefore, PRootKernel.bindMounts.size)
     }
 
     @Test
     fun sessionDidTerminateIsNoOpWhenNoSession() {
         ExecutionCoordinator.sessionDidTerminate("any-session")
-        assertNull(ExecutionCoordinator.mountedSessionId)
+        assertFalse("any-session" in ExecutionCoordinator.activeSessionIds)
     }
 
     // ==================== stopCurrentCommand ====================
@@ -349,12 +354,13 @@ class ExecutionCoordinatorInstrumentedTest {
         PRootKernel.clearBindMounts()
         PRootKernel.customEnvironment.clear()
 
-        // Reset ExecutionCoordinator mountedSessionId
-        try {
-            val field = ExecutionCoordinator::class.java.getDeclaredField("mountedSessionId")
-            field.isAccessible = true
-            field.set(ExecutionCoordinator, null)
-        } catch (_: Exception) { }
+        // Drop every shell these tests opened. This used to reflect a
+        // `mountedSessionId` field into null; the field is gone, and because the
+        // reflection was wrapped in a catch-all the teardown had silently stopped
+        // resetting anything at all.
+        for (id in ExecutionCoordinator.activeSessionIds) {
+            ExecutionCoordinator.sessionDidTerminate(id)
+        }
     }
 
     private fun cleanupSessionDirs() {

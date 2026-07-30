@@ -8,6 +8,40 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+### Fixed
+- **A build with no sandbox no longer succeeds.** `libproot.so` lives in
+  `jniLibs`, and Gradle has no reason to mind an empty directory — so when the
+  submodules were not checked out, `deps/build_proot.sh` exited with "PRoot
+  source missing" and `assembleRelease` still produced an installable APK with
+  no shell, no agent tools, and nothing the app exists for. A
+  `checkProotPresent` task now fails the native-library merge and says which two
+  commands fix it. Verified both ways: the build fails with the file moved away
+  and passes with it restored.
+- **The instrumented tests compiled again.** Every one of them was broken:
+  `ExecutionCoordinatorInstrumentedTest` referenced `mountedSessionId`, which is
+  not a renamed field but a removed design — the coordinator used to mount one
+  session at a time and remount on a switch, and now keeps a shell per session.
+  CI never ran `connectedAndroidTest`, so nobody found out. The assertions are
+  rewritten against the current contract rather than the field being resurrected,
+  and `eachSessionKeepsItsOwnShell` would fail if the old behaviour came back.
+  Its teardown also reflected that missing field into null inside a catch-all,
+  so it had silently stopped resetting anything between tests.
+
+### Added
+- **On-device proof that an approved reply reaches the conversation.** The one
+  line the rest of the approval gate's tests could not reach is
+  `action.actionIntent.send(...)`, because exercising it needs a notification
+  carrying a free-form reply action and no test can make a messenger post one.
+  `NotificationReplierInstrumentedTest` posts one itself, aimed at a receiver in
+  this app, and asserts the text arrives — the code under test does not know the
+  conversation on the other end is us. Four checks: a reply lands, a bank alert
+  with no reply action is left alone, an approved draft finds its conversation by
+  key, and a draft whose conversation is gone fails rather than guessing. All
+  four pass on a Galaxy Note8.
+- `ExecutionCoordinator.activeSessionIds`, read-only, so a test can observe that
+  each session gets its own shell and reuses it. There was no other way to see it
+  from outside.
+
 ## [1.3.0] — 2026-07-30
 
 ### Added

@@ -172,6 +172,30 @@ val stageDebugSkillAssets by tasks.registering(Exec::class) {
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") && it.name.contains("Debug") }
     .configureEach { dependsOn(stageDebugSkillAssets) }
 
+// An APK without libproot.so has no sandbox at all — no shell, no agent tools,
+// nothing this app exists for — and the build succeeds anyway, because Gradle
+// has no reason to care that a jniLibs directory is empty. That is how a local
+// release build shipped with the file missing: the submodules were not checked
+// out, deps/build_proot.sh exited with "PRoot source missing", and assembleRelease
+// still produced an installable APK.
+val checkProotPresent by tasks.registering {
+    val proot = layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libproot.so")
+    inputs.file(proot).optional()
+    doLast {
+        val f = proot.asFile
+        if (!f.isFile || f.length() < 50_000) {
+            throw GradleException(
+                "libproot.so is missing or too small at ${f.path}.\n" +
+                "Without it the packaged app has no sandbox. Build it first:\n" +
+                "  git submodule update --init --recursive\n" +
+                "  ./deps/build_proot.sh",
+            )
+        }
+    }
+}
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("NativeLibs") }
+    .configureEach { dependsOn(checkProotPresent) }
+
 dependencies {
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2025.09.00")

@@ -39,6 +39,17 @@ object ExecutionCoordinator {
     /** Thread-safe per-session shell registry. */
     private val shells = ConcurrentHashMap<String, PersistentShell>()
 
+    /**
+     * Sessions that currently hold a live shell.
+     *
+     * Read-only, and exists for the instrumented tests: the property worth
+     * asserting is that each session gets its own shell and reuses it, and
+     * there is no other way to observe that from outside. Callers must not
+     * infer ordering or lifetime from it — a shell can be reaped between the
+     * read and the next line.
+     */
+    val activeSessionIds: Set<String> get() = shells.keys.toSet()
+
     /** Thread-safe per-session mutex registry. */
     private val mutexes = ConcurrentHashMap<String, Mutex>()
 
