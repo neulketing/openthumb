@@ -34,6 +34,15 @@ fdroid build com.fug.openthumb:31     # in their buildserver VM, not on your hos
 Open the merge request only after `fdroid build` succeeds locally. A recipe that
 has never been built is the most common reason a submission sits unreviewed.
 
+`fdroid lint` needs fdroiddata's own `config/` — its `categories.yml` and
+`antiFeatures.yml` are what the allowed values are checked against, and without
+them every category and anti-feature is reported invalid whatever you wrote.
+Run it inside a real fdroiddata checkout, not a directory holding only the
+recipe. Lint on this file already caught two things that would otherwise have
+reached a reviewer: `Internet` is not a category F-Droid defines (`AI Chat` and
+`Development` are), and continuation lines indented under a `Description`
+bullet are read as literal leading spaces.
+
 ## What a reviewer will ask about, and the honest answers
 
 **The rootfs is not built from source.** Correct. It is Alpine's own published

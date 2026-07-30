@@ -9,8 +9,8 @@
 # judgements, not facts, and a reviewer will ask about both.
 
 Categories:
-  - System
-  - Internet
+  - AI Chat
+  - Development
 License: GPL-3.0-only
 AuthorName: neulketing
 AuthorEmail: neulketing@gmail.com
@@ -53,12 +53,9 @@ Description: |-
 
     <b>What it needs from you</b>
 
-    * A provider credential. Without one the app installs and opens, and the
-      agent cannot answer.
-    * Notification access, if you want triggers. The app is fully usable without
-      it; only the trigger engine goes quiet.
-    * A first-run download. This build does not bundle the ~14 MB Alpine image;
-      it fetches it and verifies its checksum before unpacking.
+    * A provider credential. Without one the app installs and opens, and the agent cannot answer.
+    * Notification access, if you want triggers. The app is fully usable without it; only the trigger engine goes quiet.
+    * A first-run download. This build does not bundle the ~14 MB Alpine image; it fetches it and verifies its checksum before unpacking.
 
 RepoType: git
 Repo: https://github.com/neulketing/openthumb.git
