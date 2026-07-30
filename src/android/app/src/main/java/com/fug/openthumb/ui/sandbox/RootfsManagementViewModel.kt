@@ -49,6 +49,19 @@ class RootfsManagementViewModel : ViewModel() {
                             statusMessage = "Preparing rootfs…",
                             installProgress = 0f,
                         )
+                    is RootfsInstallState.Downloading ->
+                        _uiState.value = _uiState.value.copy(
+                            // Named as a download, not as generic progress: this
+                            // is the phase that can fail on a bad connection and
+                            // resume later, and the user can only act on it if
+                            // they know that is what they are waiting for.
+                            statusMessage = if (state.progress < 0f) {
+                                "Downloading sandbox image…"
+                            } else {
+                                "Downloading sandbox image… ${(state.progress * 100).toInt()}%"
+                            },
+                            installProgress = state.progress.coerceAtLeast(0f),
+                        )
                     is RootfsInstallState.Extracting ->
                         _uiState.value = _uiState.value.copy(
                             statusMessage = "Extracting rootfs… ${(state.progress * 100).toInt()}%",

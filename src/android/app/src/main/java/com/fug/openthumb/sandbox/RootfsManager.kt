@@ -18,14 +18,23 @@ import java.util.zip.GZIPInputStream
 /**
  * Observable state for rootfs installation. Mirrors the conceptual iOS
  * `downloadRootfs(progress:)` contract: discrete phases with a 0..1 fraction
- * during the long-running extract step. Neither platform actually downloads
- * the rootfs from the network today — it ships bundled as an asset — so
- * "progress" tracks asset-stream consumption (compressed bytes) instead of
- * HTTP transfer. The fraction semantics are identical from the UI's viewpoint.
+ * during the long-running steps. A build that bundles the image goes straight
+ * to [Extracting] and the fraction tracks compressed asset bytes; a build that
+ * does not goes through [Downloading] first, where the fraction is HTTP
+ * transfer. See [RootfsSource] for why both exist.
  */
 sealed class RootfsInstallState {
     object Idle : RootfsInstallState()
     object Preparing : RootfsInstallState()
+    /**
+     * Fetching the image because this build does not bundle it. Separate from
+     * [Extracting] on purpose: one is waiting on a network and can be retried
+     * or resumed, the other is waiting on the device. A single bar for both
+     * would tell the user nothing about which is stuck.
+     *
+     * progress is 0f..1f, or -1f when the server did not report a size.
+     */
+    data class Downloading(val progress: Float) : RootfsInstallState()
     /** progress in 0f..1f, based on compressed asset bytes consumed. */
     data class Extracting(val progress: Float) : RootfsInstallState()
     object Finalizing : RootfsInstallState()
@@ -82,36 +91,43 @@ class RootfsManager private constructor(private val context: Context) {
             }
             rootfsDir.mkdirs()
 
-            // Extract rootfs from assets.
-            // AAPT may decompress .tar.gz → .tar automatically, so try both names.
-            val assetName = try {
-                context.assets.open(ROOTFS_ASSET).close()
-                ROOTFS_ASSET
-            } catch (_: java.io.FileNotFoundException) {
-                ROOTFS_ASSET_TAR
+            // Where the image comes from is decided by what the APK holds —
+            // see RootfsSource. The extraction below is identical either way.
+            val plan = RootfsSource.plan(context)
+            val source: () -> InputStream
+            val sourceTotal: Long
+            when (plan) {
+                is RootfsSource.Plan.FromAsset -> {
+                    source = { context.assets.open(plan.assetName) }
+                    sourceTotal = plan.compressedBytes
+                }
+                is RootfsSource.Plan.FromNetwork -> {
+                    _installState.value = RootfsInstallState.Downloading(0f)
+                    val file = RootfsSource.download(
+                        context, plan.url, plan.sha256,
+                    ) { f -> _installState.value = RootfsInstallState.Downloading(f) }
+                    source = { RootfsSource.openVerified(file) }
+                    sourceTotal = file.length()
+                }
+                is RootfsSource.Plan.Unavailable -> throw java.io.IOException(plan.reason)
             }
-
-            // Asset size for progress calculation — compressed length (for .gz)
-            // or uncompressed length (for .tar). openFd() fails for 0-length
-            // assets on some devices; fall back to 0 which disables progress.
-            val assetTotal: Long = try {
-                context.assets.openFd(assetName).use { it.length }
-            } catch (_: Exception) { 0L }
+            val gzipped = when (plan) {
+                is RootfsSource.Plan.FromAsset -> plan.assetName.endsWith(".gz")
+                else -> true
+            }
 
             // Emit an initial 0% so the UI flips from Preparing → progress bar.
             _installState.value = RootfsInstallState.Extracting(0f)
 
-            context.assets.open(assetName).use { rawAsset ->
-                // Wrap the ASSET stream (not the gzip stream) so progress tracks
-                // compressed bytes consumed — monotonic and matches the size we
-                // have a total for. Throttle updates to avoid flooding the StateFlow.
-                val progressStream = ProgressInputStream(rawAsset, assetTotal) { fraction ->
+            source().use { raw ->
+                // Wrap the OUTER stream, not the gzip one, so progress tracks
+                // compressed bytes consumed — monotonic, and the size we have a
+                // total for. Throttled inside ProgressInputStream.
+                val progressStream = ProgressInputStream(raw, sourceTotal) { fraction ->
                     _installState.value = RootfsInstallState.Extracting(fraction)
                 }
-                if (assetName.endsWith(".gz")) {
-                    GZIPInputStream(progressStream).use { gzipStream ->
-                        extractTar(gzipStream, rootfsDir)
-                    }
+                if (gzipped) {
+                    GZIPInputStream(progressStream).use { extractTar(it, rootfsDir) }
                 } else {
                     extractTar(progressStream, rootfsDir)
                 }
