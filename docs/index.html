@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OpenThumb — your phone, running itself</title>
-<meta name="description" content="An on-device AI agent for Android with a real Linux shell that keeps working when you are not looking: notification triggers, scheduled runs, and fleet orchestration. Free and open source, GPL-3.0.">
+<title>OpenThumb — your phone, on your side</title>
+<meta name="description" content="An AI agent that lives on the phone you already use. It answers messages in the app they came from, remembers how your apps work, and keeps working while you sleep. No cloud, no accounts, no telemetry.">
 <link rel="canonical" href="https://neulketing.github.io/openthumb/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="OpenThumb — your phone, running itself">
-<meta property="og:description" content="An on-device AI agent for Android with a real Linux shell that keeps working when you are not looking.">
+<meta property="og:title" content="OpenThumb — your phone, on your side">
+<meta property="og:description" content="An AI agent that lives on the phone you already use — answering, remembering, and working while you sleep.">
 <meta property="og:url" content="https://neulketing.github.io/openthumb/">
 <meta property="og:image" content="https://raw.githubusercontent.com/neulketing/openthumb/main/fastlane/metadata/android/en-US/images/featureGraphic.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -261,30 +261,28 @@
       OpenThumb
     </span>
     <span class="sp"></span>
-    <a class="lnk hide-sm" href="#autonomy">Autonomy</a>
+    <a class="lnk hide-sm" href="#autonomy">What it does</a>
     <a class="lnk hide-sm" href="#shots">Screens</a>
     <a class="lnk hide-sm" href="#start">Get started</a>
-    <a class="lnk hide-sm" href="https://github.com/neulketing/openthumb/blob/main/CHANGELOG.md">Changelog</a>
-    <a class="pill" href="https://github.com/neulketing/openthumb">GitHub</a>
+    <a class="pill" href="https://github.com/neulketing/openthumb/releases/latest">Download</a>
   </div>
 </nav>
 
 <header class="wrap">
   <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <span class="kicker rv"><i></i> Android · GPL-3.0 · no telemetry</span>
-  <h1 class="rv d1">Your phone,<br><em>running itself.</em></h1>
-  <p class="lede rv d2">An on-device AI agent with a real Linux shell — one that keeps
-  working when you are not looking. It wakes on the notifications you choose, runs on a
-  schedule, and a whole rack of phones can be driven from a single host.</p>
+  <span class="kicker rv"><i></i> Android · runs on your phone · no cloud</span>
+  <h1 class="rv d1">Your phone,<br><em>on your side.</em></h1>
+  <p class="lede rv d2">An AI agent that lives on the phone you already use. It answers
+  messages in the app they came from, remembers how your apps work, and keeps
+  working while you are asleep. Not a chat window on a server — an agent with
+  your phone in its hands.</p>
   <div class="cta rv d3">
     <a class="btn pri" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
-    <a class="btn sec" href="https://github.com/neulketing/openthumb">Read the source</a>
     <span class="soon">Google Play — coming soon</span>
   </div>
   <!-- The version is rewritten by scripts/bump-version.sh; keep the markers. -->
   <p class="soon rv d3" style="margin-top:12px;">Current release
-    <a href="https://github.com/neulketing/openthumb/releases" style="color:var(--accent);text-decoration:none;"><!--v-->v1.4.0<!--/v--></a>
-    · <a href="https://github.com/neulketing/openthumb/blob/main/CHANGELOG.md" style="color:var(--accent);text-decoration:none;">what changed in every version</a></p>
+    <a href="https://github.com/neulketing/openthumb/releases" style="color:var(--accent);text-decoration:none;"><!--v-->v1.4.0<!--/v--></a></p>
   <div class="scrollhint rv d4"><span></span> Scroll to watch it work</div>
 </header>
 
@@ -359,47 +357,52 @@
 
 <section id="autonomy" class="wrap">
   <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <h2 class="h2 rv">The agent that keeps going<br>when you put the phone down.</h2>
-  <p class="sub rv d1">Upstream builds a great agent you talk to. OpenThumb adds the part
-  that runs when nobody is talking to it.</p>
+  <h2 class="h2 rv">Built for how your phone<br>actually works.</h2>
+  <p class="sub rv d1">Your day lives behind logins, spread across messengers,
+  alerts and files. OpenThumb handles all of it — the way you would.</p>
   <div class="grid">
     <div class="cell rv">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
-      <h3>Notification triggers</h3>
-      <p>A message lands, the agent wakes and handles it. Per-app rules with text matching,
-      cooldowns, quiet hours and active windows — plus a test-fire button and a run
-      history, so nothing fires silently. Loop protection included. No tap required.</p>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <h3>Answers in the app it came from</h3>
+      <p>A message lands in KakaoTalk, Messages, LINE or Telegram — the agent replies
+      through the notification's own reply action. No per-app integration, no relay
+      server, no copy-paste. It answers in the thread, in your tone.</p>
     </div>
     <div class="cell rv d1">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
-      <h3>Scheduled runs</h3>
-      <p>Prompts that fire on a clock — morning briefings, inbox sweeps, whatever you
-      script. Survives reboots and runs headless.</p>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>
+      <h3>Memory that learns your apps</h3>
+      <p>Every reply teaches it the app it answered in. What this group chat is about,
+      how that service's alerts should be handled — written down, kept on the device,
+      and brought back the next time. The second reply is better than the first.</p>
     </div>
     <div class="cell rv d2">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-      <h3>A real Linux shell</h3>
-      <p>Sandboxed Alpine Linux on the phone itself. The agent installs packages, runs
-      scripts and works with real files.</p>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      <h3>Nothing sent without you</h3>
+      <p>Every outbound reply waits for your Send — or flows freely on rules you
+      explicitly trust. A full ledger of everything sent and discarded. Your phone,
+      your voice, your call.</p>
     </div>
     <div class="cell rv">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-      <h3>Full device hands</h3>
-      <p>Screen control through accessibility, plus notifications, clipboard and alarms.
-      You grant the permissions, the agent does the work.</p>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+      <h3>Works while you sleep</h3>
+      <p>Wakes on the notifications you chose, runs on a schedule, survives reboots.
+      Morning briefings and inbox sweeps happen before the alarm. A phone that uses
+      its idle time instead of wasting yours.</p>
     </div>
     <div class="cell rv d1">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      <h3>Nothing collected</h3>
-      <p>No analytics, no telemetry, no accounts, no server of ours. Keys and chats go only
-      to the provider you configure.
-      <a href="https://github.com/neulketing/openthumb/blob/main/PRIVACY.md" style="color:var(--accent);text-decoration:none;">Privacy</a></p>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <h3>A real Linux shell, on the phone</h3>
+      <p>Sandboxed Alpine Linux on the device itself. The agent installs packages,
+      runs scripts and works with real files — because sometimes the honest way to
+      do a job is to write code that does it.</p>
     </div>
     <div class="cell rv d2">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>
-      <h3>Bring your own model</h3>
-      <p>Claude, GPT, Gemini or another provider, under your own API key. Nothing is billed
-      through us, because there is no us in the loop.</p>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h3>Your phone, not our server</h3>
+      <p>No accounts, no analytics, no server of ours. Bring your own model — Claude,
+      GPT, Gemini under your own key or subscription. Everything it knows stays on
+      the device.
+      <a href="https://github.com/neulketing/openthumb/blob/main/PRIVACY.md" style="color:var(--accent);text-decoration:none;">Privacy</a></p>
     </div>
   </div>
 </section>
@@ -427,28 +430,18 @@
   </div>
 </section>
 
-<section id="fleet" class="wrap">
-  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <h2 class="h2 rv">For developers: more than one.</h2>
-  <p class="sub rv d1">OpenThumb is an app for your phone. This part is a lab tool, and you can
-  ignore it. Debug builds serve JSON-RPC on device-local <code>127.0.0.1:5321</code>, so
-  <code>openthumb-fleet</code> can forward a host port per device over adb and drive several
-  test phones from one laptop.</p>
-  <div class="term rv d2" id="term">
-    <div class="bar"><i></i><i></i><i></i><span>test devices, Android 9</span></div>
-<pre><span class="ln"><span class="p">$</span> openthumb-fleet status</span><span class="ln">&lt;serial&gt;                 android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">&lt;serial&gt;                 android=9 sdk=28 sandbox=up device=samsung SM-N950U</span><span class="ln">&lt;serial&gt;                 android=9 sdk=28 sandbox=up device=samsung SM-N950U1</span><span class="ln"> </span><span class="ln"><span class="p">$</span> openthumb-fleet prompt <span class="c">"summarise today's notifications"</span></span><span class="ln"><span class="c"># every device, concurrently</span></span></pre>
-  </div>
-</section>
+<!-- fleet section removed: internal tooling, not part of the product story -->
 
 <section id="start" class="wrap">
   <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <h2 class="h2 rv">Three steps to a phone<br>that works on its own.</h2>
+  <h2 class="h2 rv">Three steps to a phone<br>that works on your side.</h2>
   <ol class="steps">
     <li class="rv"><b>Install and bring a model</b><span>Sideload the APK and add your own
       API key. Claude, GPT, Gemini or another provider — your key, your account.</span></li>
-    <li class="rv d1"><b>Grant what it needs</b><span>Accessibility for screen control,
-      notification access for triggers. Each one is explained in the app before you are
-      asked.</span></li>
+    <li class="rv d1"><b>Let it walk you through the gates</b><span>The setup screen checks
+      each permission the agent needs, opens the exact system page, and notices the moment
+      you come back. It ends by writing your first rule from the messengers actually
+      installed on the phone.</span></li>
     <li class="rv d2"><b>Write a rule</b><span>"When a message from this app arrives, do
       that." From then on the phone acts without you.</span></li>
   </ol>
@@ -456,28 +449,25 @@
 
 <section class="wrap">
   <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
-  <h2 class="h2 rv">Standing on OpenMinis</h2>
+  <h2 class="h2 rv">Answers, not chat.</h2>
   <div class="note rv d1">
-    OpenThumb is a GPL-3.0 fork of <a href="https://github.com/OpenMinis/OpenMinis">OpenMinis</a>,
-    and <strong>nearly all of the app is their work.</strong> If you want one great
-    conversational agent on your own phone — better documented, actively released, on the
-    App Store — use OpenMinis; it is the better choice for almost everyone. OpenThumb exists
-    for the part upstream does not target: phones that act on their own, alone or as a fleet.
-    Our own changes are the fleet tooling, an Android 8/9 startup crash fix, the trigger
-    engine, and CI that keeps it all honest.
+    Assistants wait to be asked. OpenThumb acts — which means the things you would have
+    done with your thumb at midnight either happen on their own, or are waiting
+    draft-complete when you pick the phone up. It is built on the open-source
+    <a href="https://github.com/OpenMinis/OpenMinis">OpenMinis</a> app; what it adds is the
+    part that runs when nobody is talking to it.
   </div>
 </section>
 
 <footer>
   <div class="wrap row">
-    <a href="https://github.com/neulketing/openthumb">GitHub</a>
-    <a href="https://github.com/neulketing/openthumb/blob/main/CHANGELOG.md">Changelog</a>
     <a href="https://github.com/neulketing/openthumb/blob/main/PRIVACY.md">Privacy</a>
     <a href="https://github.com/neulketing/openthumb/blob/main/SECURITY.md">Security</a>
+    <a href="https://github.com/neulketing/openthumb">Source</a>
     <a href="https://github.com/neulketing/openthumb/blob/main/LICENSE">GPL-3.0</a>
     <a href="mailto:neulketing@gmail.com">Contact</a>
     <span class="sp"></span>
-    <span>© 2026 neulketing · not affiliated with OpenMinis</span>
+    <span>© 2026 neulketing · built on open-source work</span>
   </div>
 </footer>
 
