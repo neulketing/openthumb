@@ -3,100 +3,285 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OpenThumb — the most capable AI assistant, but it's your phone</title>
+<title>OpenThumb — your phone, on your side</title>
 <meta name="description" content="An AI agent that lives on the phone you already use. It replies in the app the message came from, remembers how your apps work, and keeps working while you sleep. On-device, no account, no telemetry.">
 <link rel="canonical" href="https://neulketing.github.io/openthumb/">
 <meta property="og:type" content="website">
-<meta property="og:title" content="OpenThumb — the most capable AI assistant, but it's your phone">
+<meta property="og:title" content="OpenThumb — your phone, on your side">
 <meta property="og:description" content="Replies in the app the message came from. Remembers your apps. Works while you sleep. All on-device.">
 <meta property="og:url" content="https://neulketing.github.io/openthumb/">
 <meta property="og:image" content="https://raw.githubusercontent.com/neulketing/openthumb/main/fastlane/metadata/android/en-US/images/featureGraphic.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231b1a17'/%3E%3Cg fill='none' stroke='%23c98a5b' stroke-width='2.3' stroke-linecap='round'%3E%3Ccircle cx='7' cy='16' r='2'/%3E%3Cpath d='M10 16h4M14 16c3 0 3-5.5 6-5.5M14 16h6M14 16c3 0 3 5.5 6 5.5'/%3E%3Crect x='20' y='6' width='6' height='9' rx='2.2'/%3E%3Crect x='20' y='17' width='6' height='9' rx='2.2'/%3E%3C/g%3E%3C/svg%3E">
 <style>
+  /* ─────────────────────────────────────────────────────────────
+     OpenThumb — "night shift" edition, Aside motion system
+     Blur-rise entrances · damped scroll-link parallax ·
+     scroll-fade masks · thinking shimmer · marquee ticker
+     ───────────────────────────────────────────────────────────── */
   :root {
-    --bg:#fcfcfc; --panel:#f6f6f4; --ink:#16150f; --dim:#6f6a60;
-    --line:#e7e4dc; --line2:#d9d5ca;
-    --accent:#c9683a; --accent-ink:#8a3f1c; --accent-soft:#f6ece4;
+    /* paper (body) */
+    --paper:#faf9f5; --panel:#fffefb; --ink:#1f1d1a; --dim:#6b665e;
+    --line:#e6e2d8; --tick:#c4bfb2;
+    --accent:#c9683a; --accent-soft:#f3e7df;
     --good:#3d7a4e; --part:#b98a2f; --bad:#b0524a;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    /* night (hero + scorecard) */
+    --n-bg:#131210; --n-panel:#1c1a17; --n-ink:#efe9df; --n-dim:#9a9184;
+    --n-line:#2c2823; --n-glow:rgba(201,106,58,.14);
+    --serif:ui-serif,"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    --max:1120px;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#111009; --panel:#181712; --ink:#f2efe7; --dim:#a39c8f;
-            --line:#28251d; --line2:#383327;
-            --accent:#e08a5c; --accent-ink:#eba47d; --accent-soft:#2a2118;
-            --good:#7fbc8f; --part:#dcc276; --bad:#e08d84; }
+    --max:1140px;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html { scroll-behavior:smooth; }
-  body { background:var(--bg); color:var(--ink); font:16px/1.62 var(--sans);
+  body { background:var(--paper); color:var(--ink); font:16px/1.65 var(--sans);
          -webkit-font-smoothing:antialiased; overflow-x:hidden; }
   a { color:inherit; }
   img { max-width:100%; display:block; }
+  ::selection { background:var(--accent-soft); }
+
+  /* ── Aside's `enter` system, verbatim vocabulary ────
+     opacity + translate3d + scale3d + blur, driven by custom
+     properties; cleared by .in with material easing. */
+  .enter {
+    --enter-opacity: 0; --enter-y: 26px; --enter-scale: .97; --enter-blur: 10px;
+    opacity: var(--enter-opacity);
+    transform: translate3d(0, var(--enter-y), 0) scale3d(var(--enter-scale),var(--enter-scale),var(--enter-scale));
+    filter: blur(var(--enter-blur));
+    transition: opacity .9s cubic-bezier(.4,0,.2,1),
+                transform .9s cubic-bezier(.4,0,.2,1),
+                filter .9s cubic-bezier(.4,0,.2,1);
+    will-change: opacity, transform, filter;
+  }
+  .enter.in {
+    --enter-opacity: 1; --enter-y: 0px; --enter-scale: 1; --enter-blur: 0px;
+  }
+  /* stagger variants */
+  .enter.d1{transition-delay:.07s} .enter.d2{transition-delay:.14s}
+  .enter.d3{transition-delay:.21s} .enter.d4{transition-delay:.28s}
+  .enter.d5{transition-delay:.35s} .enter.d6{transition-delay:.42s}
+
+  /* legacy reveal alias */
+  .rv { opacity:0; transform:translateY(22px);
+        transition:opacity .8s cubic-bezier(.2,.7,.3,1), transform .8s cubic-bezier(.2,.7,.3,1); }
+  .rv.in { opacity:1; transform:none; }
+  .rv.d1{transition-delay:.08s} .rv.d2{transition-delay:.16s}
+  .rv.d3{transition-delay:.24s} .rv.d4{transition-delay:.32s}
+
+  /* ── damped scroll-link targets (JS drives translate/opacity) ── */
+  [data-sl] { will-change: transform, opacity; }
+
+  /* ── thinking shimmer — Aside's `thinking-gradient` ── */
+  .think {
+    background: linear-gradient(90deg, var(--n-dim), var(--accent), var(--n-dim));
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color:transparent;
+    animation: thinkslide 2.6s linear infinite;
+  }
+  @keyframes thinkslide { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+
+  /* ── provider ticker — Aside's `subscription-marquee` ── */
+  .ticker { overflow:hidden; -webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);
+            mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent); }
+  .ticker .lane { display:flex; gap:44px; width:max-content;
+                  animation: marquee 26s linear infinite; }
+  .ticker:hover .lane { animation-play-state: paused; }
+  @keyframes marquee { to { transform: translateX(-50%); } }
+
+  /* ── scroll-fade masks — Aside's `show/hide mask` vars ── */
+  .fade-mask {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 var(--mh-top,96px),
+                    #000 calc(100% - var(--mh-bot,96px)), transparent 100%);
+            mask-image: linear-gradient(180deg, transparent 0, #000 var(--mh-top,96px),
+                    #000 calc(100% - var(--mh-bot,96px)), transparent 100%);
+    transition: --mh-top .4s, --mh-bot .4s;
+  }
+
+  .wrap { max-width:var(--max); margin:0 auto; padding-left:32px; padding-right:32px; }
+  @media (max-width:640px){ .wrap { padding-left:20px; padding-right:20px; } }
+
+  /* crop marks — drafting-sheet registration ticks on every ruled block */
+  .marks { position:absolute; inset:0; pointer-events:none; }
+  .marks span { position:absolute; width:7px; height:7px; opacity:.55; }
+  .marks span::before, .marks span::after { content:""; position:absolute; background:var(--tick); }
+  .marks span::before { left:0; top:3px; width:7px; height:1px; }
+  .marks span::after  { top:0; left:3px; width:1px; height:7px; }
+  .marks .tl{left:-3px;top:-3px} .marks .tr{right:-3px;top:-3px}
+  .marks .bl{left:-3px;bottom:-3px} .marks .br{right:-3px;bottom:-3px}
 
   /* scroll progress */
   .prog { position:fixed; top:0; left:0; height:2px; width:100%; transform-origin:0 50%;
           transform:scaleX(0); background:var(--accent); z-index:60; }
 
-  /* ── hero live demo: typing thread + working log ── */
-  .typeline { display:flex; overflow:hidden; white-space:nowrap; }
-  .typeline .caret { display:inline-block; width:2px; background:var(--accent);
-                     margin-left:2px; animation:blink 1s steps(1) infinite; }
-  @keyframes blink { 50% { opacity:0 } }
-  .logline { opacity:0; transform:translateY(6px);
-             transition:opacity .4s ease, transform .4s ease; }
-  .logline.on { opacity:1; transform:none; }
-
-  /* ── manifesto: words light up as you pass ── */
-  .mani p strong, .mani em.hl { transition:color .6s ease, background .6s ease; }
-  .mani em.hl { font-style:normal; background:linear-gradient(transparent 62%, var(--accent-soft) 0);
-                padding:0 .1em; }
-
-  /* ── number count-up (scorecard scores) ── */
-  .bar-row .sc { font-variant-numeric:tabular-nums; }
-
-  /* ── capability cells: hover lift ── */
-  .trio .t, .grid .cell { transition:transform .35s cubic-bezier(.2,.7,.3,1), box-shadow .35s; }
-  .trio .t:hover { transform:translateY(-4px);
-                   box-shadow:0 18px 40px -22px rgba(0,0,0,.35); }
-
-  /* ── phone mockups drift on scroll ── */
-  .drift { will-change:transform; }
-
-  /* ── hero entrance ── */
-  .hero > * { opacity:0; transform:translateY(26px);
-              transition:opacity .9s cubic-bezier(.2,.7,.3,1), transform .9s cubic-bezier(.2,.7,.3,1); }
-  body.loaded .hero > * { opacity:1; transform:none; }
-  body.loaded .hero > *:nth-child(2) { transition-delay:.15s; }
-
-  /* stagger for reveals */
+  /* reveal primitives */
+  .rv { opacity:0; transform:translateY(22px);
+        transition:opacity .8s cubic-bezier(.2,.7,.3,1), transform .8s cubic-bezier(.2,.7,.3,1); }
+  .rv.in { opacity:1; transform:none; }
   .rv.d1{transition-delay:.08s} .rv.d2{transition-delay:.16s}
   .rv.d3{transition-delay:.24s} .rv.d4{transition-delay:.32s}
 
-  /* pinned scroll story */
+  /* ── nav ─────────────────────────────────────────── */
+  nav { position:sticky; top:0; z-index:50;
+        background:color-mix(in srgb, var(--n-bg) 82%, transparent);
+        backdrop-filter:saturate(180%) blur(14px);
+        border-bottom:1px solid var(--n-line); color:var(--n-ink); }
+  nav .wrap { display:flex; align-items:center; gap:26px; height:68px; position:relative; }
+  .mark { display:flex; align-items:center; gap:10px; font-family:var(--serif); font-size:1.16rem; }
+  nav .sp { flex:1; }
+  nav a.lnk { color:var(--n-dim); text-decoration:none; font-size:.9rem; }
+  nav a.lnk:hover { color:var(--n-ink); }
+  .pill { border:1px solid var(--n-line); border-radius:999px; padding:8px 18px;
+          font-size:.86rem; font-weight:600; text-decoration:none; white-space:nowrap; }
+  .pill.solid { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .pill.solid:hover { filter:brightness(1.08); }
+  .pill:hover { border-color:var(--n-dim); }
+  @media (max-width:840px){ .hide-sm{ display:none; } }
+
+  /* ── night hero ──────────────────────────────────── */
+  .night { position:relative; background:var(--n-bg); color:var(--n-ink); overflow:hidden; }
+  .night::before { content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+    background-image:radial-gradient(rgba(250,249,245,.07) 1px, transparent 1px);
+    background-size:26px 26px;
+    mask-image:radial-gradient(120% 90% at 70% 10%, #000 30%, transparent 75%); }
+  .night::after { content:""; position:absolute; z-index:0; pointer-events:none;
+    width:820px; height:820px; right:-260px; top:-320px; border-radius:50%;
+    background:radial-gradient(circle, var(--n-glow) 0%, transparent 62%); }
+  .night .wrap { position:relative; z-index:1; }
+
+  header.night-hero { padding-top:88px; padding-bottom:96px; }
+  .hero { display:grid; grid-template-columns:1.12fr .88fr; gap:64px; align-items:center; }
+  @media (max-width:980px){ .hero { grid-template-columns:1fr; gap:48px; }
+                            header.night-hero { padding-top:64px; } }
+  .kicker { display:inline-flex; align-items:center; gap:9px; font-size:.78rem; color:var(--n-dim);
+            letter-spacing:.14em; text-transform:uppercase; margin-bottom:26px; }
+  .kicker i { width:6px; height:6px; border-radius:50%; background:var(--accent);
+              display:block; animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.8)} }
+  h1 { font-family:var(--serif); font-weight:400; letter-spacing:-.022em;
+       font-size:clamp(2.8rem,6.2vw,5rem); line-height:1.03; }
+  h1 em { font-style:italic; color:var(--accent); }
+  .lede { color:var(--n-dim); font-size:1.15rem; margin:26px 0 36px; max-width:31em; }
+  .cta { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  .btn { display:inline-flex; align-items:center; gap:9px; padding:15px 28px; border-radius:999px;
+         font-weight:650; font-size:.96rem; text-decoration:none; border:1px solid transparent;
+         transition:transform .25s, opacity .25s, border-color .25s; }
+  .btn:hover { transform:translateY(-2px); }
+  .btn.pri { background:var(--accent); color:#fff; }
+  .btn.sec { border-color:var(--n-line); color:var(--n-ink); }
+  .btn.sec:hover { border-color:var(--n-dim); }
+  .soon { font-size:.86rem; color:var(--n-dim); }
+  .ver { font-size:.84rem; color:var(--n-dim); margin-top:16px; }
+  .ver a { color:var(--accent); text-decoration:none; }
+
+  /* hero phone — night edition */
+  .heroPhone { position:relative; }
+  .phone { width:100%; max-width:330px; margin:0 auto; border-radius:42px; padding:9px;
+           background:linear-gradient(160deg,#3a3630,#191713);
+           box-shadow:0 34px 80px -30px rgba(0,0,0,.8), 0 2px 6px rgba(0,0,0,.3),
+                      0 0 90px -18px var(--n-glow); }
+  .phone::after { content:""; position:absolute; left:50%; transform:translateX(-50%);
+                  top:2px; width:74px; height:20px; border-radius:0 0 12px 12px;
+                  background:#0c0b09; }
+  .screen { background:var(--paper); border-radius:34px; padding:0 12px 18px; overflow:hidden;
+            color:var(--ink); }
+  .statusbar { display:flex; align-items:center; justify-content:space-between;
+               padding:12px 8px 9px; font-size:.68rem; color:var(--dim);
+               font-variant-numeric:tabular-nums; }
+  .statusbar .icons { display:flex; gap:5px; align-items:center; }
+  .statusbar .icons i { display:block; width:11px; height:8px; border-radius:1.5px;
+                        background:var(--dim); opacity:.55; }
+  .statusbar .icons i.bat { width:15px; opacity:.75; }
+  .appbar { display:flex; align-items:center; gap:8px; padding:2px 4px 14px;
+            font-weight:700; font-size:.86rem; }
+  .dotmark { width:7px; height:7px; border-radius:50%; background:var(--accent); }
+  .feedcard { border:1px solid var(--line); border-radius:16px; padding:13px 15px;
+              background:var(--panel); }
+  .feedcard .fc-top { display:flex; align-items:center; gap:8px; font-size:.71rem;
+                      color:var(--dim); margin-bottom:9px; }
+  .fc-live { width:6px; height:6px; border-radius:50%; background:var(--accent);
+             animation:pulse 2.2s ease-in-out infinite; }
+  .logline { font-size:.86rem; color:var(--dim); padding-left:17px; position:relative;
+             margin-top:8px; opacity:0; transform:translateY(6px);
+             transition:opacity .45s ease, transform .45s ease; }
+  .logline.on { opacity:1; transform:none; }
+  .logline::before { content:""; position:absolute; left:0; top:8px; width:6px; height:6px;
+                     border-radius:50%; background:var(--accent); opacity:.55; }
+  .logline.sent::before { background:var(--good); opacity:.75; }
+  .thread { border:1px solid var(--line); border-radius:16px; padding:12px 14px;
+            background:var(--panel); margin-top:12px; }
+  .thread .from { font-size:.7rem; color:var(--dim); letter-spacing:.05em;
+                  text-transform:uppercase; margin-bottom:5px; }
+  .thread .msg { font-size:.88rem; }
+  .draft { border:1px solid var(--accent-soft); background:var(--accent-soft);
+           border-radius:16px; padding:12px 14px; margin-top:12px; min-height:52px; }
+  .draft .tag { font-size:.68rem; letter-spacing:.07em; text-transform:uppercase;
+                color:var(--accent); font-weight:700; margin-bottom:5px; }
+  .draft .txt { font-size:.86rem; min-height:1.3em; }
+  .caret { display:inline-block; width:2px; height:.95em; background:var(--accent);
+           vertical-align:-2px; margin-left:1px; animation:blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:0 } }
+  .memchip { display:flex; align-items:center; gap:7px; margin-top:12px; padding:9px 12px;
+             border-radius:12px; border:1px dashed var(--tick); font-size:.75rem;
+             color:var(--dim); background:var(--paper); }
+  .memchip svg { flex:none; color:var(--accent); }
+  .homebar { width:104px; height:4px; border-radius:99px; background:var(--line);
+             margin:16px auto 2px; }
+  .cap { text-align:center; font-size:.75rem; color:var(--n-dim); margin-top:16px; }
+
+  /* ── manifesto (paper) ───────────────────────────── */
+  section.wrap { padding-top:104px; padding-bottom:104px; position:relative; }
+  header.wrap { position:relative; }
+  section::before { content:""; position:absolute; top:0; left:50%; width:100vw;
+                    transform:translateX(-50%); border-top:1px solid var(--line); }
+  .h2 { font-family:var(--serif); font-weight:400; font-size:clamp(1.9rem,3.6vw,2.75rem);
+        letter-spacing:-.02em; line-height:1.13; }
+  .h2 em { font-style:italic; color:var(--accent); }
+  .sub { color:var(--dim); margin-top:14px; max-width:34em; font-size:1.02rem; }
+  .mani p { font-size:1.12rem; max-width:36em; color:var(--dim); line-height:1.75; }
+  .mani p + p { margin-top:16px; }
+  .mani strong { color:var(--ink); font-weight:650; }
+  .mani .hl { font-style:inherit; background:linear-gradient(transparent 64%, var(--accent-soft) 0);
+              padding:0 .08em; }
+
+  /* ── capability grid ─────────────────────────────── */
+  .grid { display:grid; gap:1px; margin-top:54px; background:var(--line);
+          border:1px solid var(--line); border-radius:18px; overflow:hidden;
+          grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+  .cell { background:var(--panel); padding:30px 26px; transition:background .3s; }
+  .cell:hover { background:var(--paper); }
+  .cell h3 { font-size:1.02rem; font-weight:650; margin:16px 0 8px; }
+  .cell p { color:var(--dim); font-size:.93rem; }
+  .cell svg { color:var(--accent); }
+
+  /* ── pinned scroll story ─────────────────────────── */
   .story { position:relative; }
-  .story .track { height:380vh; }
+  .story .track { height:420vh; }
   .story .pin { position:sticky; top:0; height:100vh; display:grid; place-items:center; }
-  .stage { width:100%; max-width:var(--max); margin:0 auto; padding:0 40px;
+  .stage { width:100%; max-width:var(--max); margin:0 auto; padding:0 32px;
            display:grid; grid-template-columns:1fr 340px; gap:64px; align-items:center; }
-  @media (max-width:960px){ .stage{ grid-template-columns:1fr; gap:36px; padding:0 22px; }
-                            .story .track{ height:340vh; } }
+  @media (max-width:900px){ .stage{ grid-template-columns:1fr; gap:36px; }
+                            .story .track{ height:380vh; } }
   .beat { grid-column:1; grid-row:1; opacity:0; transform:translateY(18px);
           transition:opacity .5s ease, transform .5s ease; pointer-events:none; }
   .beat.on { opacity:1; transform:none; pointer-events:auto; }
-  .beat .n { color:var(--accent); font-size:.95rem; font-weight:700; letter-spacing:.12em;
-             margin-bottom:14px; }
-  .beat h2 { font-size:clamp(1.9rem,3.8vw,3rem); }
+  .beat .n { font-family:var(--serif); color:var(--accent); font-size:1.05rem; margin-bottom:14px; }
+  .beat h2 { font-family:var(--serif); font-weight:400; letter-spacing:-.02em; line-height:1.12;
+             font-size:clamp(1.9rem,3.8vw,3rem); }
   .beat p { color:var(--dim); margin-top:16px; max-width:28em; font-size:1.02rem; }
   .phoneCol { grid-column:2; grid-row:1; display:flex; justify-content:center; }
-  @media (max-width:960px){ .phoneCol{ grid-column:1; grid-row:2; } }
+  @media (max-width:900px){ .phoneCol{ grid-column:1; grid-row:2; } }
   .step { opacity:0; transform:translateY(10px) scale(.98);
           transition:opacity .45s ease, transform .45s cubic-bezier(.2,.7,.3,1); }
   .step.on { opacity:1; transform:none; }
-  .feedcard.step { border:1px solid var(--line); border-radius:16px; padding:13px 14px;
-                   background:var(--bg); margin-bottom:12px; }
+  .bubble { border:1px solid var(--line); border-radius:16px; padding:13px 15px;
+            background:var(--panel); }
+  .bubble .from { font-size:.71rem; color:var(--dim); letter-spacing:.05em;
+                  text-transform:uppercase; margin-bottom:5px; }
+  .bubble .msg { font-size:.9rem; }
+  .ruleTag { display:flex; align-items:center; gap:9px; margin:14px 2px; color:var(--accent);
+             font-size:.72rem; letter-spacing:.07em; text-transform:uppercase; font-weight:700; }
+  .ruleTag::before, .ruleTag::after { content:""; height:1px; background:var(--line); flex:1; }
   .agent { border:1px solid var(--accent-soft); background:var(--accent-soft);
            border-radius:16px; padding:14px 15px; }
   .agent .who { display:flex; align-items:center; gap:7px; font-size:.74rem;
@@ -106,169 +291,104 @@
   .agent .li { font-size:.86rem; color:var(--dim); padding-left:17px; position:relative; margin-top:8px; }
   .agent .li::before { content:""; position:absolute; left:0; top:7px; width:6px; height:6px;
                        border-radius:50%; background:var(--accent); opacity:.6; }
-  .rule { display:flex; align-items:center; gap:9px; margin:12px 2px; color:var(--accent);
-          font-size:.72rem; letter-spacing:.07em; text-transform:uppercase; font-weight:700; }
-  .rule::before, .rule::after { content:""; height:1px; background:var(--line2); flex:1; }
+  .agent .li.done::before { background:var(--good); opacity:.75; }
 
-  /* Aside-style bordered column: the page is one ruled sheet */
-  .col { max-width:var(--max); margin:0 auto; border-left:1px solid var(--line);
-         border-right:1px solid var(--line);
-         background:color-mix(in srgb, var(--panel) 35%, var(--bg)); }
-  @media (max-width:1160px){ .col { border-color:transparent; } }
-  .sec { padding:84px 40px; border-top:1px solid var(--line); }
-  @media (max-width:640px){ .sec { padding:64px 22px; } }
-  .kicker { font-size:.78rem; letter-spacing:.14em; text-transform:uppercase;
-            color:var(--dim); margin-bottom:14px; }
-  .kicker b { color:var(--accent); font-weight:700; }
-  h1 { font-size:clamp(2.6rem,6vw,4.4rem); line-height:1.04; letter-spacing:-.035em;
-       font-weight:650; }
-  h1 em { font-style:normal; color:var(--accent); }
-  h2 { font-size:clamp(1.8rem,3.6vw,2.6rem); line-height:1.1; letter-spacing:-.03em;
-       font-weight:640; }
-  h2 em { font-style:normal; color:var(--accent); }
-  .lede { color:var(--dim); font-size:1.13rem; max-width:34em; margin-top:18px; }
-  .mut { color:var(--dim); }
-
-  /* nav */
-  nav { position:sticky; top:0; z-index:40;
-        background:color-mix(in srgb, var(--bg) 82%, transparent);
-        backdrop-filter:saturate(160%) blur(14px); border-bottom:1px solid var(--line); }
-  nav .in { max-width:var(--max); margin:0 auto; display:flex; align-items:center;
-            gap:22px; height:64px; padding:0 24px; }
-  .mark { display:flex; align-items:center; gap:9px; font-weight:700; font-size:1.02rem; }
-  nav .sp { flex:1; }
-  nav a.lnk { color:var(--dim); text-decoration:none; font-size:.9rem; }
-  nav a.lnk:hover { color:var(--ink); }
-  .pill { border:1px solid var(--line2); border-radius:999px; padding:8px 18px;
-          font-size:.87rem; font-weight:600; text-decoration:none; white-space:nowrap; }
-  .pill.solid { background:var(--ink); color:var(--bg); border-color:var(--ink); }
-  .pill.solid:hover { opacity:.9; }
-  @media (max-width:820px){ .hide-sm{ display:none; } }
-
-  /* hero */
-  .hero { display:grid; grid-template-columns:1.15fr .85fr; gap:64px;
-          align-items:center; padding:96px 40px 84px; }
-  @media (max-width:960px){ .hero { grid-template-columns:1fr; gap:44px; padding:72px 22px; } }
-  .cta { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:34px; }
-  .btn { display:inline-flex; align-items:center; gap:9px; padding:14px 28px;
-         border-radius:999px; font-weight:650; font-size:.97rem; text-decoration:none;
-         background:var(--ink); color:var(--bg); transition:transform .25s, opacity .25s; }
-  .btn:hover { transform:translateY(-2px); opacity:.92; }
-  .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line2); }
-  .ver { font-size:.85rem; color:var(--dim); margin-top:14px; }
-  .ver a { color:var(--accent); text-decoration:none; }
-
-  /* phone mockup */
-  .phone { width:100%; max-width:320px; margin:0 auto; border-radius:44px; padding:9px;
-           background:linear-gradient(160deg,#3b3730,#181510);
-           box-shadow:0 40px 90px -38px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.28); }
-  .screen { background:var(--bg); border-radius:35px; padding:0 13px 16px; overflow:hidden; }
-  .statusbar { display:flex; justify-content:space-between; padding:12px 9px 10px;
-               font-size:.68rem; color:var(--dim); font-variant-numeric:tabular-nums; }
-  .appbar { display:flex; align-items:center; gap:8px; padding:2px 4px 14px;
-            font-weight:700; font-size:.88rem; }
-  .dotmark { width:7px; height:7px; border-radius:50%; background:var(--accent); }
-  .feedcard { border:1px solid var(--line); border-radius:16px; padding:13px 14px;
-              background:var(--bg); }
-  .feedcard .fc-top { display:flex; align-items:center; gap:8px; font-size:.72rem;
-                      color:var(--dim); margin-bottom:9px; }
-  .live { width:6px; height:6px; border-radius:50%; background:var(--accent);
-          animation:pulse 2.2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.75)} }
-  .fc-li { font-size:.85rem; color:var(--dim); padding-left:16px; position:relative;
-           margin-top:7px; }
-  .fc-li::before { content:""; position:absolute; left:1px; top:8px; width:5px; height:5px;
-                   border-radius:50%; background:var(--accent); opacity:.55; }
-  .fc-li.done::before { background:var(--good); opacity:.7; }
-  .thread { border:1px solid var(--line); border-radius:16px; padding:12px 13px;
-            background:var(--bg); margin-top:12px; }
-  .thread .from { font-size:.7rem; color:var(--dim); letter-spacing:.05em;
-                  text-transform:uppercase; margin-bottom:5px; }
-  .thread .msg { font-size:.88rem; }
-  .memchip { display:flex; align-items:center; gap:7px; margin-top:12px; padding:9px 12px;
-             border-radius:12px; background:var(--accent-soft); font-size:.76rem;
-             color:var(--accent-ink); }
-  .memchip svg { flex:none; }
-  .homebar { width:104px; height:4px; border-radius:99px; background:var(--line2);
-             margin:16px auto 2px; }
-  .cap { text-align:center; font-size:.75rem; color:var(--dim); margin-top:14px; }
-
-  /* manifesto */
-  .mani p { font-size:1.06rem; max-width:38em; color:var(--dim); }
-  .mani p + p { margin-top:14px; }
-  .mani strong { color:var(--ink); font-weight:650; }
-
-  /* capability trio */
-  .trio { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-          gap:1px; background:var(--line); border:1px solid var(--line);
-          border-radius:18px; overflow:hidden; margin-top:44px; }
-  .trio .t { background:var(--bg); padding:28px 24px; }
-  .trio .t h3 { font-size:.99rem; font-weight:650; margin:14px 0 7px; }
-  .trio .t p { color:var(--dim); font-size:.92rem; }
-  .trio svg { color:var(--accent); }
-
-  /* benchmark tabs (Geekbench-style scorecard) */
-  .tabs { display:flex; gap:6px; border:1px solid var(--line); border-radius:12px;
-          padding:5px; width:fit-content; margin:40px auto 0; background:var(--panel);
+  /* ── scorecard (night lab) ───────────────────────── */
+  .lab { position:relative; background:var(--n-bg); color:var(--n-ink); overflow:hidden; }
+  .lab::before { content:""; position:absolute; inset:0; pointer-events:none;
+    background-image:radial-gradient(rgba(250,249,245,.055) 1px, transparent 1px);
+    background-size:26px 26px;
+    mask-image:radial-gradient(140% 100% at 50% 0%, #000 30%, transparent 78%); }
+  .lab .wrap { position:relative; z-index:1; }
+  .lab .sub { color:var(--n-dim); }
+  .lab .h2 { color:var(--n-ink); }
+  .tabs { display:flex; gap:6px; border:1px solid var(--n-line); border-radius:12px;
+          padding:5px; width:fit-content; margin:42px auto 0; background:var(--n-panel);
           flex-wrap:wrap; justify-content:center; }
   .tab { border:0; background:transparent; font:inherit; font-size:.87rem; font-weight:600;
-         color:var(--dim); padding:8px 16px; border-radius:8px; cursor:pointer; }
-  .tab.on { background:var(--bg); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,.09); }
-  .suite { display:none; margin-top:40px; }
+         color:var(--n-dim); padding:9px 18px; border-radius:8px; cursor:pointer;
+         transition:color .25s; }
+  .tab.on { background:var(--accent); color:#fff; }
+  .suite { display:none; margin-top:44px; }
   .suite.on { display:block; }
-  .bars { max-width:640px; margin:0 auto; }
-  .bar-row { display:grid; grid-template-columns:130px 1fr 64px; gap:14px;
-             align-items:center; margin-top:12px; }
-  .bar-row .nm { font-size:.9rem; font-weight:600; text-align:right; }
-  .bar-row .nm.self { color:var(--accent); }
-  .track { height:30px; border-radius:8px; background:var(--panel);
-           border:1px solid var(--line); overflow:hidden; }
-  .fill { height:100%; border-radius:7px; background:linear-gradient(90deg,var(--accent),#a5522b);
-          width:0; transition:width 1.1s cubic-bezier(.25,.7,.3,1); }
-  .fill.dim { background:var(--line2); }
-  .bar-row .sc { font-size:.98rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .bars { max-width:680px; margin:0 auto; }
+  .bar-row { display:grid; grid-template-columns:150px 1fr 70px; gap:14px;
+             align-items:center; margin-top:14px; }
+  .bar-row .nm { font-family:var(--mono); font-size:.84rem; font-weight:600; text-align:right;
+                 color:var(--n-dim); }
+  .bar-row.self .nm { color:var(--accent); }
+  .track-bar { height:30px; border-radius:8px; background:var(--n-panel);
+               border:1px solid var(--n-line); overflow:hidden; }
+  .fill { height:100%; border-radius:7px; width:0;
+          background:linear-gradient(90deg,#e08a5c,#b35328);
+          transition:width 1.1s cubic-bezier(.25,.7,.3,1); }
+  .fill.dim { background:#4a443c; }
+  .bar-row .sc { font-size:1.05rem; font-weight:700; font-variant-numeric:tabular-nums;
+                 color:var(--n-dim); }
   .bar-row.self .sc { color:var(--accent); }
-  table.mx { width:100%; margin-top:38px; border-collapse:collapse; font-size:.92rem; }
-  table.mx th, table.mx td { padding:13px 12px; border-bottom:1px solid var(--line);
+  table.mx { width:100%; margin-top:42px; border-collapse:collapse; font-size:.92rem; }
+  table.mx th, table.mx td { padding:13px 12px; border-bottom:1px solid var(--n-line);
                              text-align:left; vertical-align:top; }
-  table.mx thead th { font-size:.78rem; letter-spacing:.06em; text-transform:uppercase;
-                      color:var(--dim); font-weight:700; }
-  table.mx td:first-child { padding-right:18px; }
-  table.mx td:not(:first-child), table.mx th:not(:first-child) { text-align:center; width:110px; }
+  table.mx thead th { font-family:var(--mono); font-size:.72rem; letter-spacing:.08em;
+                      text-transform:uppercase; color:var(--n-dim); font-weight:700; }
+  table.mx td:first-child { padding-right:18px; color:var(--n-dim); }
+  table.mx td:not(:first-child), table.mx th:not(:first-child) { text-align:center; width:112px; }
   table.mx th.self, table.mx td.self { color:var(--accent); }
   .y { color:var(--good); font-weight:700; } .p { color:var(--part); font-weight:700; }
   .n { color:var(--bad); font-weight:700; }
-  .fine { font-size:.78rem; color:var(--dim); margin-top:20px; line-height:1.6; }
+  .fine { font-size:.78rem; color:var(--n-dim); margin-top:22px; line-height:1.65; }
 
-  /* memory */
+  /* ── memory ──────────────────────────────────────── */
   .duo { display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center; }
   @media (max-width:900px){ .duo { grid-template-columns:1fr; gap:36px; } }
-  .memfile { border:1px solid var(--line); border-radius:16px; background:var(--bg);
-             font:12.6px/1.8 var(--mono); padding:20px 22px; overflow-x:auto; }
+  .memfile { border:1px solid var(--line); border-radius:16px; background:var(--panel);
+             font:12.6px/1.85 var(--mono); padding:22px 24px; overflow-x:auto;
+             box-shadow:0 24px 60px -34px rgba(0,0,0,.35); }
   .memfile .c { color:var(--dim); }
   .memfile .k { color:var(--accent); }
-  .checks { margin-top:26px; display:grid; gap:14px; }
+  .checks { margin-top:26px; display:grid; gap:15px; }
   .checks .c-row { display:flex; gap:12px; }
   .checks .c-row b { display:block; font-weight:650; }
   .checks .c-row span { color:var(--dim); font-size:.92rem; }
   .checks svg { flex:none; color:var(--accent); margin-top:3px; }
 
-  /* shots */
-  .shots { display:flex; gap:16px; overflow-x:auto; padding:6px 2px 18px;
+  /* ── screenshots ─────────────────────────────────── */
+  .shots { display:flex; gap:18px; margin-top:52px; overflow-x:auto; padding:6px 2px 20px;
            scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
-  .shots figure { flex:0 0 auto; width:206px; scroll-snap-align:center; }
-  .shots img { width:100%; height:390px; object-fit:cover; object-position:top;
-               border-radius:16px; border:1px solid var(--line); }
-  .shots figcaption { margin-top:10px; font-size:.78rem; color:var(--dim); text-align:center; }
+  .shots figure { flex:0 0 auto; width:208px; scroll-snap-align:center; }
+  .shots img { width:100%; height:392px; object-fit:cover; object-position:top; display:block;
+               border-radius:18px; border:1px solid var(--line); background:var(--panel);
+               box-shadow:0 18px 44px -26px rgba(0,0,0,.5);
+               transition:transform .4s cubic-bezier(.2,.7,.3,1); }
+  .shots figure:hover img { transform:translateY(-6px); }
+  .shots figcaption { margin-top:12px; font-size:.8rem; color:var(--dim); text-align:center; }
+  .shots figure:nth-child(even) { transform:translateY(20px); }
+  @media (hover:none){ .shots figure:nth-child(even){ transform:none; } }
 
-  /* final CTA + footer */
-  .final { text-align:center; padding:110px 40px; }
-  .final .btn { margin-top:30px; }
-  footer { border-top:1px solid var(--line); padding:52px 40px 68px; color:var(--dim);
-           font-size:.87rem; }
+  /* ── steps ───────────────────────────────────────── */
+  ol.steps { list-style:none; counter-reset:s; display:grid; gap:36px; margin-top:54px;
+             grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); }
+  ol.steps li { counter-increment:s; }
+  ol.steps li::before { content:"0" counter(s); font-family:var(--serif); font-size:1.5rem;
+    color:var(--accent); display:block; margin-bottom:12px; }
+  ol.steps b { display:block; font-weight:650; margin-bottom:7px; }
+  ol.steps span { color:var(--dim); font-size:.93rem; }
+
+  /* ── final CTA ───────────────────────────────────── */
+  .final { text-align:center; padding:120px 32px 130px; position:relative; }
+  .final::before { content:""; position:absolute; top:0; left:50%; width:100vw;
+                   transform:translateX(-50%); border-top:1px solid var(--line); }
+  .final .h2 { font-size:clamp(2rem,4.4vw,3.2rem); }
+  .final .btn { margin-top:32px; background:var(--ink); color:var(--paper); }
+  .final .btn:hover { opacity:.92; }
+
+  /* ── footer ──────────────────────────────────────── */
+  footer { padding:52px 0 72px; position:relative; color:var(--dim); font-size:.87rem; }
+  footer::before { content:""; position:absolute; top:0; left:50%; width:100vw;
+                   transform:translateX(-50%); border-top:1px solid var(--line); }
   .fgrid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:32px; }
   @media (max-width:760px){ .fgrid { grid-template-columns:1fr 1fr; } }
-  footer h4 { font-size:.76rem; letter-spacing:.1em; text-transform:uppercase;
+  footer h4 { font-size:.74rem; letter-spacing:.1em; text-transform:uppercase;
               color:var(--dim); margin-bottom:14px; }
   footer a { text-decoration:none; display:block; margin-top:9px; }
   footer a:hover { color:var(--ink); }
@@ -276,24 +396,21 @@
                 display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
   .fine-print .sp { flex:1; }
 
-  /* reveal */
-  .rv { opacity:0; transform:translateY(18px);
-        transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
-  .rv.in { opacity:1; transform:none; }
+  /* ── reduced motion ──────────────────────────────── */
   @media (prefers-reduced-motion:reduce) {
     html { scroll-behavior:auto; }
-    .rv, .hero > * { opacity:1; transform:none; transition:none; }
-    .fill { transition:none; }
-    .live { animation:none; }
-    .typeline .caret { animation:none; }
-    .logline { opacity:1; transform:none; transition:none; }
-    .trio .t:hover { transform:none; box-shadow:none; }
-    .drift { transform:none !important; }
+    .rv, .step, .logline, .enter { opacity:1 !important; transform:none !important;
+                                   transition:none !important; filter:none !important; }
+    .kicker i, .fc-live, .agent .who svg, .caret { animation:none !important; }
+    .fill { transition:none !important; }
+    .think { animation:none !important; color:var(--accent); background:none; }
+    .ticker .lane { animation:none !important; }
+    [data-sl] { transform:none !important; opacity:1 !important; }
     .story .track { height:auto; }
     .story .pin { position:static; height:auto; padding:60px 0; }
     .beat { grid-row:auto; grid-column:1; margin-bottom:40px; opacity:1; transform:none; }
     .phoneCol { grid-row:auto; grid-column:1; }
-    .step { opacity:1; transform:none; }
+    .shots figure:hover img { transform:none; }
   }
 </style>
 </head>
@@ -302,9 +419,9 @@
 <div class="prog" id="prog"></div>
 
 <nav>
-  <div class="in">
+  <div class="wrap">
     <span class="mark">
-      <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
         <g fill="none" stroke="var(--accent)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="6" cy="16" r="2.2"/><path d="M9 16h4"/>
           <path d="M13 16c3.4 0 3.4-5.6 6.8-5.6M13 16h6.8M13 16c3.4 0 3.4 5.6 6.8 5.6"/>
@@ -315,49 +432,55 @@
       OpenThumb
     </span>
     <span class="sp"></span>
-    <a class="lnk hide-sm" href="#cap">Capabilities</a>
-    <a class="lnk hide-sm" href="#bench">Benchmarks</a>
+    <a class="lnk hide-sm" href="#story">How it works</a>
+    <a class="lnk hide-sm" href="#bench">Scorecard</a>
     <a class="lnk hide-sm" href="#memory">Memory</a>
     <a class="lnk hide-sm" href="#privacy">Privacy</a>
     <a class="pill solid" href="https://github.com/neulketing/openthumb/releases/latest">Download</a>
   </div>
 </nav>
 
-<div class="col">
-
-  <!-- hero -->
-  <header class="hero">
-    <div>
-      <div class="kicker rv"><b>OpenThumb</b> · for Android</div>
-      <h1 class="rv">The most capable AI assistant, <em>but it's your phone.</em></h1>
-      <p class="lede rv">It replies to messages in the app they came from. It remembers how
-      your apps work. And it keeps working while you sleep — no cloud assistant, no
-      account, nothing leaves the device you already trust.</p>
-      <div class="cta rv">
-        <a class="btn" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
-        <a class="btn ghost" href="#bench">See how it compares</a>
+<!-- ── night hero ─────────────────────────────────── -->
+<header class="night night-hero">
+  <div class="wrap hero">
+    <div data-sl data-sl-damp="0.22" data-sl-y="46">
+      <span class="kicker"><i></i> Android · on-device · no account</span>
+      <h1>Your phone,<br><em>on your side.</em></h1>
+      <p class="lede">An AI agent that lives on the phone you already use. It replies in
+      the app the message came from, remembers how your apps work, and keeps working
+      while you sleep — no cloud assistant, nothing leaves the device.</p>
+      <div class="cta">
+        <a class="btn pri" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
+        <a class="btn sec" href="#bench">vs Siri &amp; Galaxy AI</a>
       </div>
       <!-- The version is rewritten by scripts/bump-version.sh; keep the markers. -->
-      <p class="ver rv">Current release
+      <p class="ver">Current release
         <a href="https://github.com/neulketing/openthumb/releases"><!--v-->v1.4.0<!--/v--></a>
         · runs on the phone in your pocket</p>
     </div>
 
-    <div class="rv drift">
+    <div data-sl data-sl-damp="0.10" data-sl-y="120">
       <div class="phone">
         <div class="screen">
-          <div class="statusbar"><span>9:14</span><span>▮▮▯ ⚡</span></div>
+          <div class="statusbar">
+            <span>9:14</span>
+            <span class="icons"><i></i><i></i><i class="bat"></i></span>
+          </div>
           <div class="appbar"><span class="dotmark"></span> OpenThumb</div>
           <div class="feedcard">
-            <div class="fc-top"><span class="live"></span> Working for 3m 46s · unattended</div>
-            <div class="fc-li logline" data-log>Woke on a KakaoTalk notification</div>
-            <div class="fc-li logline" data-log>Read the thread, checked the group's context</div>
-            <div class="fc-li logline" data-log>Drafted a reply in your tone</div>
-            <div class="fc-li logline" data-log>Waiting for your Send — or send it yourself per rule</div>
+            <div class="fc-top"><span class="fc-live"></span> <span class="think">Working for 3m 46s · unattended</span></div>
+            <div class="logline" data-log="0">Woke on a KakaoTalk notification</div>
+            <div class="logline" data-log="1">Read the thread — this room wants the CSV</div>
+            <div class="logline" data-log="2">Pulled yesterday's export, built the sheet</div>
+            <div class="logline sent" data-log="3">Draft reply ready — waiting for your Send</div>
           </div>
           <div class="thread">
             <div class="from">KakaoTalk · team room · 09:11</div>
             <div class="msg">"can you send over yesterday's numbers before the standup?"</div>
+          </div>
+          <div class="draft">
+            <div class="tag">Draft · your tone</div>
+            <div class="txt"><span id="typewriter"></span><span class="caret"></span></div>
           </div>
           <div class="memchip">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>
@@ -368,121 +491,163 @@
       </div>
       <p class="cap">Illustration of a trigger rule firing — not a screenshot.</p>
     </div>
-  </header>
+  </div>
+</header>
 
-  <!-- manifesto -->
-  <section class="sec mani" id="intro">
-    <div class="kicker rv">Introducing OpenThumb</div>
-    <p class="rv">Today's phone assistants are <em class="hl">broken</em>. They wait to be asked. They
-    can summarize a notification, but they can't <em class="hl">answer</em> it. They can't touch your
-    apps, they can't remember your rooms, and everything you say takes a round trip to
-    someone's cloud.</p>
-    <p class="rv"><strong>OpenThumb is an agent rebuilt for the phone.</strong> It works    inside the apps you already use, handles the messages you chose to let it handle,
-    and keeps getting better at your work — because it <em class="hl">remembers</em>. All of it on    the device.</p>
-  </section>
+<!-- ── provider ticker ─────────────────────────── -->
+<section class="night" style="padding:44px 0;">
+  <div class="wrap">
+    <p style="text-align:center; font-size:.78rem; letter-spacing:.14em; text-transform:uppercase; color:var(--n-dim); margin-bottom:22px;">Your subscriptions already power it</p>
+    <div class="ticker" aria-hidden="true">
+      <div class="lane" style="font-family:var(--serif); font-size:1.5rem; color:var(--n-dim);">
+        <span>Claude</span><span>·</span><span>ChatGPT</span><span>·</span><span>Gemini</span><span>·</span><span>Kimi</span><span>·</span><span>OpenRouter</span><span>·</span><span>xAI</span><span>·</span>
+        <span>Claude</span><span>·</span><span>ChatGPT</span><span>·</span><span>Gemini</span><span>·</span><span>Kimi</span><span>·</span><span>OpenRouter</span><span>·</span><span>xAI</span><span>·</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <!-- pinned scroll story -->
-  <div class="story" id="story">
-    <div class="track">
-      <div class="pin">
-        <div class="stage">
-          <div class="beat" data-beat="0">
-            <div class="n">01</div>
-            <h2>Something arrives<br>while you are away.</h2>
-            <p>A message, an alert, a thread — from an app you chose. The phone is
-            face-down on the desk and nobody is holding it.</p>
-          </div>
-          <div class="beat" data-beat="1">
-            <div class="n">02</div>
-            <h2>Your rule matches.</h2>
-            <p>An app, a phrase, a cooldown, quiet hours. It wakes on the notifications
-            you picked and ignores the rest — including its own, so it can never trigger
-            itself.</p>
-          </div>
-          <div class="beat" data-beat="2">
-            <div class="n">03</div>
-            <h2>It gets to work,<br>unattended.</h2>
-            <p>It reads the room the way it learned it — memory written from every reply
-            before — and uses the phone's own shell and files when the job needs real
-            work.</p>
-          </div>
-          <div class="beat" data-beat="3">
-            <div class="n">04</div>
-            <h2>You come back<br>to it already done.</h2>
-            <p>Nothing left without your Send unless you freed the rule. A ledger shows
-            every reply sent and discarded. The phone used its idle time; you kept
-            yours.</p>
-          </div>
+<!-- ── manifesto ──────────────────────────────────── -->
+<section class="wrap mani" id="intro">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <span class="kicker rv" style="color:var(--dim);"><i></i> Introducing OpenThumb</span>
+  <p class="rv d1">Today's phone assistants are <span class="hl">broken</span>. They wait to be
+  asked. They can summarize a notification, but they can't <span class="hl">answer</span> it.
+  They can't touch your apps, they can't remember your rooms, and everything you say
+  takes a round trip to someone's cloud.</p>
+  <p class="rv d2"><strong>OpenThumb is an agent rebuilt for the phone.</strong> It works inside
+  the apps you already use, handles the messages you chose to let it handle, and keeps
+  getting better at your work — because it <span class="hl">remembers</span>. All of it on
+  the device.</p>
+</section>
 
-          <div class="phoneCol">
-            <div class="drift">
-              <div class="phone">
-                <div class="screen">
-                  <div class="statusbar"><span>9:14</span><span>▮▮▯ ⚡</span></div>
-                  <div class="appbar"><span class="dotmark"></span> OpenThumb</div>
-                  <div class="feedcard step" data-step="0">
-                    <div class="from" style="font-size:.7rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">KakaoTalk · team room · 09:11</div>
-                    <div style="font-size:.88rem;">"can you send over yesterday's numbers before the standup?"</div>
+<!-- ── pinned scroll story ─────────────────────────── -->
+<div class="story" id="story">
+  <div class="track">
+    <div class="pin">
+      <div class="stage">
+        <div class="beat" data-beat="0">
+          <div class="n">01</div>
+          <h2>Something arrives<br>while you are away.</h2>
+          <p>A message, an alert, a thread — from an app you chose. The phone is
+          face-down on the desk and nobody is holding it.</p>
+        </div>
+        <div class="beat" data-beat="1">
+          <div class="n">02</div>
+          <h2>Your rule matches.</h2>
+          <p>An app, a phrase, a cooldown, quiet hours. It wakes on the notifications
+          you picked and ignores the rest — including its own, so it can never trigger
+          itself.</p>
+        </div>
+        <div class="beat" data-beat="2">
+          <div class="n">03</div>
+          <h2>It gets to work,<br>unattended.</h2>
+          <p>It reads the room the way it learned it — memory written from every reply
+          before — and uses the phone's own shell and files when the job needs real
+          work.</p>
+        </div>
+        <div class="beat" data-beat="3">
+          <div class="n">04</div>
+          <h2>You come back<br>to it already done.</h2>
+          <p>Nothing left without your Send unless you freed the rule. A ledger shows
+          every reply sent and discarded. The phone used its idle time; you kept
+          yours.</p>
+        </div>
+
+        <div class="phoneCol">
+          <div>
+            <div class="phone">
+              <div class="screen">
+                <div class="statusbar"><span>9:14</span><span class="icons"><i></i><i></i><i class="bat"></i></span></div>
+                <div class="appbar"><span class="dotmark"></span> OpenThumb</div>
+                <div class="step" data-step="0">
+                  <div class="bubble">
+                    <div class="from">KakaoTalk · team room · 09:11</div>
+                    <div class="msg">"can you send over yesterday's numbers before the standup?"</div>
                   </div>
-                  <div class="step" data-step="1"><div class="rule">rule matched · unattended</div></div>
-                  <div class="agent step" data-step="2">
+                </div>
+                <div class="step" data-step="1"><div class="ruleTag">rule matched · unattended</div></div>
+                <div class="step" data-step="2">
+                  <div class="agent">
                     <div class="who">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
                       OpenThumb · working
                     </div>
                     <div class="li step" data-step="2">Read the thread — this room wants the CSV</div>
                     <div class="li step" data-step="3">Pulled yesterday's export, built the sheet</div>
-                    <div class="li step" data-step="4">Replied in the thread it came from</div>
+                    <div class="li done step" data-step="4">Replied in the thread it came from</div>
                   </div>
-                  <div class="homebar"></div>
                 </div>
+                <div class="homebar"></div>
               </div>
-              <p class="cap">Illustration of a trigger rule firing — not a screenshot.</p>
             </div>
+            <p class="cap" style="color:var(--dim);">The rule fires whether or not anyone is watching.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- capabilities -->
-  <section class="sec" id="cap">
-    <div class="kicker rv">Unlimited capability</div>
-    <h2 class="rv">Anything you do with your phone,<br><em>OpenThumb can do for you.</em></h2>
-    <p class="lede rv">Assistants rely on integrations and good will. OpenThumb uses your
-    phone the way you do — the actual apps, the actual notifications, the actual files.
-    The only wall is the imagination.</p>
-    <div class="trio">
-      <div class="t rv">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        <h3>Answering</h3>
-        <p>It replies inside the app a message came from — KakaoTalk, Messages, LINE,
-        Telegram — through the notification's own reply action. No integrations, no relay
-        servers.</p>
-      </div>
-      <div class="t rv">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-        <h3>Working unattended</h3>
-        <p>Routines that fire on the notifications you choose, morning briefings before
-        the alarm, overnight sweeps. The phone's idle time becomes your time back.</p>
-      </div>
-      <div class="t rv">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-        <h3>Files and a real shell</h3>
-        <p>A sandboxed Linux shell on the device. It installs packages, runs scripts and
-        works with real files — because some jobs deserve actual code, not a chat
-        reply.</p>
-      </div>
+<!-- ── capabilities ───────────────────────────────── -->
+<section class="wrap" id="cap">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <h2 class="h2 rv">Anything you do with your phone,<br><em>OpenThumb can do for you.</em></h2>
+  <p class="sub rv d1">Assistants rely on integrations and good will. OpenThumb uses your
+  phone the way you do — the actual apps, the actual notifications, the actual files.
+  The only wall is the imagination.</p>
+  <div class="grid">
+    <div class="cell rv">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <h3>Answering</h3>
+      <p>It replies inside the app a message came from — KakaoTalk, Messages, LINE,
+      Telegram — through the notification's own reply action. No integrations, no relay
+      servers, no copy-paste.</p>
     </div>
-  </section>
+    <div class="cell rv d1">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      <h3>Working unattended</h3>
+      <p>Routines that fire on the notifications you choose, morning briefings before
+      the alarm, overnight sweeps. The phone's idle time becomes your time back.</p>
+    </div>
+    <div class="cell rv d2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      <h3>Files and a real shell</h3>
+      <p>A sandboxed Linux shell on the device. It installs packages, runs scripts and
+      works with real files — because some jobs deserve actual code, not a chat
+      reply.</p>
+    </div>
+    <div class="cell rv">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      <h3>Full device hands</h3>
+      <p>Screen control through accessibility, plus notifications, clipboard and alarms.
+      You grant the permissions, the agent does the work.</p>
+    </div>
+    <div class="cell rv d1">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h3>Your phone, not our server</h3>
+      <p>No accounts, no analytics, no server of ours. Bring your own model — Claude,
+      GPT, Gemini under your own key. Everything it knows stays on the device.</p>
+    </div>
+    <div class="cell rv d2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg>
+      <h3>Memory that compounds</h3>
+      <p>Every reply teaches it the room it answered in. What this group wants, how
+      that alert should be handled — kept, and brought back next time.</p>
+    </div>
+  </div>
+</section>
 
-  <!-- benchmarks -->
-  <section class="sec" id="bench">
-    <div class="kicker rv">Geekbench-style scorecard</div>
-    <h2 class="rv">The independent agent.</h2>
-    <p class="lede rv">Siri and Galaxy AI are excellent at being asked things. Measured on
-    what a personal agent can be <em>trusted to do on its own</em>, they are not in the
-    race yet. Coverage below is derived row by row from public documentation.</p>
+<!-- ── scorecard (night lab) ───────────────────────── -->
+<section class="lab" id="bench">
+  <div class="wrap" style="padding-top:104px; padding-bottom:104px;">
+    <div style="text-align:center;">
+      <span class="kicker" style="color:var(--n-dim);"><i></i> Geekbench-style scorecard</span>
+      <h2 class="h2 rv">The independent agent.</h2>
+      <p class="sub rv d1" style="margin-inline:auto;">Siri and Galaxy AI are excellent at being
+      asked things. Measured on what a personal agent can be <em style="color:var(--accent);font-style:italic;">trusted
+      to do on its own</em>, they are not in the race yet.</p>
+    </div>
 
     <div class="tabs rv" role="tablist" aria-label="Comparison suites">
       <button class="tab on" data-suite="s1" role="tab" aria-selected="true">Notification autonomy</button>
@@ -492,9 +657,9 @@
 
     <div class="suite on" id="s1">
       <div class="bars">
-        <div class="bar-row self"><span class="nm self">OpenThumb</span><span class="track"><span class="fill" data-w="100"></span></span><span class="sc">5.0</span></div>
-        <div class="bar-row"><span class="nm">Siri</span><span class="track"><span class="fill dim" data-w="20"></span></span><span class="sc">1.0</span></div>
-        <div class="bar-row"><span class="nm">Galaxy AI</span><span class="track"><span class="fill dim" data-w="20"></span></span><span class="sc">1.0</span></div>
+        <div class="bar-row self"><span class="nm">OpenThumb</span><span class="track-bar"><span class="fill" data-w="100"></span></span><span class="sc" data-target="5.0">0.0</span></div>
+        <div class="bar-row"><span class="nm">Siri</span><span class="track-bar"><span class="fill dim" data-w="20"></span></span><span class="sc" data-target="1.0">0.0</span></div>
+        <div class="bar-row"><span class="nm">Galaxy AI</span><span class="track-bar"><span class="fill dim" data-w="20"></span></span><span class="sc" data-target="1.0">0.0</span></div>
       </div>
       <table class="mx">
         <thead><tr><th>Notification autonomy</th><th class="self">OpenThumb</th><th>Siri</th><th>Galaxy AI</th></tr></thead>
@@ -510,9 +675,9 @@
 
     <div class="suite" id="s2">
       <div class="bars">
-        <div class="bar-row self"><span class="nm self">OpenThumb</span><span class="track"><span class="fill" data-w="100"></span></span><span class="sc">5.0</span></div>
-        <div class="bar-row"><span class="nm">Siri</span><span class="track"><span class="fill dim" data-w="10"></span></span><span class="sc">0.5</span></div>
-        <div class="bar-row"><span class="nm">Galaxy AI</span><span class="track"><span class="fill dim" data-w="0"></span></span><span class="sc">0.0</span></div>
+        <div class="bar-row self"><span class="nm">OpenThumb</span><span class="track-bar"><span class="fill" data-w="100"></span></span><span class="sc" data-target="5.0">0.0</span></div>
+        <div class="bar-row"><span class="nm">Siri</span><span class="track-bar"><span class="fill dim" data-w="10"></span></span><span class="sc" data-target="0.5">0.0</span></div>
+        <div class="bar-row"><span class="nm">Galaxy AI</span><span class="track-bar"><span class="fill dim" data-w="0"></span></span><span class="sc" data-target="0.0">0.0</span></div>
       </div>
       <table class="mx">
         <thead><tr><th>On-device privacy</th><th class="self">OpenThumb</th><th>Siri</th><th>Galaxy AI</th></tr></thead>
@@ -528,9 +693,9 @@
 
     <div class="suite" id="s3">
       <div class="bars">
-        <div class="bar-row self"><span class="nm self">OpenThumb</span><span class="track"><span class="fill" data-w="80"></span></span><span class="sc">4.0</span></div>
-        <div class="bar-row"><span class="nm">Siri</span><span class="track"><span class="fill dim" data-w="20"></span></span><span class="sc">1.0</span></div>
-        <div class="bar-row"><span class="nm">Galaxy AI</span><span class="track"><span class="fill dim" data-w="20"></span></span><span class="sc">1.0</span></div>
+        <div class="bar-row self"><span class="nm">OpenThumb</span><span class="track-bar"><span class="fill" data-w="80"></span></span><span class="sc" data-target="4.0">0.0</span></div>
+        <div class="bar-row"><span class="nm">Siri</span><span class="track-bar"><span class="fill dim" data-w="20"></span></span><span class="sc" data-target="1.0">0.0</span></div>
+        <div class="bar-row"><span class="nm">Galaxy AI</span><span class="track-bar"><span class="fill dim" data-w="20"></span></span><span class="sc" data-target="1.0">0.0</span></div>
       </div>
       <table class="mx">
         <thead><tr><th>Control &amp; trust</th><th class="self">OpenThumb</th><th>Siri</th><th>Galaxy AI</th></tr></thead>
@@ -538,105 +703,126 @@
           <tr><td>Outbound messages wait for your explicit approval</td><td class="self"><span class="y">✓</span></td><td><span class="n">✗</span></td><td><span class="n">✗</span></td></tr>
           <tr><td>A ledger of everything sent and discarded</td><td class="self"><span class="y">✓</span></td><td><span class="n">✗</span></td><td><span class="n">✗</span></td></tr>
           <tr><td>Bring any model — Claude, GPT, Gemini, local</td><td class="self"><span class="y">✓</span></td><td><span class="n">✗</span></td><td><span class="n">✗</span></td></tr>
-          <tr><td>Voice wake — "Hey" hands-free activation</td><td class="self"><span class="n">✗</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
+          <tr><td>Voice wake — hands-free activation</td><td class="self"><span class="n">✗</span></td><td><span class="y">✓</span></td><td><span class="y">✓</span></td></tr>
           <tr><td>A real shell and filesystem for complex work</td><td class="self"><span class="y">✓</span></td><td><span class="n">✗</span></td><td><span class="n">✗</span></td></tr>
         </tbody>
       </table>
     </div>
 
-    <p class="fine">Coverage = supported rows per suite (✓ = 1, ~ = ½, ✗ = 0), compared
-    against Siri (iOS 26) and Galaxy AI (One UI 8) public documentation as of Aug 2026.
-    Not a speed or quality benchmark — it measures what each assistant can be trusted to
-    do on its own. Voice wake is shown losing on purpose: that row is next.</p>
-  </section>
+    <p class="fine">Coverage = supported rows per suite (✓ = 1, ~ = ½, ✗ = 0), compared against
+    Siri (iOS 26) and Galaxy AI (One UI 8) public documentation as of Aug 2026. Not a speed or
+    quality benchmark — it measures what each assistant can be trusted to do on its own.
+    Voice wake is shown losing on purpose: that row is next.</p>
+  </div>
+</section>
 
-  <!-- memory -->
-  <section class="sec" id="memory">
-    <div class="duo">
-      <div>
-        <div class="kicker rv">Memory</div>
-        <h2 class="rv">Memory that knows<br><em>your apps.</em></h2>
-        <p class="lede rv">Every reply teaches it the room it answered in. What this group
-        wants, how that service's alerts should be handled — written to plain files on
-        your device, readable and editable by you, and brought back the next time. The
-        second reply is better than the first.</p>
-        <div class="checks">
-          <div class="c-row rv"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>One file per app</b><span>Knowledge about one messenger never leaks into how it answers another.</span></div></div>
-          <div class="c-row rv"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Markdown, not a database</b><span>Open any memory file and see where a habit came from. Wrong? Edit it.</span></div></div>
-          <div class="c-row rv"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Local, always</b><span>Memory never leaves the device. Delete the app and it is gone with it.</span></div></div>
-        </div>
+<!-- ── memory ──────────────────────────────────────── -->
+<section class="wrap" id="memory">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <div class="duo">
+    <div>
+      <span class="kicker rv" style="color:var(--dim);"><i></i> Memory</span>
+      <h2 class="h2 rv d1">Memory that knows<br><em>your apps.</em></h2>
+      <p class="sub rv d2">Every reply teaches it the room it answered in. What this group
+      wants, how that service's alerts should be handled — written to plain files on your
+      device, readable and editable by you, and brought back the next time. The second
+      reply is better than the first.</p>
+      <div class="checks">
+        <div class="c-row rv"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>One file per app</b><span>Knowledge about one messenger never leaks into how it answers another.</span></div></div>
+        <div class="c-row rv d1"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Markdown, not a database</b><span>Open any memory file and see where a habit came from. Wrong? Edit it.</span></div></div>
+        <div class="c-row rv d2"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Local, always</b><span>Memory never leaves the device. Delete the app and it is gone with it.</span></div></div>
       </div>
-      <div class="memfile rv"><pre># APP · com.kakao.talk — what answering here taught me
+    </div>
+    <div class="memfile rv d2"><pre><span class="c"># APP · com.kakao.talk — what answering here taught me</span>
 
-## team-room ("스탠업 전 숫자")
+<span class="k">## team-room</span> ("스탠업 전 숫자")
 - wants the CSV attached, not a summary
 - numbers come from /sdcard/exports/yesterday.csv
 - tone: short, no emoji, Korean
 
-## alerts from this app
-- "결제 완료" → log to money.md, do not reply
-</pre></div>
+<span class="k">## alerts from this app</span>
+- "결제 완료" → log to money.md, do not reply</pre></div>
+  </div>
+</section>
+
+<!-- ── privacy ─────────────────────────────────────── -->
+<section class="wrap" id="privacy">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <h2 class="h2 rv">Private enough to trust<br><em>with your phone.</em></h2>
+  <p class="sub rv d1">An agent that answers messages needs your trust more than your awe.
+  OpenThumb earns it structurally, not with promises.</p>
+  <div class="grid">
+    <div class="cell rv">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <h3>Approval at the edge</h3>
+      <p>By default every outbound reply waits for your Send. Free it per rule when you
+      trust it. A ledger records everything sent and discarded.</p>
     </div>
-  </section>
-
-  <!-- privacy -->
-  <section class="sec" id="privacy">
-    <div class="kicker rv">Privacy and control</div>
-    <h2 class="rv">Private enough to trust<br><em>with your phone.</em></h2>
-    <p class="lede rv">An agent that answers messages needs your trust more than your
-    awe. OpenThumb earns it structurally, not with promises.</p>
-    <div class="trio">
-      <div class="t rv">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <h3>Approval at the edge</h3>
-        <p>By default every outbound reply waits for your Send. Free it per rule when you
-        trust it. A ledger records everything sent and discarded.</p>
-      </div>
-      <div class="t rv">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <h3>No server of ours</h3>
-        <p>There is no OpenThumb account, no cloud, no analytics. Your model key talks to
-        the provider you chose and nothing else.</p>
-      </div>
-      <div class="t rv">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-        <h3>Your keys, your apps</h3>
-        <p>Claude, GPT, Gemini — your subscription or API key. Nothing is billed through
-        us, because there is no us in the loop.</p>
-      </div>
+    <div class="cell rv d1">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <h3>No server of ours</h3>
+      <p>There is no OpenThumb account, no cloud, no analytics. Your model key talks to
+      the provider you chose and nothing else.</p>
     </div>
-  </section>
-
-  <!-- screenshots -->
-  <section class="sec" id="shots">
-    <div class="kicker rv">The app itself</div>
-    <h2 class="rv">Real screens, real device.</h2>
-    <div class="shots rv">
-      <figure><img src="shots/notification-triggers.jpg" alt="Notification trigger rules list" loading="lazy" width="540" height="1200"><figcaption>Trigger rules</figcaption></figure>
-      <figure><img src="shots/trigger-rule-editor.jpg" alt="Editing a trigger rule" loading="lazy" width="540" height="1200"><figcaption>Rule editor</figcaption></figure>
-      <figure><img src="shots/chat-tools.jpg" alt="Chat" loading="lazy" width="540" height="1200" style="object-position:bottom"><figcaption>Chat</figcaption></figure>
-      <figure><img src="shots/scheduled-tasks.jpg" alt="Scheduled tasks" loading="lazy" width="540" height="1200"><figcaption>Scheduled tasks</figcaption></figure>
-      <figure><img src="shots/settings.jpg" alt="Settings" loading="lazy" width="540" height="1200"><figcaption>Settings</figcaption></figure>
-      <figure><img src="shots/shell-and-browser.jpg" alt="Shell and browser" loading="lazy" width="540" height="1200"><figcaption>Shell</figcaption></figure>
-      <figure><img src="shots/welcome.jpg" alt="First run" loading="lazy" width="540" height="1200"><figcaption>First run</figcaption></figure>
+    <div class="cell rv d2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      <h3>Your keys, your apps</h3>
+      <p>Claude, GPT, Gemini — your subscription or API key. Nothing is billed through
+      us, because there is no us in the loop.</p>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- final CTA -->
-  <section class="sec final">
-    <h2 class="rv">Crafted for the phone<br>you already carry.</h2>
-    <p class="lede rv" style="margin-inline:auto;">Start today. One APK, your own model
-    key, and the first rule takes three taps.</p>
-    <a class="btn rv" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
-  </section>
+<!-- ── screenshots ─────────────────────────────────── -->
+<section class="wrap" id="shots">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <h2 class="h2 rv">The app itself.</h2>
+  <p class="sub rv d1">Screenshots from a running build — not mockups. Trigger rules are
+  the part you will not find on any other phone.</p>
+  <div class="shots rv d2">
+    <figure><img src="shots/notification-triggers.jpg" alt="Notification trigger rules list" loading="lazy" width="540" height="1200"><figcaption>Trigger rules</figcaption></figure>
+    <figure><img src="shots/trigger-rule-editor.jpg" alt="Editing a trigger rule" loading="lazy" width="540" height="1200"><figcaption>Rule editor</figcaption></figure>
+    <figure><img src="shots/chat-tools.jpg" alt="Chat" loading="lazy" width="540" height="1200" style="object-position:bottom"><figcaption>Chat</figcaption></figure>
+    <figure><img src="shots/scheduled-tasks.jpg" alt="Scheduled tasks" loading="lazy" width="540" height="1200"><figcaption>Scheduled tasks</figcaption></figure>
+    <figure><img src="shots/settings.jpg" alt="Settings" loading="lazy" width="540" height="1200"><figcaption>Settings</figcaption></figure>
+    <figure><img src="shots/shell-and-browser.jpg" alt="Shell and browser" loading="lazy" width="540" height="1200"><figcaption>Shell</figcaption></figure>
+    <figure><img src="shots/welcome.jpg" alt="First run" loading="lazy" width="540" height="1200"><figcaption>First run</figcaption></figure>
+  </div>
+</section>
 
-  <footer>
+<!-- ── steps ───────────────────────────────────────── -->
+<section class="wrap" id="start">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <h2 class="h2 rv">Three steps to a phone<br>that works on your side.</h2>
+  <ol class="steps">
+    <li class="rv"><b>Install and bring a model</b><span>Sideload the APK and add your own key
+      or subscription — Claude, GPT, Gemini. Your account, your choice.</span></li>
+    <li class="rv d1"><b>Let it walk you through the gates</b><span>The setup screen checks each
+      permission the agent needs, opens the exact system page, and notices the moment you
+      come back. It ends by writing your first rule from the messengers actually on the
+      phone.</span></li>
+    <li class="rv d2"><b>Write a rule</b><span>"When a message from this app arrives, do that."
+      From then on the phone answers — and remembers how.</span></li>
+  </ol>
+</section>
+
+<!-- ── final CTA ───────────────────────────────────── -->
+<section class="final">
+  <div class="marks" aria-hidden="true"><span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span></div>
+  <h2 class="h2 rv">Crafted for the phone<br>you already carry.</h2>
+  <p class="sub rv d1" style="margin-inline:auto;">Start today. One APK, your own model key,
+  and the first rule takes three taps.</p>
+  <a class="btn rv d2" href="https://github.com/neulketing/openthumb/releases/latest">Download APK</a>
+</section>
+
+<footer>
+  <div class="wrap">
     <div class="fgrid">
       <div>
-        <div class="mark" style="color:var(--ink)">
-          <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="var(--accent)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="2.2"/><path d="M9 16h4"/><path d="M13 16c3.4 0 3.4-5.6 6.8-5.6M13 16h6.8M13 16c3.4 0 3.4 5.6 6.8 5.6"/><rect x="20" y="5.6" width="6.4" height="9" rx="2.3"/><rect x="20" y="17.4" width="6.4" height="9" rx="2.3"/></g></svg>
+        <span class="mark" style="color:var(--ink);">
+          <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><g fill="none" stroke="var(--accent)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="2.2"/><path d="M9 16h4"/><path d="M13 16c3.4 0 3.4-5.6 6.8-5.6M13 16h6.8M13 16c3.4 0 3.4 5.6 6.8 5.6"/><rect x="20" y="5.6" width="6.4" height="9" rx="2.3"/><rect x="20" y="17.4" width="6.4" height="9" rx="2.3"/></g></svg>
           OpenThumb
-        </div>
+        </span>
         <p style="margin-top:12px; max-width:26em;">An agent that lives on your phone.
         Built on open-source work.</p>
       </div>
@@ -666,25 +852,50 @@
       <span class="sp"></span>
       <a href="https://github.com/neulketing/openthumb" style="display:inline;">Source</a>
     </div>
-  </footer>
-
-</div>
+  </div>
+</footer>
 
 <script>
 (function () {
   var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // reveal on scroll
+  /* reveal on scroll */
   var io = new IntersectionObserver(function (es) {
     es.forEach(function (e) {
       if (!e.isIntersecting) return;
       e.target.classList.add('in');
       io.unobserve(e.target);
     });
-  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.15 });
   document.querySelectorAll('.rv').forEach(function (n) { io.observe(n); });
 
-  // benchmark tabs
+  /* ── hero phone: staggered log lines + typewriter draft ── */
+  var logs = [].slice.call(document.querySelectorAll('.logline'));
+  var tw = document.getElementById('typewriter');
+  var DRAFT = "Here's yesterday.csv — 1,240 rows, +6% vs Tuesday. Spotlight tab has the three numbers you ask about.";
+  function playHero() {
+    logs.forEach(function (l) { l.classList.remove('on'); });
+    var i = 0;
+    (function tick() {
+      if (i < logs.length) { logs[i++].classList.add('on'); setTimeout(tick, 850); }
+      else if (tw && !reduce) {
+        var j = 0; tw.textContent = '';
+        (function type() {
+          if (j <= DRAFT.length) {
+            tw.textContent = DRAFT.slice(0, j++);
+            setTimeout(type, 26 + Math.random() * 30);
+          } else { setTimeout(playHero, 5200); }
+        })();
+      } else { setTimeout(playHero, 4200); }
+    })();
+  }
+  if (logs.length) {
+    if (reduce) { logs.forEach(function (l) { l.classList.add('on'); });
+                  if (tw) tw.textContent = DRAFT; }
+    else setTimeout(playHero, 600);
+  }
+
+  /* ── scorecard tabs ── */
   var tabs = [].slice.call(document.querySelectorAll('.tab'));
   function activate(id) {
     tabs.forEach(function (t) {
@@ -695,44 +906,57 @@
     document.querySelectorAll('.suite').forEach(function (s) {
       s.classList.toggle('on', s.id === id);
     });
-    fillBars(document.getElementById(id));
+    fillSuite(document.getElementById(id));
   }
   tabs.forEach(function (t) { t.addEventListener('click', function () { activate(t.dataset.suite); }); });
 
-  function fillBars(scope) {
-    (scope || document).querySelectorAll('.fill').forEach(function (f, i) {
-      setTimeout(function () { f.style.width = (f.dataset.w || 0) + '%'; }, 90 * i);
-    });
+  function fillSuite(scope) {
+    var fills = (scope || document).querySelectorAll('.fill');
+    var scores = (scope || document).querySelectorAll('.sc');
+    fills.forEach(function (f, i) { setTimeout(function () { f.style.width = (f.dataset.w || 0) + '%'; }, 110 * i); });
+    scores.forEach(function (s, i) { countUp(s, parseFloat(s.dataset.target) || 0, 110 * i); });
+  }
+  function countUp(el, target, delay) {
+    if (reduce || target === 0) { el.textContent = target.toFixed(1); return; }
+    el.textContent = '0.0';
+    setTimeout(function () {
+      var t0 = null, D = 1100;
+      function fr(ts) {
+        if (!t0) t0 = ts;
+        var k = Math.min(1, (ts - t0) / D);
+        k = 1 - Math.pow(1 - k, 3);
+        el.textContent = (target * k).toFixed(1);
+        if (k < 1) requestAnimationFrame(fr);
+      }
+      requestAnimationFrame(fr);
+    }, delay || 0);
   }
   var bio = new IntersectionObserver(function (es) {
     es.forEach(function (e) {
       if (!e.isIntersecting) return;
-      fillBars(e.target);
+      fillSuite(e.target);
       bio.unobserve(e.target);
     });
   }, { threshold: 0.25 });
   document.querySelectorAll('.suite').forEach(function (s) { bio.observe(s); });
-  if (reduce) fillBars(document);
+  if (reduce) fillSuite(document);
 
-  // ── pinned scroll story ──
+  /* ── pinned scroll story + progress bar ── */
   var story = document.getElementById('story');
+  var prog = document.getElementById('prog');
   if (story && !reduce) {
     var beats = [].slice.call(document.querySelectorAll('.beat'));
     var steps = [].slice.call(document.querySelectorAll('.step'));
-    var prog  = document.getElementById('prog');
     var STEP_AT = [0.06, 0.30, 0.46, 0.60, 0.74];
     var ticking = false;
-
     function frame() {
       ticking = false;
       var docH = document.documentElement.scrollHeight - innerHeight;
       prog.style.transform = 'scaleX(' + (docH > 0 ? scrollY / docH : 0) + ')';
-
       var r = story.getBoundingClientRect();
       var span = r.height - innerHeight;
       if (span <= 0) return;
       var t = Math.min(1, Math.max(0, -r.top / span));
-
       var idx = Math.min(beats.length - 1, Math.floor(t * beats.length));
       beats.forEach(function (b, i) { b.classList.toggle('on', i === idx); });
       steps.forEach(function (s) {
@@ -744,68 +968,40 @@
     addEventListener('scroll', onScroll, { passive: true });
     addEventListener('resize', onScroll);
     frame();
-  } else if (document.getElementById('prog')) {
-    document.getElementById('prog').style.transform = 'none';
-    document.getElementById('prog').style.opacity = '.5';
+  } else if (prog) {
+    prog.style.transform = 'none';
+    prog.style.opacity = '.5';
   }
 
-  // ── hero: staggered working-log lines cycle ──
-  var logs = [].slice.call(document.querySelectorAll('[data-log]'));
-  if (logs.length && !reduce) {
-    var li = 0;
-    function tickLogs() {
-      logs[li].classList.add('on');
-      li++;
-      if (li < logs.length) { setTimeout(tickLogs, 900); }
-      else { setTimeout(function () { logs.forEach(function (l) { l.classList.remove('on'); });
-                                    li = 0; setTimeout(tickLogs, 700); }, 4200); }
-    }
-    setTimeout(tickLogs, 700);
-  } else { logs.forEach(function (l) { l.classList.add('on'); }); }
-
-  // ── scorecard: count-up when the section enters view ──
-  function countUp(el) {
-    var target = parseFloat(el.textContent) || 0;
-    if (reduce || target === 0) return;
-    el.textContent = '0.0';
-    var t0 = null, D = 1100;
-    function fr(ts) {
-      if (!t0) t0 = ts;
-      var k = Math.min(1, (ts - t0) / D);
-      k = 1 - Math.pow(1 - k, 3);
-      el.textContent = (target * k).toFixed(1);
-      if (k < 1) requestAnimationFrame(fr);
-    }
-    requestAnimationFrame(fr);
-  }
-  var cio = new IntersectionObserver(function (es) {
-    es.forEach(function (e) {
-      if (!e.isIntersecting) return;
-      e.target.querySelectorAll('.bar-row .sc').forEach(countUp);
-      cio.unobserve(e.target);
-    });
-  }, { threshold: 0.3 });
-  document.querySelectorAll('.suite').forEach(function (s) { cio.observe(s); });
-
-  // ── phone mockups: gentle scroll drift ──
+  /* ── damped scroll-link engine (Aside's framer __wrap_b, vanilla) ──
+     Each [data-sl] node tracks scroll with a spring-lerp whose
+     stiffness comes from data-sl-damp (aside uses 0.4–0.9). The
+     hero copy and phone drift slightly out of phase with the page
+     — the signature Aside feel. */
   if (!reduce) {
-    var drifts = [].slice.call(document.querySelectorAll('.drift'));
-    var dTick = false;
-    function dFrame() {
-      dTick = false;
-      drifts.forEach(function (d) {
-        var r = d.getBoundingClientRect();
-        var k = (r.top + r.height / 2 - innerHeight / 2) / innerHeight;
-        d.style.transform = 'translateY(' + (k * -26).toFixed(1) + 'px)';
+    var slNodes = [].slice.call(document.querySelectorAll('[data-sl]')).map(function (n) {
+      return { el:n, damp:parseFloat(n.dataset.slDamp || '0.5'),
+               yMax:parseFloat(n.dataset.slY || '60'), cur:0 };
+    });
+    var slTick = false;
+    function slFrame() {
+      slTick = false;
+      var vh = innerHeight;
+      slNodes.forEach(function (s) {
+        var r = s.el.getBoundingClientRect();
+        var k = 1 - Math.min(1, Math.max(0, (r.top + r.height / 2) / (vh + r.height / 2)));
+        var target = (k - 0.5) * 2 * s.yMax;
+        s.cur += (target - s.cur) * (1 - s.damp);
+        s.el.style.transform = 'translate3d(0,' + s.cur.toFixed(2) + 'px,0)';
       });
     }
-    function dScroll() { if (!dTick) { dTick = true; requestAnimationFrame(dFrame); } }
-    addEventListener('scroll', dScroll, { passive: true });
-    dFrame();
+    function slScroll() { if (!slTick) { slTick = true; requestAnimationFrame(slFrame); } }
+    addEventListener('scroll', slScroll, { passive: true });
+    addEventListener('resize', slScroll);
+    slFrame();
+    var settle = 0;
+    (function warm() { slFrame(); if (++settle < 30) requestAnimationFrame(warm); })();
   }
-
-  // hero entrance
-  requestAnimationFrame(function () { document.body.classList.add('loaded'); });
 })();
 </script>
 
