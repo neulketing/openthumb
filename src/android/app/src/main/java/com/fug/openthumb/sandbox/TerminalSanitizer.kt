@@ -40,8 +40,11 @@ object TerminalSanitizer {
             .joinToString("\n")
             .replace(Regex("(?:null){2,}"), "") // Remove runs of 2+ consecutive "null"
 
-        // Pass 5: Collapse excessive blank lines (3+ consecutive → 2)
-        return noNullLines.replace(Regex("\n{3,}"), "\n\n").trim()
+        // Pass 5: Collapse excessive blank lines (3+ consecutive → 2).
+        // Trim only newlines: a rendered terminal line may legitimately carry
+        // leading/trailing spaces (progress bars overwrite in place), and
+        // stripping them changes what the line said.
+        return noNullLines.replace(Regex("\n{3,}"), "\n\n").trim('\n')
     }
 
     /**
@@ -76,12 +79,20 @@ object TerminalSanitizer {
             }
 
             // Split on CR and simulate overwriting.
-            // Each CR resets cursor to column 0. The last non-empty segment wins.
+            // Each CR resets the cursor to column 0 and the segment writes
+            // from there, so a shorter segment leaves the tail of the longer
+            // one visible: "AAAA\rBB" renders "BBAA", not "BB". Dropping
+            // everything but the last segment is only right when every
+            // segment is at least as long as all the ones before it
+            // (progress bars) — real wget/curl output is not.
             val segments = line.split('\r')
-            val lastNonEmpty = segments.lastOrNull { it.isNotEmpty() }
-            if (lastNonEmpty != null) {
-                result.append(lastNonEmpty)
+            val rendered = StringBuilder()
+            for (segment in segments) {
+                for ((i, c) in segment.withIndex()) {
+                    if (i < rendered.length) rendered.setCharAt(i, c) else rendered.append(c)
+                }
             }
+            result.append(rendered)
         }
 
         return result.toString()
