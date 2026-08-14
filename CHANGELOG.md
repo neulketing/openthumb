@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-08-15
+
 ### Added
 - **The reply switch exists.** `replyToNotification` had a field, a JSON
   round-trip, an engine that consumed it and a unit test — and no UI anywhere
