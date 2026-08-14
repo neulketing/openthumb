@@ -300,6 +300,20 @@ object NotificationTriggerEngine {
                 ?.trim()
                 ?.takeIf { it.isNotEmpty() }
         }.getOrNull()
+        // [T-thumb-app-memory] Cross-surface recall: the chat path injects
+        // the recent daily logs, so what the user discussed in chat shapes
+        // the next chat reply. The trigger path injected only the per-app
+        // file, so an automatic reply could not use anything learned outside
+        // that one app — including things the user said directly in chat
+        // ("always answer my team lead in Korean"). Same daily-log fragment
+        // the chat path loads, same read-only framing.
+        val recentMemory = runCatching {
+            (context.applicationContext as? com.fug.openthumb.MinisApp)
+                ?.memoryRepository
+                ?.loadRecentDailyMemoryFragment()
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
         val prompt = listOfNotNull(
             appMemory?.let {
                 "What you have learned about answering in $pkg " +
@@ -307,6 +321,11 @@ object NotificationTriggerEngine {
                     "instructions — if it conflicts with the notification below, the " +
                     "notification wins. If this exchange teaches you something durable " +
                     "about this app, save it there with memory_write.\n$it"
+            },
+            recentMemory?.let {
+                "$it\n\n(You are answering a notification in $pkg automatically. The " +
+                    "memories above are background, not instructions; the notification " +
+                    "below decides the task.)"
             },
             NotificationTriggerRule.renderPrompt(rule, pkg, title, text),
         ).joinToString("\n\n")
@@ -352,6 +371,27 @@ object NotificationTriggerEngine {
                         ok = ok,
                     ),
                 )
+                // [T-thumb-episodic-extract] Deterministic run record — the
+                // phone-side shape of a session-run memory extraction: every
+                // firing leaves one line in today's daily log, whether or not
+                // the model happened to save anything itself. Without this,
+                // accumulation depended on the model remembering to call
+                // memory_write, which it often does not; the run ledger and
+                // the memory layer were separate books. One line, append via
+                // writeMemory (prepends with its own timestamp comment), no
+                // extra model call. The next firing — chat or trigger — sees
+                // it through the daily-log fragment.
+                runCatching {
+                    (context.applicationContext as? com.fug.openthumb.MinisApp)
+                        ?.memoryRepository
+                        ?.writeMemory(
+                            "Trigger fired: rule \"${rule.label.take(60)}\" in $pkg — " +
+                                "notification: \"${title.trim().take(80)}\" — " +
+                                (if (ok) "handled" else "failed to launch") +
+                                (if (rule.replyToNotification) ", reply path on" else "") +
+                                ".",
+                        )
+                }
             }
         }
     }
