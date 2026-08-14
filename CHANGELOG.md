@@ -66,6 +66,15 @@ section into the version heading, the release notes and the store changelog.
   needs to sideload it.
 
 ### Fixed
+- **CR folding no longer drops the tail of an overwritten line.**
+  `TerminalSanitizer` kept only the last non-empty segment between carriage
+  returns. A real terminal overwrites from column 0, so a shorter later
+  segment leaves the tail of the earlier one visible — `AAAA\rBB` renders
+  `BBAA`, not `BB`. The old shortcut is only correct for monotonically
+  growing progress bars; wget/curl output that shrinks or pads lost its tail,
+  so the agent read a mangled screen. Each segment now writes over the
+  rendered line in place, and `sanitize()` trims newlines only, preserving a
+  rendered line's own leading/trailing spacing.
 - **A build with no sandbox no longer succeeds.** `libproot.so` lives in
   `jniLibs`, and Gradle has no reason to mind an empty directory — so when the
   submodules were not checked out, `deps/build_proot.sh` exited with "PRoot
