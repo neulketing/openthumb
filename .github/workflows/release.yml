@@ -69,7 +69,13 @@ jobs:
       - name: Build native dependencies
         run: |
           ./deps/build_proot.sh
-          ./scripts/prepare_android_sandbox.sh
+          # The rootfs is deliberately NOT baked in. Bundling it made the image
+          # two thirds of the download (15.9 MB of a 23.9 MB release APK) for
+          # bytes the app can fetch once, on first run, verified against
+          # RootfsSource.ROOTFS_SHA256 and resumable if the connection drops.
+          # RootfsSource.plan() already picks the network path when the asset is
+          # absent — the same path F-Droid builds have always used, so the two
+          # channels now install identically.
 
       # build.gradle.kts falls back to the debug key when OPENTHUMB_KEYSTORE is
       # unset. The runner generates a fresh debug key on every run, so builds

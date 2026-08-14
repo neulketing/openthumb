@@ -1,7 +1,9 @@
 package com.fug.openthumb.trigger
 
+import com.fug.openthumb.ui.trigger.newReplyRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -163,5 +165,46 @@ class NotificationTriggerRuleTest {
 
         val on = rule().copy(replyToNotification = true)
         assertTrue(NotificationTriggerRule.fromJson(on.toJson()).replyToNotification)
+    }
+
+    // -- per-app memory ---------------------------------------------------
+
+    @Test
+    fun `app memory file is namespaced per package`() {
+        assertEquals(
+            "APP-com.kakao.talk.md",
+            NotificationTriggerRule.appMemoryFile("com.kakao.talk"),
+        )
+        // Two apps must never share a file. If they did, what the agent learned
+        // about answering in one messenger would silently steer how it answers
+        // in another — the failure would look like a bad reply, not a bug here.
+        assertNotEquals(
+            NotificationTriggerRule.appMemoryFile("com.kakao.talk"),
+            NotificationTriggerRule.appMemoryFile("org.telegram.messenger"),
+        )
+    }
+
+    // -- one-tap rule from the setup screen -------------------------------
+
+    @Test
+    fun `setup screen rule answers in the picked app and holds for approval`() {
+        val r = newReplyRule("com.kakao.talk", "KakaoTalk")
+
+        assertEquals("com.kakao.talk", r.appPackage)
+        // The two flags are the entire point of the setup flow: the rule is
+        // two-way, and it is gated. A regression that drops either turns the
+        // one-tap rule back into a one-way trigger, or into one that sends
+        // unattended on its very first firing.
+        assertTrue(r.replyToNotification)
+        assertTrue(r.requireApproval)
+
+        // Placeholders must survive into the rendered prompt, or the agent
+        // answers without knowing what it is answering.
+        val rendered = NotificationTriggerRule.renderPrompt(r, "com.kakao.talk", "Mum", "밥 먹었니")
+        assertTrue(rendered.contains("Mum"))
+        assertTrue(rendered.contains("밥 먹었니"))
+
+        // The setup screen persists it immediately, so it has to round-trip.
+        assertEquals(r, NotificationTriggerRule.fromJson(r.toJson()))
     }
 }

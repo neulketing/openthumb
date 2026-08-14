@@ -36,6 +36,7 @@ import androidx.compose.material.icons.outlined.FrontHand
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -90,6 +91,11 @@ fun SettingsScreen(
     // Agent Runtime section; default no-op for callers that haven't wired
     // the route yet.
     onSoulClick: () -> Unit = {},
+    // [T-thumb-agent-setup] The one thing this fork is for. Without an entry
+    // here it lived only under Scheduled tasks → bell, several screens from
+    // anywhere a returning user actually is.
+    onAgentSetupClick: () -> Unit = {},
+    onTriggersClick: () -> Unit = {},
     onPermissionsClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
     onAppearanceClick: () -> Unit = {},
@@ -189,6 +195,23 @@ fun SettingsScreen(
                     title = stringResource(R.string.settings_soul),
                     subtitle = stringResource(R.string.settings_soul_subtitle),
                     onClick = onSoulClick,
+                )
+                // [T-thumb-agent-setup] Answering on its own is what this fork
+                // adds; before this it was only reachable through Scheduled
+                // tasks, which reads like a place for something else entirely.
+                SettingsItem(
+                    icon = Icons.Outlined.FrontHand,
+                    iconColor = Color(0xFFC9683A),
+                    title = stringResource(R.string.settings_agent_setup),
+                    subtitle = stringResource(R.string.settings_agent_setup_subtitle),
+                    onClick = onAgentSetupClick,
+                )
+                SettingsItem(
+                    icon = Icons.Outlined.Notifications,
+                    iconColor = Color(0xFF34C759),
+                    title = stringResource(R.string.settings_triggers),
+                    subtitle = stringResource(R.string.settings_triggers_subtitle),
+                    onClick = onTriggersClick,
                 )
                 SettingsItem(
                     icon = Icons.Outlined.Psychology,

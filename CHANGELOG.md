@@ -8,7 +8,73 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+### Added
+- **The reply switch exists.** `replyToNotification` had a field, a JSON
+  round-trip, an engine that consumed it and a unit test — and no UI anywhere
+  that ever wrote it, so the thing this fork is for could not be turned on
+  without editing SharedPreferences by hand. `docs/recipes.md` told people to
+  flip a switch that was not there. The rule editor now has it, alongside the
+  per-rule `requireApproval` that was in exactly the same state, and the dialog
+  scrolls so the fields still fit.
+- **A setup screen that walks the permissions and makes the first rule.**
+  **Set up the agent** checks each gate the agent needs — notification access,
+  posting notifications, accessibility, battery exemption, and OEM autostart
+  where the manufacturer needs it — opens the exact system page for the ones
+  that are missing, and re-reads all of them on `ON_RESUME`, so coming back from
+  Settings ticks the step off without the user reporting in. It ends by making
+  the first rule from the messengers actually installed on the phone, which
+  replaces the `adb shell pm list packages` step the docs used to ask a phone
+  user for. Android will not let an app grant these to itself; what is automatic
+  is knowing which are needed, going straight to each, and noticing when they
+  are done. Reachable as a fourth step on the welcome screen.
+- **A first install starts on setup rather than an empty chat.** Measured on a
+  Galaxy Note20 (Android 13): after `pm clear`, a cold start opened a chat and
+  back left the app, so the sessions list that carries the welcome steps was
+  never on the back stack — an entry point placed only there could not be
+  reached on the path a real install takes. Two things had to give: the start
+  destination, and the launch-session effect, which defaults to Auto and
+  navigated away from whatever the start destination was. Both now stand down
+  until the setup screen has been seen once, confirmed on the device by
+  resolving to `agent_setup` on a cleared install. The welcome list keeps its
+  fourth step for anyone who wants the screen again.
+- **Automatic replies remember the app they are answering in.** The chat path
+  loads `GLOBAL.md` and recent daily logs into its prompt; the notification path
+  loaded nothing, so every automatic reply started from a blank slate however
+  many times it had already answered in that app. Each rule firing now injects
+  `APP-<package>.md` ahead of the rule prompt and tells the agent to save
+  anything durable back there with `memory_write` — one file per app, so what it
+  learns about answering in one messenger cannot steer how it answers in
+  another. The files live in the same memory directory as `GLOBAL.md`, so the
+  existing memory management screen lists and edits them with no new surface.
+- **Setting up the agent is reachable from Settings.** Answering notifications
+  is what this fork adds, and it lived only under Scheduled tasks → bell — a
+  screen whose name promises something else, several taps from anywhere a
+  returning user actually is. Settings now carries **Set up the agent** and
+  **Notification triggers** directly, next to Soul and Memory.
+
+### Changed
+- **The release APK is 10 MB instead of 24 MB.** The Alpine rootfs was baked in,
+  making the image two thirds of the download for bytes the app can fetch once,
+  on first run — resumable, and verified against `RootfsSource.ROOTFS_SHA256`.
+  `RootfsSource.plan()` has always chosen the network path when the asset is
+  absent, and F-Droid builds have always taken it; the GitHub release and CI now
+  build the same shape, so a configuration nobody ships can no longer pass CI.
+  Verified on a Galaxy Note20: after a cleared install the app fetched and
+  unpacked the image (`files/alpine-rootfs` 32 KB → 47 MB, an Alpine tree) and
+  PRoot started against it. The trade is a first run that needs network for
+  14.6 MB; the image also stays published as a release asset for anyone who
+  needs to sideload it.
+
 ### Fixed
+- **CR folding no longer drops the tail of an overwritten line.**
+  `TerminalSanitizer` kept only the last non-empty segment between carriage
+  returns. A real terminal overwrites from column 0, so a shorter later
+  segment leaves the tail of the earlier one visible — `AAAA\rBB` renders
+  `BBAA`, not `BB`. The old shortcut is only correct for monotonically
+  growing progress bars; wget/curl output that shrinks or pads lost its tail,
+  so the agent read a mangled screen. Each segment now writes over the
+  rendered line in place, and `sanitize()` trims newlines only, preserving a
+  rendered line's own leading/trailing spacing.
 - **A build with no sandbox no longer succeeds.** `libproot.so` lives in
   `jniLibs`, and Gradle has no reason to mind an empty directory — so when the
   submodules were not checked out, `deps/build_proot.sh` exited with "PRoot

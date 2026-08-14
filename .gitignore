@@ -132,3 +132,11 @@ deps/lame-3.100/**/*.la
 deps/lame-3.100/**/*.lai
 deps/lame-3.100/**/.libs/
 deps/lame-3.100/**/.deps/
+deps/lame-3.100/**/*.o
+deps/lame-3.100/**/*.lo
+
+# Python bytecode. Never belongs in the tree or the APK: the packaged rootfs
+# runs 3.12, so the committed 3.14 bytecode could not even be loaded, and
+# "precompiled binaries in tree" is a standing F-Droid review objection.
+__pycache__/
+*.pyc

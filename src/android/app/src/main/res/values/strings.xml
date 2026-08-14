@@ -1330,6 +1330,13 @@
     <string name="sessionlist_welcome_step3_title">Start a Conversation</string>
     <string name="sessionlist_welcome_step3_subtitle">Tap to begin</string>
     <string name="sessionlist_welcome_step3_locked">Complete step 2 first</string>
+    <string name="settings_agent_setup">Set up the agent</string>
+    <string name="settings_agent_setup_subtitle">Permissions and your first reply rule</string>
+    <string name="settings_triggers">Notification triggers</string>
+    <string name="settings_triggers_subtitle">Rules that wake the agent and answer for you</string>
+    <string name="sessionlist_welcome_step4_title">Let it answer your notifications</string>
+    <string name="sessionlist_welcome_step4_subtitle">Permissions and your first rule, in a few taps</string>
+    <string name="sessionlist_welcome_step4_locked">Complete step 2 first</string>
     <string name="sessionlist_welcome_step_done">Done</string>
 
     <!-- T-pwa-1: WebApp shortcut foundation (renamed from PWA) -->

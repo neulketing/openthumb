@@ -60,7 +60,9 @@ jobs:
       - name: Build native dependencies
         run: |
           ./deps/build_proot.sh
-          ./scripts/prepare_android_sandbox.sh
+          # No rootfs asset here either: CI must build the same shape the
+          # release does, or it green-lights a configuration nobody ships.
+          # RootfsSource fetches and verifies it at first run instead.
 
       - name: Assemble debug APK
         working-directory: src/android

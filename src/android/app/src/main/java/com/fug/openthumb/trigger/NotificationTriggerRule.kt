@@ -73,6 +73,17 @@ data class NotificationTriggerRule(
     companion object {
         const val DEFAULT_COOLDOWN_SEC = 300
 
+        /**
+         * Memory file holding what the agent has learned about answering in
+         * [pkg]. One file per app, so knowledge about replying in a messenger
+         * does not leak into how it answers somewhere else — the phone-side
+         * equivalent of a per-site note.
+         *
+         * Lives in the same flat memory directory as GLOBAL.md and the daily
+         * logs, which is why the name is prefixed rather than nested.
+         */
+        fun appMemoryFile(pkg: String): String = "APP-$pkg.md"
+
         fun fromJson(o: JSONObject): NotificationTriggerRule = NotificationTriggerRule(
             id = o.getString("id"),
             label = o.optString("label"),

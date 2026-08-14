@@ -27,9 +27,14 @@ layout from the repo). To submit: open a merge request against
 Points reviewers will care about:
 
 - All dependencies are FOSS; crash reporting (ACRA) writes local files only.
-- The build compiles PRoot and the Alpine rootfs from source
-  (`deps/build_proot.sh`, `scripts/prepare_android_sandbox.sh`) — the recipe
-  must run both before gradle.
+- The build compiles PRoot from source (`deps/build_proot.sh`) — the recipe must
+  run it before gradle. The Alpine rootfs is **not** compiled and **not**
+  bundled: `scripts/prepare_android_sandbox.sh` downloads it from the Alpine
+  mirror for builds that want it baked in, and no release build does any more.
+  The app fetches the published image on first run and verifies it against
+  `RootfsSource.ROOTFS_SHA256`, which is what keeps the APK at 10 MB instead of
+  24 MB. This is the path F-Droid builds already took, so both channels now
+  install the same way.
 - F-Droid signs with its own key unless we opt into reproducible builds.
 
 ## Google Play — blocked on owner decisions
