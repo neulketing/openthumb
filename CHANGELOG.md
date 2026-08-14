@@ -8,6 +8,36 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+### Added
+- **The reply switch exists.** `replyToNotification` had a field, a JSON
+  round-trip, an engine that consumed it and a unit test — and no UI anywhere
+  that ever wrote it, so the thing this fork is for could not be turned on
+  without editing SharedPreferences by hand. `docs/recipes.md` told people to
+  flip a switch that was not there. The rule editor now has it, alongside the
+  per-rule `requireApproval` that was in exactly the same state, and the dialog
+  scrolls so the fields still fit.
+- **A setup screen that walks the permissions and makes the first rule.**
+  **Set up the agent** checks each gate the agent needs — notification access,
+  posting notifications, accessibility, battery exemption, and OEM autostart
+  where the manufacturer needs it — opens the exact system page for the ones
+  that are missing, and re-reads all of them on `ON_RESUME`, so coming back from
+  Settings ticks the step off without the user reporting in. It ends by making
+  the first rule from the messengers actually installed on the phone, which
+  replaces the `adb shell pm list packages` step the docs used to ask a phone
+  user for. Android will not let an app grant these to itself; what is automatic
+  is knowing which are needed, going straight to each, and noticing when they
+  are done. Reachable as a fourth step on the welcome screen.
+- **A first install starts on setup rather than an empty chat.** Measured on a
+  Galaxy Note20 (Android 13): after `pm clear`, a cold start opened a chat and
+  back left the app, so the sessions list that carries the welcome steps was
+  never on the back stack — an entry point placed only there could not be
+  reached on the path a real install takes. Two things had to give: the start
+  destination, and the launch-session effect, which defaults to Auto and
+  navigated away from whatever the start destination was. Both now stand down
+  until the setup screen has been seen once, confirmed on the device by
+  resolving to `agent_setup` on a cleared install. The welcome list keeps its
+  fourth step for anyone who wants the screen again.
+
 ### Fixed
 - **A build with no sandbox no longer succeeds.** `libproot.so` lives in
   `jniLibs`, and Gradle has no reason to mind an empty directory — so when the

@@ -4,14 +4,19 @@ A rule is three things: which app's notifications to watch, an optional text
 match, and the prompt to run. Placeholders `{app}`, `{title}` and `{text}` are
 filled in from the notification before the prompt reaches the agent.
 
-Rules live in **Scheduled tasks → the bell icon**. Notification access has to
-be granted by hand; the rules screen links to that settings page. Use the
-editor's **Test** button to fire a rule once with a synthetic notification
-before you arm it.
+The fastest way to a working rule is **step 4 on the welcome screen, "Let it
+answer your notifications"**. It checks each permission the agent needs, opens
+the exact system page for the ones you have not granted, notices when you come
+back, and then makes the first rule for you from a list of the messengers
+actually installed on the phone. Nothing below is required to get started.
 
-Package names below are the common ones. To find another app's, open the rules
-screen after that app has posted a notification — or run
-`adb shell pm list packages | grep <name>`.
+Rules themselves live in **Scheduled tasks → the bell icon**, which is where
+you go to edit them or add more. Use the editor's **Test** button to fire a
+rule once with a synthetic notification before you arm it.
+
+Package names below are the common ones; the setup screen fills them in for
+you. To find another app's by hand, open the rules screen after that app has
+posted a notification — or run `adb shell pm list packages | grep <name>`.
 
 ---
 

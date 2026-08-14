@@ -912,6 +912,9 @@
     <string name="sessionlist_welcome_step3_title">대화 시작</string>
     <string name="sessionlist_welcome_step3_subtitle">탭하여 시작</string>
     <string name="sessionlist_welcome_step3_locked">먼저 2단계를 완료하세요</string>
+    <string name="sessionlist_welcome_step4_title">알림에 답하게 하기</string>
+    <string name="sessionlist_welcome_step4_subtitle">권한과 첫 규칙까지 몇 번의 탭으로</string>
+    <string name="sessionlist_welcome_step4_locked">먼저 2단계를 완료하세요</string>
     <string name="sessionlist_welcome_step_done">완료</string>
     <!-- T-selection-add-to-input — 길게 누르기 선택 메뉴 "입력란에 추가" -->
     <string name="selection_add_to_chat_input">입력란에 추가</string>

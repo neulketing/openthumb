@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -456,6 +458,8 @@ private fun RuleEditDialog(
     }
     var activeStart by remember { mutableStateOf(initial?.activeStartMin?.let { formatMin(it) } ?: "") }
     var activeEnd by remember { mutableStateOf(initial?.activeEndMin?.let { formatMin(it) } ?: "") }
+    var replyToNotification by remember { mutableStateOf(initial?.replyToNotification ?: false) }
+    var requireApproval by remember { mutableStateOf(initial?.requireApproval ?: false) }
 
     fun buildRule(): NotificationTriggerRule {
         val base = initial ?: NotificationTriggerRule(label = "", prompt = "")
@@ -468,6 +472,8 @@ private fun RuleEditDialog(
                 ?: NotificationTriggerRule.DEFAULT_COOLDOWN_SEC,
             activeStartMin = parseMin(activeStart),
             activeEndMin = parseMin(activeEnd),
+            replyToNotification = replyToNotification,
+            requireApproval = requireApproval,
         )
     }
 
@@ -475,7 +481,10 @@ private fun RuleEditDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initial == null) "New trigger rule" else "Edit trigger rule") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 OutlinedTextField(
                     value = label,
                     onValueChange = { label = it },
@@ -525,6 +534,18 @@ private fun RuleEditDialog(
                         modifier = Modifier.weight(1f),
                     )
                 }
+                SwitchRow(
+                    checked = replyToNotification,
+                    onCheckedChange = { replyToNotification = it },
+                    title = "Reply to notification",
+                    subtitle = "Post the answer back into the app it came from",
+                )
+                SwitchRow(
+                    checked = requireApproval,
+                    onCheckedChange = { requireApproval = it },
+                    title = "Always ask before sending",
+                    subtitle = "Hold this rule's replies even when the global setting would send",
+                )
             }
         },
         confirmButton = {
@@ -550,4 +571,30 @@ private fun RuleEditDialog(
             }
         },
     )
+}
+
+/**
+ * Labelled switch row for the rule editor. The subtitle carries the "what does
+ * this actually do" line, because a bare "Reply to notification" toggle reads
+ * as a preference rather than the thing that makes the rule two-way.
+ */
+@Composable
+private fun SwitchRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    title: String,
+    subtitle: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
 }

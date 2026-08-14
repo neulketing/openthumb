@@ -280,6 +280,8 @@ fun SessionListScreen(
     onRootfsClick: () -> Unit = {},
     // [T-android-scheduled-tasks-design] Entry to the scheduled-tasks list.
     onScheduledTasksClick: () -> Unit = {},
+    // [T-thumb-agent-setup] Entry to the guided permissions + first-rule screen.
+    onSetUpAgentClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     // T46: hoist VM ownership to the NavBackStackEntry's ViewModelStore so
@@ -568,6 +570,7 @@ fun SessionListScreen(
                                     if (sessionId != null) onNewChatGuarded(sessionId)
                                 }
                             },
+                            onSetUpAgent = onSetUpAgentClick,
                         )
                     }
                 } else {
@@ -1520,6 +1523,7 @@ private fun OnboardingLanding(
     onAddProvider: () -> Unit,
     onSelectModels: () -> Unit,
     onStartConversation: () -> Unit,
+    onSetUpAgent: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -1595,6 +1599,22 @@ private fun OnboardingLanding(
                 isDone = false,
                 isLocked = !hasGroups,
                 onClick = { if (hasGroups) onStartConversation() },
+            )
+
+            // [T-thumb-agent-setup] What this fork is for, made reachable from
+            // the first screen. Upstream's wizard ends at "start a conversation";
+            // an agent that answers on its own needs one more step.
+            SetupStepCard(
+                number = 4,
+                title = stringResource(R.string.sessionlist_welcome_step4_title),
+                subtitle = if (hasGroups) {
+                    stringResource(R.string.sessionlist_welcome_step4_subtitle)
+                } else {
+                    stringResource(R.string.sessionlist_welcome_step4_locked)
+                },
+                isDone = false,
+                isLocked = !hasGroups,
+                onClick = { if (hasGroups) onSetUpAgent() },
             )
         }
     }

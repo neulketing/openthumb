@@ -183,6 +183,7 @@ object Routes {
     fun scheduledTaskRuns(taskId: String): String = "scheduled_tasks/runs/$taskId"
     // [T-thumb-notification-triggers] Notification trigger rules.
     const val NOTIFICATION_TRIGGERS = "notification_triggers"
+    const val AGENT_SETUP = "agent_setup"
 
     fun logDetail(fileName: String) = "log_detail/$fileName"
     fun sessionStorageDetail(sessionId: String) = "session_storage/$sessionId"
@@ -308,6 +309,15 @@ fun AppNavigation(
     LaunchedEffect(Unit) {
         val hasDeepLink = initialDeepLink != null && initialDeepLink !is DeepLinkAction.Unknown
         if (hasDeepLink) return@LaunchedEffect
+        // [T-thumb-agent-setup] A first install starts on the setup screen, and
+        // this effect would immediately navigate away from it: the launch-session
+        // preference defaults to Auto, which lands on a chat. Measured on a
+        // Note20 — setting startDestination alone was not enough, the screen
+        // appeared and was replaced before it could be read. Leave the start
+        // destination alone until the user has seen setup once.
+        if (com.fug.openthumb.ui.trigger.AgentSetupPrefs.shouldOfferSetup(context)) {
+            return@LaunchedEffect
+        }
         val hasPendingShare =
             com.fug.openthumb.share.ShareCoordinator.bufferVersion.value > 0
         val rawMode = getAppearancePrefs(context).getInt(KEY_LAUNCH_SESSION, 0)
@@ -431,6 +441,14 @@ fun AppNavigation(
             Routes.chat(htmlShortcut.sessionId)
         }
         quickActionStart != null -> quickActionStart
+        // [T-thumb-agent-setup] A fresh install lands on setup, once. Measured
+        // on a Note20: a cold start after `pm clear` opens an empty chat and
+        // back exits the app, so the welcome steps on the sessions list are
+        // never reached — an install would otherwise never meet the thing this
+        // fork exists to do. Cleared as soon as the screen is shown, so this
+        // costs a returning user nothing.
+        com.fug.openthumb.ui.trigger.AgentSetupPrefs.shouldOfferSetup(context) ->
+            Routes.AGENT_SETUP
         else -> Routes.SESSION_LIST
     }
     NavHost(
@@ -517,6 +535,9 @@ fun AppNavigation(
                 },
                 onScheduledTasksClick = {
                     navController.safeNavigate(Routes.SCHEDULED_TASKS)
+                },
+                onSetUpAgentClick = {
+                    navController.safeNavigate(Routes.AGENT_SETUP)
                 },
             )
         }
@@ -1234,6 +1255,15 @@ fun AppNavigation(
         composable(Routes.NOTIFICATION_TRIGGERS) {
             com.fug.openthumb.ui.trigger.NotificationTriggersScreen(
                 onBack = { navController.safePopBackStack() },
+            )
+        }
+        // [T-thumb-agent-setup] Permissions + first rule, in one guided screen.
+        composable(Routes.AGENT_SETUP) {
+            com.fug.openthumb.ui.trigger.AgentSetupScreen(
+                onBack = { navController.safePopBackStack() },
+                onOpenTriggers = {
+                    navController.safeNavigate(Routes.NOTIFICATION_TRIGGERS)
+                },
             )
         }
         // [T-android-scheduled-tasks-run-records] per-task run records.
