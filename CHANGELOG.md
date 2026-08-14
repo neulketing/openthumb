@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-08-15
+
 ### Added
 - **Every trigger firing leaves a run record in the daily log.** The reply
   switch made automatic replies remember the app they answer in — but only

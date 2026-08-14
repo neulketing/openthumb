@@ -1,0 +1,13 @@
+-- Added
+- Every trigger firing leaves a run record in the daily log. The reply
+  switch made automatic replies remember the app they answer in — but only
+  if the model chose to call memory_write, which it often does not. Every
+  firing now appends one deterministic line to today's daily log (rule,
+  package, notification title, handled/failed, reply path) through the same
+  writeMemory the model uses, no extra model call. The run ledger and the
+  memory layer are one book now: the record exists because the run happened.
+- Automatic replies see what was learned outside that app. The trigger
+  path now injects the same recent daily-log fragment the chat path loads.
+  Cross-surface recall: what the user said in chat this morning shapes the
+  automatic reply this evening, and what a trigger did overnight is in
+  tomorrow's chat context.
