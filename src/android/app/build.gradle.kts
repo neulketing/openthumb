@@ -163,7 +163,14 @@ tasks.named("preBuild") { dependsOn(copyBashismRules) }
 val stageDebugSkillAssets by tasks.registering(Exec::class) {
     val script = rootProject.file("../../scripts/gen_debug_skill_android.sh")
     val skillDir = rootProject.file("../../.claude/skills/debug-server")
-    onlyIf { script.exists() }
+    // Both halves must exist. `.claude/` is gitignored, so a fresh clone has the
+    // script but not the skill — and `inputs.dir(...).optional()` does not save
+    // us there: Gradle still validates the declared input directory and fails
+    // the whole build with "An input file was expected to be present". CI and
+    // the F-Droid recipe mkdir it in prebuild; a local clone does not, so
+    // without this guard the first `assembleDebug` after cloning fails on a
+    // debug-only tooling asset that has nothing to do with the app.
+    onlyIf { script.exists() && skillDir.exists() }
     inputs.dir(skillDir).optional()
     inputs.file(script).optional()
     outputs.dir(layout.projectDirectory.dir("src/debug/assets/debug-skill"))
