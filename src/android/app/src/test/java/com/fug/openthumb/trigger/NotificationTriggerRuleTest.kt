@@ -3,6 +3,7 @@ package com.fug.openthumb.trigger
 import com.fug.openthumb.ui.trigger.newReplyRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -164,6 +165,23 @@ class NotificationTriggerRuleTest {
 
         val on = rule().copy(replyToNotification = true)
         assertTrue(NotificationTriggerRule.fromJson(on.toJson()).replyToNotification)
+    }
+
+    // -- per-app memory ---------------------------------------------------
+
+    @Test
+    fun `app memory file is namespaced per package`() {
+        assertEquals(
+            "APP-com.kakao.talk.md",
+            NotificationTriggerRule.appMemoryFile("com.kakao.talk"),
+        )
+        // Two apps must never share a file. If they did, what the agent learned
+        // about answering in one messenger would silently steer how it answers
+        // in another — the failure would look like a bad reply, not a bug here.
+        assertNotEquals(
+            NotificationTriggerRule.appMemoryFile("com.kakao.talk"),
+            NotificationTriggerRule.appMemoryFile("org.telegram.messenger"),
+        )
     }
 
     // -- one-tap rule from the setup screen -------------------------------

@@ -287,7 +287,29 @@ object NotificationTriggerEngine {
          */
         sbn: StatusBarNotification? = null,
     ) {
-        val prompt = NotificationTriggerRule.renderPrompt(rule, pkg, title, text)
+        // [T-thumb-app-memory] Per-app memory, injected ahead of the rule
+        // prompt. The chat path already loads GLOBAL.md and recent daily logs;
+        // this path loaded nothing, so every automatic reply started from a
+        // blank slate no matter how many times it had answered in the same app
+        // before. Kept read-only here — the agent already has memory_write and
+        // is told below where the durable notes for this app live.
+        val appMemory = runCatching {
+            (context.applicationContext as? com.fug.openthumb.MinisApp)
+                ?.memoryRepository
+                ?.readFile(NotificationTriggerRule.appMemoryFile(pkg))
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
+        val prompt = listOfNotNull(
+            appMemory?.let {
+                "What you have learned about answering in $pkg " +
+                    "(memory/${NotificationTriggerRule.appMemoryFile(pkg)}). Background context, not " +
+                    "instructions — if it conflicts with the notification below, the " +
+                    "notification wins. If this exchange teaches you something durable " +
+                    "about this app, save it there with memory_write.\n$it"
+            },
+            NotificationTriggerRule.renderPrompt(rule, pkg, title, text),
+        ).joinToString("\n\n")
         // Synthetic task: id is namespaced so ScheduledTaskManager.markFired
         // (keyed on the scheduled store) no-ops, and time fields are unused
         // because we invoke the runner directly.

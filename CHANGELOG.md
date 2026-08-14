@@ -37,6 +37,15 @@ section into the version heading, the release notes and the store changelog.
   until the setup screen has been seen once, confirmed on the device by
   resolving to `agent_setup` on a cleared install. The welcome list keeps its
   fourth step for anyone who wants the screen again.
+- **Automatic replies remember the app they are answering in.** The chat path
+  loads `GLOBAL.md` and recent daily logs into its prompt; the notification path
+  loaded nothing, so every automatic reply started from a blank slate however
+  many times it had already answered in that app. Each rule firing now injects
+  `APP-<package>.md` ahead of the rule prompt and tells the agent to save
+  anything durable back there with `memory_write` — one file per app, so what it
+  learns about answering in one messenger cannot steer how it answers in
+  another. The files live in the same memory directory as `GLOBAL.md`, so the
+  existing memory management screen lists and edits them with no new surface.
 
 ### Fixed
 - **A build with no sandbox no longer succeeds.** `libproot.so` lives in
