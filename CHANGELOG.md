@@ -46,6 +46,24 @@ section into the version heading, the release notes and the store changelog.
   learns about answering in one messenger cannot steer how it answers in
   another. The files live in the same memory directory as `GLOBAL.md`, so the
   existing memory management screen lists and edits them with no new surface.
+- **Setting up the agent is reachable from Settings.** Answering notifications
+  is what this fork adds, and it lived only under Scheduled tasks → bell — a
+  screen whose name promises something else, several taps from anywhere a
+  returning user actually is. Settings now carries **Set up the agent** and
+  **Notification triggers** directly, next to Soul and Memory.
+
+### Changed
+- **The release APK is 10 MB instead of 24 MB.** The Alpine rootfs was baked in,
+  making the image two thirds of the download for bytes the app can fetch once,
+  on first run — resumable, and verified against `RootfsSource.ROOTFS_SHA256`.
+  `RootfsSource.plan()` has always chosen the network path when the asset is
+  absent, and F-Droid builds have always taken it; the GitHub release and CI now
+  build the same shape, so a configuration nobody ships can no longer pass CI.
+  Verified on a Galaxy Note20: after a cleared install the app fetched and
+  unpacked the image (`files/alpine-rootfs` 32 KB → 47 MB, an Alpine tree) and
+  PRoot started against it. The trade is a first run that needs network for
+  14.6 MB; the image also stays published as a release asset for anyone who
+  needs to sideload it.
 
 ### Fixed
 - **A build with no sandbox no longer succeeds.** `libproot.so` lives in
