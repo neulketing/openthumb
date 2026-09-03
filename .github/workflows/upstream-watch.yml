@@ -67,10 +67,14 @@ jobs:
             printf 'https://github.com/OpenMinis/OpenMinis/commits/main\n\n'
             printf '_Filed by .github/workflows/upstream-watch.yml_\n'
           } > body.md
-          gh issue create --title "Upstream: $COUNT new commits — merge review" \
-            --body-file body.md --label upstream \
-          || gh issue create --title "Upstream: $COUNT new commits — merge review" \
-            --body-file body.md
+          # REST instead of `gh issue create`: the CLI's GraphQL createIssue
+          # mutation has been refused ("Resource not accessible by integration")
+          # on every scheduled run since 2026-08-19 despite issues:write above.
+          # POST /repos/{owner}/{repo}/issues is the documented endpoint for that
+          # permission. No label: `upstream` does not exist in this repo.
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/issues" \
+            -f title="Upstream: $COUNT new commits — merge review" \
+            -F body=@body.md
 
       - name: Advance the marker
         if: steps.digest.outputs.changed == '1'
