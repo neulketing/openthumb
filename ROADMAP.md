@@ -37,5 +37,7 @@ everything here is public so the order can be argued with in issues.
 
 ## Not planned
 
-- iOS. This fork ships Android only (`src/ios/` is frozen).
+- An iOS build of this app. This fork ships Android only (`src/ios/` is frozen).
+  For an iPhone, see [OpenThumb for iPhone](https://github.com/neulketing/openthumb-iphone),
+  which drives the phone from a Mac over USB.
 - Any default-on data collection. Ever.

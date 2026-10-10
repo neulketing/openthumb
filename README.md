@@ -49,6 +49,9 @@ Verified running on Galaxy Note8 hardware (Android 9, API 28) — see
 than one phone, [`tools/openthumb-fleet`](#the-fleet-tool) drives them from a
 laptop; it is a development aid, not what the app is for.
 
+On an iPhone? iOS does not let an app operate other apps, so the agent runs on
+your Mac instead: [OpenThumb for iPhone](https://github.com/neulketing/openthumb-iphone).
+
 ---
 
 ## Contents
