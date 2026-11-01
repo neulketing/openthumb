@@ -1,0 +1,1 @@
+Fix it on the phone check now opens the agent when a model is set up. You can report an AI reply from the text selection menu.

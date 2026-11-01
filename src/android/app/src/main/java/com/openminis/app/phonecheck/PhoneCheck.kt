@@ -182,7 +182,8 @@ object PhoneCheck {
             timeOfDayHour = 0,
             timeOfDayMinute = 0,
             repeatMode = ScheduledRepeatMode.ONCE,
-            prompt = prompt,
+            // The prompts are in English, and the model answers in the language it is asked in.
+            prompt = "$prompt\n\nReply in ${java.util.Locale.getDefault().getDisplayLanguage(java.util.Locale.ENGLISH)}.",
             targetMode = ScheduledTargetMode.NewSession,
         )
         return ScheduledAgentRunner.run(context, task, waitForCompletion = false)

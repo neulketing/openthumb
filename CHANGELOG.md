@@ -8,6 +8,15 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-02
+
+### Fixed
+- Fix it on the phone check no longer sends you to add a provider when you already have a model.
+
+### Added
+- Report this reply in the text selection menu.
+- The Play build: targets API 36, carries the rootfs, and leaves out accessibility, self-update, all-files access, photo library access and Shizuku.
+
 ## [2.0.0] — 2026-11-02
 
 ### Added

@@ -1661,7 +1661,7 @@ fun AppNavigation(
         composable(Routes.PHONE_CHECK) {
             val firstRun = remember { com.openminis.app.ui.trigger.AgentSetupPrefs.shouldOfferSetup(context) }
             com.openminis.app.ui.phonecheck.PhoneCheckScreen(
-                hasModel = { providerRepository.config.value.modelGroups.isNotEmpty() },
+                hasModel = { providerRepository.allVisibleEntries().isNotEmpty() },
                 onBack = if (firstRun) null else ({ navController.safePopBackStack() }),
                 onContinue = if (firstRun) ({ navController.safeNavigate(Routes.AGENT_SETUP) }) else null,
                 onSkip = if (firstRun) ({
