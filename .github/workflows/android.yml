@@ -121,14 +121,14 @@ jobs:
       # this artifact, never the debug one.
       - name: Assemble release APK
         working-directory: src/android
-        run: ./gradlew :app:assembleRelease
+        run: ./gradlew :app:assembleGithubRelease
 
       - uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: src/android/app/build/outputs/apk/debug/openthumb-debug.apk
+          path: src/android/app/build/outputs/apk/github/debug/*.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: src/android/app/build/outputs/apk/release/*.apk
+          path: src/android/app/build/outputs/apk/github/release/*.apk

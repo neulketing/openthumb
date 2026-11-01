@@ -112,13 +112,13 @@ jobs:
         env:
           OPENTHUMB_KEYSTORE_PASS: ${{ secrets.OPENTHUMB_KEYSTORE_PASS }}
           OPENTHUMB_KEY_ALIAS: ${{ secrets.OPENTHUMB_KEY_ALIAS }}
-        run: ./gradlew :app:assembleRelease
+        run: ./gradlew :app:assembleGithubRelease
 
       # The name is the update protocol: UpdatePolicy reads the version and the
       # build number from it. Clients on 1.5.0 and older only need OpenThumb-*.apk.
       - name: Stage asset
         run: |
-          src=$(ls src/android/app/build/outputs/apk/release/*.apk | head -1)
+          src=$(ls src/android/app/build/outputs/apk/github/release/*.apk | head -1)
           code=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' src/android/app/build.gradle.kts)
           cp "$src" "OpenThumb-${GITHUB_REF_NAME#v}-build${code}-arm64-v8a.apk"
 

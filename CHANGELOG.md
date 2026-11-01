@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-11-02
+
 ### Added
 - **Phone check is the first screen.** An agent app that opens on an empty chat
   leaves people with nothing to type. A new install now shows a score for this
@@ -17,10 +19,7 @@ section into the version heading, the release notes and the store changelog.
   it** button that hands the job to the agent in a new chat, which has to ask
   before changing anything. Also in Settings.
 
-### Fixed
-- Scripts and tools regained their execute bits, lost in the 1.15 merge.
 
-## [2.0.0] — 2026-11-02
 
 ### Changed
 - **Rebuilt on OpenMinis 1.15.** Everything upstream shipped since 0.20-preview
