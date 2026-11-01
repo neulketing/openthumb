@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.openminis.app.BuildConfig
 import com.openminis.app.R
 import com.openminis.app.ui.components.MinisTextButton
 import com.openminis.app.accessibility.AccessibilityRecoveryManager
@@ -129,7 +130,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SettingsSection(
+            if (BuildConfig.HAS_ACCESSIBILITY) SettingsSection(
                 header = stringResource(R.string.system_permissions_section_a11y),
                 footer = stringResource(R.string.system_permissions_a11y_footer),
             ) {

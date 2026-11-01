@@ -188,7 +188,8 @@ fun AgentSetupScreen(onBack: () -> Unit, onOpenTriggers: () -> Unit) {
             // acts inside apps you are logged into instead of needing an API
             // for each one. Optional and off by default — it is the widest
             // permission here, and the reply flow works without it.
-            SetupGate(
+            val driveStep = if (com.openminis.app.BuildConfig.HAS_ACCESSIBILITY) 1 else 0
+            if (driveStep == 1) SetupGate(
                 number = 3,
                 title = "Let it use your apps",
                 subtitle = "Accessibility — read the screen and tap on your behalf, inside apps you are already signed in to",
@@ -203,7 +204,7 @@ fun AgentSetupScreen(onBack: () -> Unit, onOpenTriggers: () -> Unit) {
             )
 
             SetupGate(
-                number = 4,
+                number = 3 + driveStep,
                 title = "Keep it awake",
                 subtitle = "Battery optimisation exemption — otherwise the phone sleeps through messages",
                 done = batteryFree,
@@ -217,7 +218,7 @@ fun AgentSetupScreen(onBack: () -> Unit, onOpenTriggers: () -> Unit) {
 
             if (oemStep) {
                 SetupGate(
-                    number = 5,
+                    number = 4 + driveStep,
                     title = "Allow autostart",
                     subtitle = "This manufacturer stops background apps on its own. Allow it here.",
                     done = false,
@@ -231,7 +232,7 @@ fun AgentSetupScreen(onBack: () -> Unit, onOpenTriggers: () -> Unit) {
             }
 
             SetupGate(
-                number = if (oemStep) 6 else 5,
+                number = (if (oemStep) 5 else 4) + driveStep,
                 title = "Pick an app to answer in",
                 subtitle = if (ruleCount > 0) {
                     "$ruleCount rule${if (ruleCount == 1) "" else "s"} — tap to add another"

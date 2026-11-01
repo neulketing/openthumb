@@ -759,7 +759,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         NativeOffloadServer.register("android-speech", SpeechOffloadHandler(this))
         NativeOffloadServer.register("android-weather", WeatherOffloadHandler(this))
         // T323: UI-layer automation backed by MinisAccessibilityService.
-        NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(this))
+        if (BuildConfig.HAS_ACCESSIBILITY) NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(this))
         NativeOffloadServer.register("minis-model-use", ModelUseOffloadHandler(this, providerRepository))
         // T-config: minis-config — agent-facing settings management
         // (read/write registered ConfigFields with audit + revert).

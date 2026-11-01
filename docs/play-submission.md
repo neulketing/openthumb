@@ -1,5 +1,22 @@
 # Google Play submission pack
 
+## Read this first: Play gets a smaller app (checked 2026-11-02)
+
+`./gradlew :app:bundleStoreRelease` builds a different app from the GitHub APK,
+because the GitHub one cannot pass review:
+
+| Play policy | What the `store` flavor does |
+|---|---|
+| Target API 36 since 2026-08-31 ([source](https://support.google.com/googleplay/android-developer/answer/11926878)) | `targetSdk = 36` for this flavor only |
+| Accessibility may not let an app "autonomously initiate, plan, and execute actions" ([source](https://support.google.com/googleplay/android-developer/answer/10964491)) | Service, settings row, setup step and `android-a11y-cli` removed |
+| No self-update, no executable code from outside Play ([source](https://support.google.com/googleplay/android-developer/answer/9888379)) | No in-app updater, no install permission; the rootfs ships inside the bundle: copy it to `src/store/assets/alpine-minirootfs.tar.gz` first |
+| All-files access needs its own declaration | `MANAGE_EXTERNAL_STORAGE` removed |
+
+Still a judgement call, not a pass: the agent can fetch and run binaries from
+inside the sandbox after install, and PRoot runs them natively. Termux and UserLAnd
+are on Play with this shape, but neither is a written exception. A rejection lands
+on the whole developer account, so decide which account takes that risk.
+
 Everything Play asks for, pre-written. Copy into the console at submission
 time. Owner action still required: the $25 developer account, and taking the
 store screenshots on a real device.
@@ -60,7 +77,7 @@ before anything else.
 sharing, no ads, no purchases) · **Privacy policy URL**:
 https://neulketing.github.io/openthumb/ → PRIVACY.md
 
-## Accessibility API declaration
+## Accessibility API declaration (obsolete: the store flavor has no accessibility service)
 
 Play requires a declaration for any app using AccessibilityService. Answers:
 

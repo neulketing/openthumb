@@ -171,3 +171,6 @@ src/android/app/libs/rclone.aar
 deps/aot/*.S
 deps/aot/.build/
 deps/aot/.build-iphonesimulator/
+
+# Bundled into the Play build only; published separately for the others.
+src/android/app/src/store/assets/

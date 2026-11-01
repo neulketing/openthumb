@@ -175,12 +175,19 @@ android {
             buildConfigField("boolean", "SELF_UPDATE", "true")
             buildConfigField("boolean", "AUTO_UPDATE_CHECK", "true")
             buildConfigField("boolean", "IN_APP_INSTALL", "true")
+            buildConfigField("boolean", "HAS_ACCESSIBILITY", "true")
         }
         create("store") {
             dimension = "distribution"
-            buildConfigField("boolean", "SELF_UPDATE", "true")
+            // Google Play, with what its policies require (docs/play-submission.md):
+            // Play has required API 36 since 2026-08-31, forbids a model driving
+            // other apps through accessibility, and forbids self-updating.
+            // src/store/AndroidManifest.xml drops the matching permissions.
+            targetSdk = 36
+            buildConfigField("boolean", "SELF_UPDATE", "false")
             buildConfigField("boolean", "AUTO_UPDATE_CHECK", "false")
-            buildConfigField("boolean", "IN_APP_INSTALL", "true")
+            buildConfigField("boolean", "IN_APP_INSTALL", "false")
+            buildConfigField("boolean", "HAS_ACCESSIBILITY", "false")
         }
     }
 
