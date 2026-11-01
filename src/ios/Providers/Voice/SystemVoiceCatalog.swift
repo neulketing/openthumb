@@ -19,7 +19,6 @@ import SwiftUI
 // enum is just the read side used by the synthesis paths.
 enum SystemVoicePreferences {
     private static let pitchKey  = "speechPitch"
-    private static let volumeKey = "speechVolume"
 
     /// Pitch multiplier (0.5–2.0). Default 1.0.
     static var pitch: Float {
@@ -27,10 +26,12 @@ enum SystemVoicePreferences {
         set { UserDefaults.standard.set(newValue, forKey: pitchKey) }
     }
 
-    /// Volume (0.0–1.0). Default 1.0.
+    /// Volume (0.0–1.0). Default 1.0. [T-readaloud-volume] This IS the
+    /// read-aloud volume (same key, `ReadAloudVolume`), shared with the cloud
+    /// TTS player and the read-aloud capsule's slider.
     static var volume: Float {
-        get { UserDefaults.standard.object(forKey: volumeKey) as? Float ?? 1.0 }
-        set { UserDefaults.standard.set(newValue, forKey: volumeKey) }
+        get { ReadAloudVolume.read(UserDefaults.standard) }
+        set { ReadAloudVolume.write(newValue, to: UserDefaults.standard) }
     }
 }
 
@@ -124,8 +125,8 @@ enum SystemVoiceCatalog {
     private static func genderWord(for voice: AVSpeechSynthesisVoice) -> String? {
         guard #available(iOS 17, *) else { return nil }
         switch voice.gender {
-        case .male:   return String(localized: "Male voice", comment: "TTS voice gender label")
-        case .female: return String(localized: "Female voice", comment: "TTS voice gender label")
+        case .male:   return AppLocalized("Male voice", comment: "TTS voice gender label")
+        case .female: return AppLocalized("Female voice", comment: "TTS voice gender label")
         default:      return nil
         }
     }
@@ -196,7 +197,7 @@ enum SystemVoiceCatalog {
                 let parts = voiceId.split(separator: ".").map(String.init)
                 let leaf = parts.last ?? voiceId
                 let lang = parts.count >= 2 ? parts[parts.count - 2] : ""
-                let notInstalled = String(localized: "not installed", comment: "voice pack not downloaded")
+                let notInstalled = AppLocalized("not installed", comment: "voice pack not downloaded")
                 name = lang.isEmpty ? "\(leaf) · \(notInstalled)" : "\(leaf) (\(lang)) · \(notInstalled)"
             }
             return systemEntry(modelId: voiceId, displayName: name, modality: [.audioOutput])
@@ -205,20 +206,20 @@ enum SystemVoiceCatalog {
         switch suffix {
         case "system-tts", "output":
             return systemEntry(modelId: "system-tts",
-                               displayName: String(localized: "System Voice (Auto)", comment: "Built-in TTS auto-by-language option"),
+                               displayName: AppLocalized("System Voice (Auto)", comment: "Built-in TTS auto-by-language option"),
                                modality: [.audioOutput])
         case "system-asr-online":
             return systemEntry(modelId: "system-asr-online",
-                               displayName: String(localized: "System Recognition (Online)", comment: "Built-in cloud ASR option"),
+                               displayName: AppLocalized("System Recognition (Online)", comment: "Built-in cloud ASR option"),
                                modality: [.audioInput])
         case "system-asr-offline":
             return systemEntry(modelId: "system-asr-offline",
-                               displayName: String(localized: "System Recognition (Offline)", comment: "Built-in on-device ASR option"),
+                               displayName: AppLocalized("System Recognition (Offline)", comment: "Built-in on-device ASR option"),
                                modality: [.audioInput])
         default:
             // Bare sentinel / "system-asr" / "input" → legacy default ASR entry.
             return systemEntry(modelId: "system-asr",
-                               displayName: String(localized: "System Speech Recognition", comment: "Built-in ASR option"),
+                               displayName: AppLocalized("System Speech Recognition", comment: "Built-in ASR option"),
                                modality: [.audioInput])
         }
     }

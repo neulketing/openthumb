@@ -9,17 +9,28 @@ struct ProviderInstanceDetailView: View {
 
     @State private var editingLabel = ""
     @State private var showKimiLogin = false
+    /// [T-copilot-provider] Same device-code shape as Kimi's.
+    @State private var showCopilotLogin = false
     @State private var keyInputText = ""
     @State private var isFetchingModels = false
+    /// [T-thinking-rules-ui-fix] Owned HERE, not inside ThinkingRulesSection: a .sheet on a
+    /// Section inside a Form has no stable host and dismissed the whole settings stack.
+    @State private var thinkingEditorRequest: ThinkingRuleEditorRequest?
+    /// [T-quota-console-links] The vendor usage page opened from the quota section.
+    @State private var quotaConsoleURL: URL?
     @State private var fetchError: String?
-    @State private var fetchWarnings: [String] = []
-    @State private var fetchSource: String?
+    /// [T-ios-model-refresh-visible] What the last tap on Refresh did.
+    @State private var refreshOutcome: ModelRefreshOutcome?
     @State private var showDeleteConfirm = false
     @State private var showExportShare = false
     @State private var showAddCustomModel = false
     @State private var oauthRefreshTrigger = false
     @State private var editingCustomBaseURL = ""
     @State private var editingCustomUserAgent = ""
+    // [T-sse-idle-timeout] Response idle timeout row (OpenAI-compatible only).
+    @State private var responseIdleSeconds = ResponseIdleTimeoutSetting.defaultSeconds
+    @State private var responseIdleIsCustom = false
+    @State private var responseIdleCustomText = ""
     @State private var showManualTokenInput = false
     @State private var manualTokenInputText = ""
     @State private var editingModelEntry: ModelEntry?
@@ -50,6 +61,23 @@ struct ProviderInstanceDetailView: View {
                 }
             }
         }
+        .sheet(item: $quotaConsoleURL) { url in
+            MinisLinkPreviewView(url: url, browserPool: nil)
+        }
+        .sheet(item: $thinkingEditorRequest) { req in
+            ThinkingRuleEditorView(
+                instanceId: instanceId,
+                existing: req.rule,
+                createsNew: req.isNew,
+                onSave: { rule in
+                    Task {
+                        let existing = await ProviderConfigStore.shared.thinkingRules(for: instanceId)
+                        let order = existing.firstIndex(where: { $0.id == rule.id }) ?? existing.count
+                        await ProviderConfigStore.shared.saveThinkingRule(rule, instanceId: instanceId, sortOrder: order)
+                    }
+                }
+            )
+        }
         .sheet(isPresented: $showAddCustomModel) {
             if let instance = instance {
                 AddCustomModelSheet(instanceId: instance.id)
@@ -58,10 +86,32 @@ struct ProviderInstanceDetailView: View {
         .sheet(item: $editingModelEntry) { entry in
             ModelEntryDetailSheet(entry: entry)
         }
+        .sheet(isPresented: $showCopilotLogin) {
+            if let instance = instance {
+                // [T-copilot-provider] Device-code sheet, same post-sign-in
+                // model reconcile as Kimi — the catalog is empty until the
+                // server has been asked, so this refresh is what populates it.
+                CopilotDeviceLoginSheet(instanceId: instance.id) { success in
+                    oauthRefreshTrigger.toggle()
+                    if success, instance.providerType.oauthSupportsModelDiscovery {
+                        Task { await store.refreshModels(for: instance) }
+                    }
+                }
+            }
+        }
         .sheet(isPresented: $showKimiLogin) {
             if let instance = instance {
-                KimiDeviceLoginSheet(instanceId: instance.id) { _ in
+                KimiDeviceLoginSheet(instanceId: instance.id) { success in
                     oauthRefreshTrigger.toggle()
+                    // [T-provider-oauth-model-discovery] Kimi Code signs in
+                    // through a device-code sheet rather than `oauthLogin`, so
+                    // it needs the same post-sign-in reconcile — otherwise this
+                    // one provider keeps the stale-catalog behaviour GH#265 is
+                    // about. Gated on `success`: a cancelled or timed-out
+                    // device flow leaves no usable token to fetch with.
+                    if success, instance.providerType.oauthSupportsModelDiscovery {
+                        Task { await store.refreshModels(for: instance) }
+                    }
                 }
             }
         }
@@ -71,6 +121,19 @@ struct ProviderInstanceDetailView: View {
                     Section {
                         SecureField("Bearer token", text: $manualTokenInputText)
                             .font(.system(.body, design: .monospaced))
+                            // [T-provider-label-keyboard issue #364] Opt this
+                            // field OUT of AutoFill's password association, the
+                            // same declaration AddProviderView has carried since
+                            // 3825397ca. An undeclared SecureField is
+                            // `secure=YES, textContentType=nil` — a password field
+                            // with no marker — which leaves the strong-password /
+                            // keychain heuristic free to run and to claim the
+                            // nearest preceding text field as its username.
+                            // `.oneTimeCode` is the reliable "credential, but not
+                            // a saveable account password" marker: it suppresses
+                            // the strong-password flow while SecureField keeps
+                            // masking.
+                            .textContentType(.oneTimeCode)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } footer: {
@@ -110,7 +173,7 @@ struct ProviderInstanceDetailView: View {
             Text("This will remove the provider and all its model entries. API keys will be deleted from the Keychain.")
         }
         .alert(
-            String(localized: "Delete Model"),
+            AppLocalized("Delete Model"),
             isPresented: Binding(
                 get: { pendingDeleteModelEntry != nil },
                 set: { if !$0 { pendingDeleteModelEntry = nil } }
@@ -135,7 +198,24 @@ struct ProviderInstanceDetailView: View {
             // MARK: Label
             Section("Label") {
                 TextField("Label", text: $editingLabel)
-                    .textContentType(.none)
+                    // [T-provider-label-keyboard] Same reason as the Add flow: this
+                    // screen also hosts `.numberPad` fields (Context Window, Max
+                    // Output Tokens), and an undeclared keyboardType can inherit
+                    // the numeric type from whichever field was focused last.
+                    .keyboardType(.default)
+                    // [T-provider-label-keyboard issue #364] `.nickname`, not
+                    // `.none`. `.textContentType(.none)` compiles to nil — byte
+                    // identical to declaring nothing — so it only withholds an
+                    // explicit type and leaves the heuristic free to guess. A
+                    // POSITIVE non-credential marker tells AutoFill what the field
+                    // actually is. Never `.username`: that is precisely the pairing
+                    // AutoFill looks for beside a password field.
+                    //
+                    // This is the belt to the credential field's braces, not a
+                    // replacement for it — the earlier attempt proved the
+                    // Label-side declaration alone does not break the pairing.
+                    .textContentType(.nickname)
+                    .textInputAutocapitalization(.words)
                     .onAppear { editingLabel = instance.label }
                     .onSubmit { saveLabel(instance) }
                     .onChange(of: editingLabel) { _ in saveLabel(instance) }
@@ -166,6 +246,14 @@ struct ProviderInstanceDetailView: View {
             // MARK: Custom User-Agent (custom-base OpenAI/Anthropic-compat only)
             if instance.supportsCustomUserAgent {
                 customUserAgentSection(instance)
+            }
+
+            // MARK: Response idle timeout (OpenAI-compatible Chat Completions only)
+            // [T-sse-idle-timeout] Not for Codex sign-in (Responses API), nor
+            // for any other provider type: their streams keep the 120 s default.
+            if instance.providerType == .openAI
+                && !(instance.credentialType == .oauth && instance.effectiveCustomBaseURL == nil) {
+                responseIdleTimeoutSection(instance)
             }
 
             // MARK: API Format (OpenAI only)
@@ -220,7 +308,17 @@ struct ProviderInstanceDetailView: View {
             }
 
             // MARK: Manual OAuth Token (for OAuth instances with manual token)
-            if instance.credentialType == .oauth && instance.providerType != .antigravity {
+            //
+            // [T-copilot-oauth-only] Copilot is excluded for the same reason
+            // Antigravity is: `makeCopilotProvider` wires `oauthTokenProvider`
+            // to the session-token minter unconditionally and never reads the
+            // `manual-oauth-token` account this section writes. A token pasted
+            // here was stored, shown as "Configured", and then ignored on every
+            // request. The Add Provider screen already excludes it; this is the
+            // second entry point, which that fix missed.
+            if instance.credentialType == .oauth
+                && instance.providerType != .antigravity
+                && instance.providerType != .githubCopilot {
                 manualOAuthTokenSection(instance)
             }
 
@@ -239,6 +337,22 @@ struct ProviderInstanceDetailView: View {
                     }
                 ))
             }
+
+            // MARK: Quota
+            // [T-provider-quota] The account's upstream balance / quota, between
+            // Status and Thinking Rules (design §9.2). Hidden for a disabled
+            // instance or one without a credential.
+            ProviderQuotaSection(instance: instance, consoleURL: $quotaConsoleURL)
+
+            // MARK: Thinking Rules (Phase 2 §3)
+            // Placed directly above Models because a rule's scope is written against
+            // model ids — having the model list in view while authoring a pattern is
+            // what makes the pattern easy to get right.
+            ThinkingRulesSection(
+                instanceId: instance.id,
+                sampleModelId: store.entries(for: instance.id).first?.baseModel.id,
+                editorRequest: $thinkingEditorRequest
+            )
 
             // MARK: Models
             Section {
@@ -274,18 +388,19 @@ struct ProviderInstanceDetailView: View {
                 }
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    // Source info (green)
-                    if let source = fetchSource {
-                        Label("Loaded from \(source)", systemImage: "checkmark.circle")
+                    // [T-ios-model-refresh-visible] The result of the last
+                    // Refresh: what was found, or why the list did not change.
+                    if let outcome = refreshOutcome {
+                        let summary = ModelRefreshSummary(outcome)
+                        Label(summary.text, systemImage: summary.systemImage)
                             .font(.caption)
-                            .foregroundStyle(.green)
-                    }
-                    // Warnings (yellow) — diagnostic tips for each fallback step
-                    ForEach(fetchWarnings, id: \.self) { warning in
-                        Label(warning, systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(summary.isProblem ? .orange : .green)
                             .textSelection(.enabled)
+                        if outcome.source == .kept {
+                            Text(AppLocalized("You may need to add the model ID manually."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     // Error (red)
                     if let error = fetchError {
@@ -296,7 +411,7 @@ struct ProviderInstanceDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.red)
                             .textSelection(.enabled)
-                        Text(String(localized: "You may need to add the model ID manually."))
+                        Text(AppLocalized("You may need to add the model ID manually."))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -374,14 +489,36 @@ struct ProviderInstanceDetailView: View {
             // Always use TextField to keep the normal keyboard (SecureField
             // switches to a password keyboard that blocks some characters).
             // When hidden, overlay bullet characters to mask the value.
+            //
+            // [T-provider-key-field-masked-untappable] Masking via
+            // `.opacity(0)` made the field UNEDITABLE while hidden: UIKit's
+            // hit-testing ignores views with alpha < 0.01, so taps never
+            // reached the text field and the user had to press the eye first
+            // to get a cursor. Mask by making the GLYPHS clear instead — the
+            // field stays fully tappable/focusable (and the caret stays
+            // visible as feedback), while the bullet overlay keeps the value
+            // unreadable.
             ZStack(alignment: .leading) {
                 TextField(keyPlaceholder(instance.providerType), text: $keyInputText)
+                    // [T-provider-label-keyboard issue #364] The credential half of
+                    // the AutoFill opt-out. This field and the Label field live in
+                    // the SAME List (Section "Label", then Section "Credential"),
+                    // which is the shape that makes iOS offer the password bar on
+                    // the Label. AddProviderView declared this on all three of its
+                    // credential fields; this screen was left with only the Label
+                    // half, so the pairing was never actually broken here.
+                    //
+                    // Declared even though this is a plain TextField rather than a
+                    // SecureField (masking is done by clearing the glyph colour —
+                    // see [T-provider-key-field-masked-untappable]): the field still
+                    // holds a credential, and saying so costs nothing.
+                    .textContentType(.oneTimeCode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .opacity(showKeyRevealed ? 1 : 0)
+                    .foregroundStyle(showKeyRevealed ? Color.primary : Color.clear)
 
                 if !showKeyRevealed {
-                    // Show bullet mask over the invisible text field
+                    // Show bullet mask over the clear-glyph text field
                     Text(keyInputText.isEmpty ? "" : String(repeating: "•", count: keyInputText.count))
                         .foregroundStyle(.primary)
                         .allowsHitTesting(false)
@@ -425,6 +562,9 @@ struct ProviderInstanceDetailView: View {
     @ViewBuilder
     private func oauthCredentialView(_ instance: ProviderInstance) -> some View {
         let isAuth = oauthIsAuthenticated(instance)
+        // [T-oauth-keep-credentials] Refresh was rejected: the credential is kept
+        // (never auto-deleted) but unusable until the user signs in again.
+        let needsReauth = isAuth && ProviderKeychainHelper.oauthNeedsReauth(instanceId: instance.id)
         let detail = oauthDetail(instance)
         // Subscribe to auth state changes (Keychain token save/delete)
         let _ = oauthRefreshTrigger
@@ -438,39 +578,42 @@ struct ProviderInstanceDetailView: View {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if needsReauth {
+                        Text(AppLocalized("Sign-in expired. Sign in again to keep using this provider."))
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
                 }
                 Spacer()
                 if isAuth {
                     Circle()
-                        .fill(Color.green)
+                        .fill(needsReauth ? Color.red : Color.green)
                         .frame(width: 8, height: 8)
                 }
             }
 
             HStack(spacing: 12) {
-                if isAuth {
-                    Button(String(localized: "Copy Token")) {
-                        Task { await oauthCopyToken(instance) }
+                if needsReauth {
+                    Button(AppLocalized("Sign In Again")) {
+                        oauthStartSignIn(instance)
                     }
                     .font(.caption.weight(.medium))
-                    Button(String(localized: "Sign Out"), role: .destructive) {
+                }
+                if isAuth {
+                    if !needsReauth {
+                        Button(AppLocalized("Copy Token")) {
+                            Task { await oauthCopyToken(instance) }
+                        }
+                        .font(.caption.weight(.medium))
+                    }
+                    Button(AppLocalized("Sign Out"), role: .destructive) {
                         oauthLogout(instance)
                         oauthRefreshTrigger.toggle()
                     }
                     .font(.caption.weight(.medium))
                 } else {
                     Button(oauthSignInLabel(instance)) {
-                        // Kimi uses the RFC 8628 device-code sheet; others run inline.
-                        if instance.providerType == .kimiCode {
-                            showKimiLogin = true
-                        } else {
-                            Task {
-                                await oauthLogin(instance)
-                                await MainActor.run {
-                                    oauthRefreshTrigger.toggle()
-                                }
-                            }
-                        }
+                        oauthStartSignIn(instance)
                     }
                     .font(.caption.weight(.medium))
                 }
@@ -481,6 +624,22 @@ struct ProviderInstanceDetailView: View {
         .id(oauthRefreshTrigger)
     }
 
+    private func oauthStartSignIn(_ instance: ProviderInstance) {
+        // Kimi uses the RFC 8628 device-code sheet; others run inline.
+        if instance.providerType == .kimiCode {
+            showKimiLogin = true
+        } else if instance.providerType == .githubCopilot {
+            showCopilotLogin = true
+        } else {
+            Task {
+                await oauthLogin(instance)
+                await MainActor.run {
+                    oauthRefreshTrigger.toggle()
+                }
+            }
+        }
+    }
+
     // MARK: - Custom Base URL
 
     private func customBaseURLPlaceholder(_ instance: ProviderInstance) -> String {
@@ -488,11 +647,12 @@ struct ProviderInstanceDetailView: View {
         case .anthropic: return "https://api.anthropic.com/v1"
         case .openAI:    return "https://api.openai.com/v1"
         case .gemini:    return "https://generativelanguage.googleapis.com/v1beta"
-        case .antigravity: return String(localized: "Default")
+        case .antigravity: return AppLocalized("Default")
         case .openRouter: return "https://openrouter.ai/api/v1"
         case .openAIResponses: return "https://api.openai.com/v1"
         case .xAI: return "https://api.x.ai/v1"
         case .kimiCode: return "https://api.kimi.com/coding"
+        case .githubCopilot: return CopilotConstants.apiBaseURL
         case .unsupported: return "—"
         }
     }
@@ -537,7 +697,7 @@ struct ProviderInstanceDetailView: View {
     // ?api-version, into Custom API Base). Off by default.
     private func azureModeSection(_ instance: ProviderInstance) -> some View {
         Section {
-            Toggle(String(localized: "Azure OpenAI"), isOn: Binding(
+            Toggle(AppLocalized("Azure OpenAI"), isOn: Binding(
                 get: { instance.azureMode },
                 set: { on in
                     var updated = instance
@@ -546,13 +706,13 @@ struct ProviderInstanceDetailView: View {
                 }
             ))
         } footer: {
-            Text(String(localized: "Use Azure OpenAI authentication (api-key header). Paste your full Azure endpoint into Custom API Base above, including the ?api-version=… query. Works with both API formats."))
+            Text(AppLocalized("Use Azure OpenAI authentication (api-key header). Paste your full Azure endpoint into Custom API Base above, including the ?api-version=… query. Works with both API formats."))
         }
     }
 
     private func customUserAgentSection(_ instance: ProviderInstance) -> some View {
         Section {
-            TextField(String(localized: "Default"), text: $editingCustomUserAgent)
+            TextField(AppLocalized("Default"), text: $editingCustomUserAgent)
                 .font(.system(.body, design: .monospaced))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -560,10 +720,80 @@ struct ProviderInstanceDetailView: View {
                 .onSubmit { saveCustomUserAgent(instance) }
                 .onDisappear { saveCustomUserAgent(instance) }
         } header: {
-            Text(String(localized: "Custom User-Agent"))
+            Text(AppLocalized("Custom User-Agent"))
         } footer: {
-            Text(String(localized: "Override the User-Agent header sent to this endpoint. Leave empty to use the Minis default. Useful for relays that only accept specific clients (e.g. \"claude-cli/1.0\")."))
+            Text(AppLocalized("Override the User-Agent header sent to this endpoint. Leave empty to use the Minis default. Useful for relays that only accept specific clients (e.g. \"claude-cli/1.0\")."))
         }
+    }
+
+    // MARK: - Response idle timeout [T-sse-idle-timeout]
+
+    private static func responseIdleLabel(_ seconds: Int) -> String {
+        switch seconds {
+        case 120: return AppLocalized("2 minutes (default)")
+        case 300: return AppLocalized("5 minutes")
+        case 600: return AppLocalized("10 minutes")
+        case 1800: return AppLocalized("30 minutes")
+        case 3600: return AppLocalized("60 minutes")
+        default: return AppLocalized("\(seconds) seconds")
+        }
+    }
+
+    /// Picker tag for "Custom…"; never a stored value.
+    private static let responseIdleCustomTag = -1
+
+    private func responseIdleTimeoutSection(_ instance: ProviderInstance) -> some View {
+        Section {
+            Picker(AppLocalized("Response idle timeout"), selection: Binding(
+                get: { responseIdleIsCustom ? Self.responseIdleCustomTag : responseIdleSeconds },
+                set: { picked in
+                    if picked == Self.responseIdleCustomTag {
+                        responseIdleIsCustom = true
+                        responseIdleCustomText = String(responseIdleSeconds)
+                    } else {
+                        responseIdleIsCustom = false
+                        responseIdleSeconds = picked
+                        ResponseIdleTimeoutSetting.set(picked, forInstanceId: instance.id)
+                    }
+                })) {
+                ForEach(ResponseIdleTimeoutSetting.presets, id: \.self) { seconds in
+                    Text(Self.responseIdleLabel(seconds)).tag(seconds)
+                }
+                Text(AppLocalized("Custom…")).tag(Self.responseIdleCustomTag)
+            }
+            if responseIdleIsCustom {
+                HStack {
+                    Text(AppLocalized("Seconds (30–3600)"))
+                    Spacer()
+                    TextField("120", text: $responseIdleCustomText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 100)
+                        .onSubmit { saveCustomResponseIdle(instance) }
+                        .onDisappear { saveCustomResponseIdle(instance) }
+                        .onChange(of: responseIdleCustomText) { _ in saveCustomResponseIdle(instance) }
+                }
+            }
+        } header: {
+            Text(AppLocalized("Response idle timeout"))
+        } footer: {
+            Text(AppLocalized("How long to wait for the first response, and between pieces of a response, before treating the connection as stalled and retrying. This is not a limit on total generation time: a reply that keeps arriving never times out. Raise it for a local model that needs minutes to process a long context. With a longer value, a connection that really died also takes that long to be noticed. Saved on this device only."))
+        }
+        .onAppear {
+            let stored = ResponseIdleTimeoutSetting.seconds(forInstanceId: instance.id)
+            responseIdleSeconds = stored
+            responseIdleIsCustom = !ResponseIdleTimeoutSetting.presets.contains(stored)
+            responseIdleCustomText = String(stored)
+        }
+    }
+
+    /// Out-of-range or non-numeric input is not stored; the last valid value stays.
+    private func saveCustomResponseIdle(_ instance: ProviderInstance) {
+        guard responseIdleIsCustom,
+              let typed = Int(responseIdleCustomText.trimmingCharacters(in: .whitespaces)),
+              typed >= ResponseIdleTimeoutSetting.minSeconds, typed <= ResponseIdleTimeoutSetting.maxSeconds else { return }
+        responseIdleSeconds = typed
+        ResponseIdleTimeoutSetting.set(typed, forInstanceId: instance.id)
     }
 
     private func saveCustomUserAgent(_ instance: ProviderInstance) {
@@ -596,10 +826,10 @@ struct ProviderInstanceDetailView: View {
                 Text("Images Generations").tag(ImageEndpointMode.imagesGenerations)
                 Text("Chat Completions").tag(ImageEndpointMode.chatCompletions)
             } label: {
-                Text(String(localized: "Image Endpoint"))
+                Text(AppLocalized("Image Endpoint"))
             }
         } header: {
-            Text(String(localized: "Image Generation"))
+            Text(AppLocalized("Image Generation"))
         } footer: {
             imageEndpointFooter(instance)
         }
@@ -613,14 +843,14 @@ struct ProviderInstanceDetailView: View {
                 let resolvedLabel = resolved == .imagesGenerations
                     ? "/v1/images/generations"
                     : "/v1/chat/completions"
-                Text(String(localized: "Auto: tries /v1/images/generations first, falls back to /v1/chat/completions. Last successful endpoint: \(resolvedLabel)."))
+                Text(AppLocalized("Auto: tries /v1/images/generations first, falls back to /v1/chat/completions. Last successful endpoint: \(resolvedLabel)."))
             } else {
-                Text(String(localized: "Auto: tries /v1/images/generations first, falls back to /v1/chat/completions. Caches the working endpoint after the first call."))
+                Text(AppLocalized("Auto: tries /v1/images/generations first, falls back to /v1/chat/completions. Caches the working endpoint after the first call."))
             }
         case .imagesGenerations:
-            Text(String(localized: "Always use /v1/images/generations."))
+            Text(AppLocalized("Always use /v1/images/generations."))
         case .chatCompletions:
-            Text(String(localized: "Always use /v1/chat/completions (multimodal output)."))
+            Text(AppLocalized("Always use /v1/chat/completions (multimodal output)."))
         }
     }
 
@@ -708,7 +938,7 @@ struct ProviderInstanceDetailView: View {
                 HStack(spacing: 5) {
                     Text(entry.model.displayName)
                         .font(.subheadline)
-                        .foregroundStyle(isHidden ? .secondary : .primary)
+                        .foregroundStyle(isHidden || entry.isUnavailableFromProvider ? .secondary : .primary)
                     modalityIcons(for: entry.model)
                 }
                 HStack(spacing: 4) {
@@ -717,6 +947,15 @@ struct ProviderInstanceDetailView: View {
                         .foregroundStyle(.tertiary)
                     if entry.isCustom {
                         Text("Custom")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(.orange)
+                    }
+                    // [T-model-absence-grace] The provider stopped listing this
+                    // model. The entry (and its overrides) is kept for the grace
+                    // window, so say why it is greyed out instead of letting it
+                    // look normal — or, as before, letting it silently vanish.
+                    if entry.isUnavailableFromProvider {
+                        Text("Not listed by provider")
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.orange)
                     }
@@ -756,16 +995,16 @@ struct ProviderInstanceDetailView: View {
         .contextMenu {
             Button {
                 UIPasteboard.general.string = "entry:\(entry.compositeKey)"
-                MinisToast.show(String(localized: "Copied: \(entry.model.displayName)"))
+                MinisToast.show(AppLocalized("Copied: \(entry.model.displayName)"))
             } label: {
-                Label(String(localized: "Copy Shortcut Model ID"), systemImage: "link")
+                Label(AppLocalized("Copy Shortcut Model ID"), systemImage: "link")
             }
         }
     }
 
     private func modalityIcons(for model: LLMModel) -> some View {
         let modality = model.modalityOverride ?? model.capabilities.supportedModalities
-        // [T-ios-model-capability-output-tags] (XIN msg 38847) The list only
+        // [T-ios-model-capability-output-tags] The list only
         // rendered INPUT modalities (image/pdf/audio/video _input) — output
         // modalities were never iterated, so a generator like gpt-image-2
         // (image_output) or an audio_output model showed no capability badge.
@@ -778,44 +1017,44 @@ struct ProviderInstanceDetailView: View {
                 Image(systemName: "photo")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(String(localized: "Image input"))
+                    .accessibilityLabel(AppLocalized("Image input"))
             }
             if modality.contains(.pdfInput) {
                 Image(systemName: "doc")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(String(localized: "PDF input"))
+                    .accessibilityLabel(AppLocalized("PDF input"))
             }
             if modality.contains(.audioInput) {
                 Image(systemName: "waveform")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(String(localized: "Audio input"))
+                    .accessibilityLabel(AppLocalized("Audio input"))
             }
             if modality.contains(.videoInput) {
                 Image(systemName: "video")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(String(localized: "Video input"))
+                    .accessibilityLabel(AppLocalized("Video input"))
             }
             // Output modalities (tinted, generate-style glyphs).
             if modality.contains(.imageOutput) {
                 Image(systemName: "photo.badge.plus")
                     .font(.caption2)
                     .foregroundStyle(.tint)
-                    .accessibilityLabel(String(localized: "Image output"))
+                    .accessibilityLabel(AppLocalized("Image output"))
             }
             if modality.contains(.audioOutput) {
                 Image(systemName: "speaker.wave.2")
                     .font(.caption2)
                     .foregroundStyle(.tint)
-                    .accessibilityLabel(String(localized: "Audio output"))
+                    .accessibilityLabel(AppLocalized("Audio output"))
             }
             if modality.contains(.videoOutput) {
                 Image(systemName: "video.badge.plus")
                     .font(.caption2)
                     .foregroundStyle(.tint)
-                    .accessibilityLabel(String(localized: "Video output"))
+                    .accessibilityLabel(AppLocalized("Video output"))
             }
         }
     }
@@ -829,18 +1068,11 @@ struct ProviderInstanceDetailView: View {
         guard let freshInstance = store.instance(for: instance.id) else { return }
         isFetchingModels = true
         fetchError = nil
-        fetchWarnings = []
-        fetchSource = nil
+        refreshOutcome = nil
         Task {
             defer { isFetchingModels = false }
-            do {
-                let result = try await ProviderConfigStore.fetchModelsWithFallback(freshInstance, forceRefresh: true)
-                store.replaceEntries(for: freshInstance.id, models: result.models)
-                fetchWarnings = result.warnings
-                fetchSource = result.source
-            } catch {
-                fetchError = error.localizedDescription
-            }
+            // Never throws: a failed refresh comes back as `.kept` with the reason.
+            refreshOutcome = await store.refreshModels(for: freshInstance, caller: "refreshModels(detail-view)")
         }
     }
 
@@ -860,6 +1092,7 @@ struct ProviderInstanceDetailView: View {
         case .openAIResponses: return false // API key only
         case .xAI: return XAIOAuthManager.shared.isAuthenticated(instanceId: instance.id)
         case .kimiCode: return KimiOAuthManager.shared.isAuthenticated(instanceId: instance.id)
+        case .githubCopilot: return CopilotOAuthManager.shared.isAuthenticated(instanceId: instance.id)
         case .unsupported: return false // synced from newer build
         }
     }
@@ -867,76 +1100,80 @@ struct ProviderInstanceDetailView: View {
     private func oauthDetail(_ instance: ProviderInstance) -> String {
         // Manual OAuth token — show masked token
         if ProviderKeychainHelper.loadOAuthString(instanceId: instance.id, account: "manual-oauth-token") != nil {
-            return String(localized: "Authenticated (manual token)")
+            return AppLocalized("Authenticated (manual token)")
         }
         switch instance.providerType {
         case .anthropic:
             if ClaudeOAuthManager.shared.isAuthenticated(instanceId: instance.id) {
-                return ClaudeOAuthManager.shared.maskedToken(instanceId: instance.id) ?? String(localized: "Authenticated")
+                return ClaudeOAuthManager.shared.maskedToken(instanceId: instance.id) ?? AppLocalized("Authenticated")
             }
-            return String(localized: "Not authenticated")
+            return AppLocalized("Not authenticated")
         case .gemini:
             if GeminiOAuthManager.shared.isAuthenticated(instanceId: instance.id) {
                 let parts = [
                     GeminiOAuthManager.shared.userEmail(instanceId: instance.id),
                     GeminiOAuthManager.shared.gcpProjectID(instanceId: instance.id)
                 ].compactMap { $0 }
-                return parts.isEmpty ? String(localized: "Authenticated") : parts.joined(separator: " · ")
+                return parts.isEmpty ? AppLocalized("Authenticated") : parts.joined(separator: " · ")
             }
-            return String(localized: "Not authenticated")
+            return AppLocalized("Not authenticated")
         case .openAI:
             if CodexOAuthManager.shared.isAuthenticated(instanceId: instance.id) {
                 let parts = [
                     CodexOAuthManager.shared.planType(instanceId: instance.id),
                     CodexOAuthManager.shared.accountId(instanceId: instance.id).map { "ID: \(String($0.prefix(8)))..." }
                 ].compactMap { $0 }
-                return parts.isEmpty ? String(localized: "Authenticated") : parts.joined(separator: " · ")
+                return parts.isEmpty ? AppLocalized("Authenticated") : parts.joined(separator: " · ")
             }
-            return String(localized: "Not authenticated")
+            return AppLocalized("Not authenticated")
         case .antigravity:
             if AntigravityOAuthManager.shared.isAuthenticated(instanceId: instance.id) {
                 let parts = [
                     AntigravityOAuthManager.shared.userEmail(instanceId: instance.id),
                     AntigravityOAuthManager.shared.projectID(instanceId: instance.id)
                 ].compactMap { $0 }
-                return parts.isEmpty ? String(localized: "Authenticated") : parts.joined(separator: " · ")
+                return parts.isEmpty ? AppLocalized("Authenticated") : parts.joined(separator: " · ")
             }
-            return String(localized: "Not authenticated")
+            return AppLocalized("Not authenticated")
         case .openRouter:
             if OpenRouterOAuthManager.shared.isAuthenticated(instanceId: instance.id) {
-                return OpenRouterOAuthManager.shared.maskedToken(instanceId: instance.id) ?? String(localized: "Authenticated")
+                return OpenRouterOAuthManager.shared.maskedToken(instanceId: instance.id) ?? AppLocalized("Authenticated")
             }
-            return String(localized: "Not authenticated")
+            return AppLocalized("Not authenticated")
         case .openAIResponses:
-            return String(localized: "Not applicable") // API key only
+            return AppLocalized("Not applicable") // API key only
         case .xAI:
             if XAIOAuthManager.shared.isAuthenticated(instanceId: instance.id) {
                 let parts = [
                     XAIOAuthManager.shared.email(instanceId: instance.id),
                     XAIOAuthManager.shared.accountId(instanceId: instance.id).map { "ID: \(String($0.prefix(8)))..." }
                 ].compactMap { $0 }
-                return parts.isEmpty ? String(localized: "Authenticated") : parts.joined(separator: " · ")
+                return parts.isEmpty ? AppLocalized("Authenticated") : parts.joined(separator: " · ")
             }
-            return String(localized: "Not authenticated")
+            return AppLocalized("Not authenticated")
         case .kimiCode:
             return KimiOAuthManager.shared.isAuthenticated(instanceId: instance.id)
-                ? String(localized: "Authenticated") : String(localized: "Not authenticated")
+                ? AppLocalized("Authenticated") : AppLocalized("Not authenticated")
+        case .githubCopilot:
+            return CopilotOAuthManager.shared.isAuthenticated(instanceId: instance.id)
+                ? AppLocalized("Authenticated") : AppLocalized("Not authenticated")
         case .unsupported:
-            return String(localized: "Unsupported in this app version")
+            return AppLocalized("Unsupported in this app version")
         }
     }
 
     private func oauthSignInLabel(_ instance: ProviderInstance) -> String {
         switch instance.providerType {
-        case .anthropic: return String(localized: "Sign in with Claude")
-        case .gemini: return String(localized: "Sign in with Google")
-        case .openAI: return String(localized: "Sign in with OpenAI")
-        case .antigravity: return String(localized: "Sign in with Google")
-        case .openRouter: return String(localized: "Sign in with OpenRouter")
-        case .openAIResponses: return String(localized: "Sign In")
-        case .xAI: return String(localized: "Sign in with xAI")
-        case .kimiCode: return String(localized: "Sign in with Kimi Code")
-        case .unsupported: return String(localized: "Sign In")
+        case .anthropic: return AppLocalized("Sign in with Claude")
+        case .gemini: return AppLocalized("Sign in with Google")
+        case .openAI: return AppLocalized("Sign in with OpenAI")
+        case .antigravity: return AppLocalized("Sign in with Google")
+        case .openRouter: return AppLocalized("Sign in with OpenRouter")
+        case .openAIResponses: return AppLocalized("Sign In")
+        case .xAI: return AppLocalized("Sign in with xAI")
+        case .kimiCode: return AppLocalized("Sign in with Kimi Code")
+        case .githubCopilot: return AppLocalized("Sign in with GitHub")
+        case .unsupported: return AppLocalized("Sign In")
         }
     }
 
@@ -951,7 +1188,36 @@ struct ProviderInstanceDetailView: View {
             case .openAIResponses: break
             case .xAI: try await XAIOAuthManager.shared.login(instanceId: instance.id)
             case .kimiCode: break // device-code flow runs in KimiDeviceLoginSheet
+            case .githubCopilot: break // device-code flow runs in CopilotDeviceLoginSheet
             case .unsupported: break
+            }
+            // [T-provider-oauth-model-discovery] Reconcile models on a
+            // SUCCESSFUL sign-in here too, not only when the instance is first
+            // added (GH#265).
+            //
+            // This is the same moment for an existing instance that
+            // `addInstance` is for a new one: credentials just became valid, so
+            // the model list can be checked against the vendor for the first
+            // time — or for the first time since it expired. Re-authenticating
+            // is also exactly what a user does when a provider has been sitting
+            // unused for a while, which is when its catalog is most likely to
+            // have moved on.
+            //
+            // Only reached when `login` did not throw, so a cancelled or failed
+            // sign-in changes nothing. Failure inside the refresh is contained:
+            // `refreshModels` logs and returns, leaving the existing entries.
+            //
+            // [T-issue265-reauth-refresh-detached] Fired, not awaited - the
+            // same shape as `addInstance` and the device-code sheets. Awaiting
+            // it here held back `oauthStartSignIn`'s `oauthRefreshTrigger`
+            // toggle until the whole /models fetch (with its models.dev
+            // fallback) finished, so after a successful sign-in the section
+            // kept showing "Not authenticated" for seconds, or for the full
+            // request timeout on a slow network. An unstructured Task is not
+            // tied to this view, so leaving the page does not cancel it; the
+            // store publishes the new entries to every observer when it lands.
+            if instance.providerType.oauthSupportsModelDiscovery {
+                Task { await store.refreshModels(for: instance) }
             }
         } catch {
             await MainActor.run {
@@ -970,6 +1236,7 @@ struct ProviderInstanceDetailView: View {
         case .openAIResponses: break // API key only
         case .xAI: XAIOAuthManager.shared.logout(instanceId: instance.id)
         case .kimiCode: KimiOAuthManager.shared.logout(instanceId: instance.id)
+        case .githubCopilot: CopilotOAuthManager.shared.logout(instanceId: instance.id)
         case .unsupported: break
         }
     }
@@ -993,6 +1260,8 @@ struct ProviderInstanceDetailView: View {
             token = try? await XAIOAuthManager.shared.validAccessToken(instanceId: instance.id)
         case .kimiCode:
             token = try? await KimiOAuthManager.shared.validAccessToken(instanceId: instance.id)
+        case .githubCopilot:
+            token = try? await CopilotOAuthManager.shared.validSessionToken(instanceId: instance.id)
         case .unsupported:
             token = nil
         }
@@ -1009,6 +1278,7 @@ struct ProviderInstanceDetailView: View {
         case .openAI: return "sk-..."
         case .xAI: return "xai-..."
         case .kimiCode: return "" // OAuth only
+        case .githubCopilot: return "" // OAuth only
         case .antigravity: return "API Key..."
         case .openRouter: return "sk-or-..."
         case .openAIResponses: return "sk-..."
@@ -1088,18 +1358,18 @@ struct AddCustomModelSheet: View {
 
                 Section {
                     HStack {
-                        Text(String(localized: "Context Window"))
+                        Text(AppLocalized("Context Window"))
                         Spacer()
                         TextField("128000", text: $contextWindowText)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .frame(maxWidth: 120)
                     }
-                    Toggle(String(localized: "Thinking"), isOn: $supportsThinking)
+                    Toggle(AppLocalized("Thinking"), isOn: $supportsThinking)
                 } header: {
-                    Text(String(localized: "Capabilities"))
+                    Text(AppLocalized("Capabilities"))
                 } footer: {
-                    Text(String(localized: "Context window size in tokens. Leave empty for default."))
+                    Text(AppLocalized("Context window size in tokens. Leave empty for default."))
                 }
 
                 Section {
@@ -1153,7 +1423,18 @@ struct AddCustomModelSheet: View {
         guard let instance else { return }
         let trimmedId = modelId.trimmingCharacters(in: .whitespaces)
         guard !trimmedId.isEmpty else { return }
-        let name = displayName.trimmingCharacters(in: .whitespaces)
+        // [T-custom-model-name-trailing-space] The DISPLAY NAME keeps the user's
+        // spacing verbatim; only a whitespace-ONLY entry collapses to empty (which
+        // then falls back to the id downstream, as before).
+        //
+        // The model ID above is still trimmed, deliberately: it goes on the wire as
+        // the `model` field, where a stray space is a request failure rather than a
+        // styling choice. The display name is pure presentation, so trimming it was
+        // overreach — a user naming a model "GPT-5 " (padding it to align with a
+        // neighbour, or to mark a variant) had the space silently eaten on save and
+        // could never reproduce what they typed.
+        let rawName = displayName
+        let name = rawName.trimmingCharacters(in: .whitespaces).isEmpty ? "" : rawName
 
         var modality: ModelModality = [.textInput, .textOutput]
         if imageInput { modality.insert(.imageInput) }
@@ -1165,10 +1446,15 @@ struct AddCustomModelSheet: View {
 
         let parsedContextWindow = Int(contextWindowText.trimmingCharacters(in: .whitespaces))
 
+        // Store the INSTANCE's label, not the protocol type's name: a provider
+        // the user labelled "Zhipu AI" but configured over the OpenAI-compatible
+        // protocol would otherwise record (and, before the detail row started
+        // resolving this live, display) "OpenAI".
+        let instanceLabel = instance.label.trimmingCharacters(in: .whitespacesAndNewlines)
         let model = LLMModel(
             id: trimmedId,
             displayName: name.isEmpty ? trimmedId : name,
-            provider: instance.providerType.displayName,
+            provider: instanceLabel.isEmpty ? instance.providerType.displayName : instanceLabel,
             modalityOverride: modality,
             contextWindow: parsedContextWindow,
             supportsReasoning: supportsThinking
@@ -1177,7 +1463,7 @@ struct AddCustomModelSheet: View {
         if store.addEntry(entry) {
             dismiss()
         } else {
-            duplicateError = String(localized: "Model ID \"\(trimmedId)\" already exists.")
+            duplicateError = AppLocalized("Model ID \"\(trimmedId)\" already exists.")
         }
     }
 }
@@ -1188,6 +1474,33 @@ struct ModelEntryDetailSheet: View {
     let entry: ModelEntry
     @ObservedObject private var store = ProviderConfigStore.shared
     @Environment(\.dismiss) private var dismiss
+
+    /// Human-readable owner of this model, resolved from the entry's OWNING
+    /// INSTANCE rather than from `entry.model.provider`.
+    ///
+    /// `LLMModel.provider` is a free-form denormalized string with no single
+    /// writer, so what it holds depends on which code path created the model:
+    ///   - built-in catalogues write a vendor name ("OpenAI", "Anthropic");
+    ///   - the in-app "Add Custom Model" form writes the PROTOCOL type's
+    ///     display name, so a provider the user labelled "Zhipu AI" showed
+    ///     "OpenAI" — right shape, wrong provider;
+    ///   - `models.add` (config / RPC surface) writes the instance UUID, which
+    ///     is what surfaced as the reported "A6FC13AE-…" in this row.
+    /// Reading it back for display therefore renders whatever that writer
+    /// happened to store.
+    ///
+    /// `entry.providerInstanceId` is the authoritative link (it is half of
+    /// `compositeKey`, the cross-device identity), so resolve the live
+    /// instance and use its user-facing label. Falls back to the stored
+    /// string only when the instance is genuinely gone — better a stale
+    /// vendor name than a blank row.
+    private var providerDisplayName: String {
+        if let instance = store.config.instances.first(where: { $0.id == entry.providerInstanceId }) {
+            let label = instance.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            return label.isEmpty ? instance.providerType.displayName : label
+        }
+        return entry.model.provider
+    }
 
     @State private var displayName: String = ""
     @State private var modelId: String = ""
@@ -1246,7 +1559,7 @@ struct ModelEntryDetailSheet: View {
                         Text("Provider")
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text(entry.model.provider)
+                        Text(providerDisplayName)
                             .foregroundStyle(.secondary)
                     }
 
@@ -1265,7 +1578,7 @@ struct ModelEntryDetailSheet: View {
                 if entry.isCustom {
                     Section {
                         HStack {
-                            Text(String(localized: "Context Window"))
+                            Text(AppLocalized("Context Window"))
                             Spacer()
                             TextField("128000", text: $contextWindowText)
                                 .keyboardType(.numberPad)
@@ -1273,16 +1586,16 @@ struct ModelEntryDetailSheet: View {
                                 .frame(maxWidth: 120)
                         }
                         maxTokensField()
-                        Toggle(String(localized: "Thinking"), isOn: $supportsThinking)
+                        Toggle(AppLocalized("Thinking"), isOn: $supportsThinking)
                     } header: {
-                        Text(String(localized: "Capabilities"))
+                        Text(AppLocalized("Capabilities"))
                     } footer: {
-                        Text(String(localized: "Context window and max output tokens in tokens. Leave empty for default."))
+                        Text(AppLocalized("Context window and max output tokens in tokens. Leave empty for default."))
                     }
                 } else {
                     Section {
                         HStack {
-                            Text(String(localized: "Context Window"))
+                            Text(AppLocalized("Context Window"))
                             Spacer()
                             TextField(
                                 "\(entry.baseModel.contextWindowTokens)",
@@ -1296,20 +1609,20 @@ struct ModelEntryDetailSheet: View {
                         maxTokensField()
 
                         HStack {
-                            Text(String(localized: "Thinking"))
+                            Text(AppLocalized("Thinking"))
                                 .foregroundStyle(.secondary)
                             Spacer()
                             if supportsThinking {
-                                Label(String(localized: "Supported"), systemImage: "checkmark.circle.fill")
+                                Label(AppLocalized("Supported"), systemImage: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
                                     .labelStyle(.titleAndIcon)
                             } else if entry.baseModel.supportsReasoning == false {
-                                Text(String(localized: "Not Supported"))
+                                Text(AppLocalized("Not Supported"))
                                     .foregroundStyle(.secondary)
                             } else {
-                                Text(String(localized: "Unknown"))
+                                Text(AppLocalized("Unknown"))
                                     .foregroundStyle(.tertiary)
-                                Button(String(localized: "Force Enable")) {
+                                Button(AppLocalized("Force Enable")) {
                                     showForceThinkingAlert = true
                                 }
                                 .font(.caption)
@@ -1318,9 +1631,9 @@ struct ModelEntryDetailSheet: View {
                             }
                         }
                     } header: {
-                        Text(String(localized: "Capabilities"))
+                        Text(AppLocalized("Capabilities"))
                     } footer: {
-                        Text(String(localized: "Leave Context Window empty to use auto-detected value. Leave Max Output Tokens empty to follow the provider default."))
+                        Text(AppLocalized("Leave Context Window empty to use auto-detected value. Leave Max Output Tokens empty to follow the provider default."))
                     }
                 }
 
@@ -1357,11 +1670,11 @@ struct ModelEntryDetailSheet: View {
                         } label: {
                             HStack {
                                 Image(systemName: "arrow.counterclockwise")
-                                Text(String(localized: "Reset to Default"))
+                                Text(AppLocalized("Reset to Default"))
                             }
                         }
                     } footer: {
-                        Text(String(localized: "Clear your customizations and restore the values reported by the provider."))
+                        Text(AppLocalized("Clear your customizations and restore the values reported by the provider."))
                     }
                 }
 
@@ -1373,22 +1686,45 @@ struct ModelEntryDetailSheet: View {
                         AppLogger(category: "QuickTest").info("[QuickTest] button tapped model=\(entry.model.id)")
                         showQuickTest = true
                     } label: {
-                        Label(String(localized: "Quick Test"), systemImage: "bolt.badge.checkmark")
+                        Label(AppLocalized("Quick Test"), systemImage: "bolt.badge.checkmark")
                     }
                     .buttonStyle(.borderless)
                 } footer: {
-                    Text(String(localized: "Run a quick test matching this model's main capability."))
+                    Text(AppLocalized("Run a quick test matching this model's main capability."))
                 }
             }
             .navigationTitle("Model Details")
             .navigationBarTitleDisplayMode(.inline)
-            .scrollDismissesKeyboard(.interactively)
+            // [T-ipad-sheet-keyboard-crash] `.immediately`, NOT `.interactively`.
+            // Field crash, iPadOS 27.0 (iPad13,4, 1.15 build 5): editing Context
+            // Window, then dragging this sheet down, aborted in UIKit with an
+            // NSGenericException from +[NSLayoutConstraint _addOrRemoveConstraints:
+            // activate:] under -[UIInputWindowControllerHostingItem
+            // updateViewConstraints], reached from -[UIKeyboardImpl
+            // presentationControllerShouldDismiss:] → showKeyboardWithoutSuppression
+            // Policy → -[UIKeyboard setMinimized:] → maximize. No app frames.
+            //
+            // Interactive keyboard dismissal is what MINIMIZES the keyboard: in a
+            // sheet, the same pull that drags the keyboard down at the top of the
+            // form also drives the sheet's own drag-to-dismiss. The sheet's
+            // shouldDismiss hook then re-shows (maximizes) the keyboard while the
+            // sheet's hierarchy is mid-transition, and re-installing the input
+            // views activates constraints across hierarchies. `.immediately`
+            // hides the keyboard outright on the first scroll, so it is never
+            // left minimized for that path to resurrect.
+            .scrollDismissesKeyboard(.immediately)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        Self.endEditing()
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") { save() }
+                    Button("Save") {
+                        Self.endEditing()
+                        save()
+                    }
                         .font(.body.weight(.semibold))
                 }
             }
@@ -1404,28 +1740,36 @@ struct ModelEntryDetailSheet: View {
                     .presentationDragIndicator(.visible)
             }
             .alert(
-                String(localized: "Force Enable Thinking"),
+                AppLocalized("Force Enable Thinking"),
                 isPresented: $showForceThinkingAlert
             ) {
-                Button(String(localized: "Enable"), role: .destructive) {
+                Button(AppLocalized("Enable"), role: .destructive) {
                     supportsThinking = true
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                Button(AppLocalized("Cancel"), role: .cancel) {}
             } message: {
-                Text(String(localized: "The provider has not declared whether this model supports thinking. Force-enabling may cause errors — you can disable it or retry if needed."))
+                Text(AppLocalized("The provider has not declared whether this model supports thinking. Force-enabling may cause errors — you can disable it or retry if needed."))
             }
             .alert(
-                String(localized: "Reset Model Settings"),
+                AppLocalized("Reset Model Settings"),
                 isPresented: $showResetAlert
             ) {
-                Button(String(localized: "Reset"), role: .destructive) {
+                Button(AppLocalized("Reset"), role: .destructive) {
                     resetToDefault()
                 }
-                Button(String(localized: "Cancel"), role: .cancel) {}
+                Button(AppLocalized("Cancel"), role: .cancel) {}
             } message: {
-                Text(String(localized: "This will clear all customizations (including force-enabled thinking) and restore the provider's default values."))
+                Text(AppLocalized("This will clear all customizations (including force-enabled thinking) and restore the provider's default values."))
             }
         }
+    }
+
+    /// [T-ipad-sheet-keyboard-crash] Put the keyboard away BEFORE the sheet
+    /// starts dismissing, so no keyboard state is left to be re-shown into a
+    /// hierarchy that is being torn down.
+    private static func endEditing() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                        to: nil, from: nil, for: nil)
     }
 
     /// Format token count into a human-readable string (e.g. "200K tokens", "1M tokens").
@@ -1447,7 +1791,7 @@ struct ModelEntryDetailSheet: View {
         if let apiMax = entry.baseModel.maxOutputTokens {
             return "\(apiMax)"
         }
-        return String(localized: "Default")
+        return AppLocalized("Default")
     }
 
     /// True when the user has typed a value that exceeds the API-reported maximum.
@@ -1466,7 +1810,7 @@ struct ModelEntryDetailSheet: View {
     private func maxTokensField() -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(String(localized: "Max Output Tokens"))
+                Text(AppLocalized("Max Output Tokens"))
                 Spacer()
                 TextField(maxTokensPlaceholder, text: $maxTokensText)
                     .keyboardType(.numberPad)
@@ -1544,7 +1888,13 @@ struct ModelEntryDetailSheet: View {
     }
 
     private func save() {
-        let trimmedName = displayName.trimmingCharacters(in: .whitespaces)
+        // [T-custom-model-name-trailing-space] Keep the user's spacing verbatim in
+        // the display NAME (see addModel for the full reasoning). Only a
+        // whitespace-only entry counts as empty, which still falls back to the base
+        // model's name at `effectiveTypedName` below. The model ID stays trimmed —
+        // it is wire data, not presentation.
+        let trimmedName = displayName.trimmingCharacters(in: .whitespaces).isEmpty
+            ? "" : displayName
         let trimmedId = modelId.trimmingCharacters(in: .whitespaces)
         let trimmedMaxTokens = maxTokensText.trimmingCharacters(in: .whitespaces)
         let parsedMaxTokens: Int? = trimmedMaxTokens.isEmpty ? nil : Int(trimmedMaxTokens)
@@ -1581,9 +1931,24 @@ struct ModelEntryDetailSheet: View {
             interleavedReasoningField: entry.baseModel.interleavedReasoningField
         )
 
-        // Build overrides: only record a field when the user's choice diverges from the
-        // baseModel/API value, so future provider-side capability bumps can still flow
-        // through for fields the user hasn't touched.
+        // Build overrides.
+        //
+        // [T-model-override-silent-drop] Record a field when the USER FILLED IT IN,
+        // not when it happens to differ from today's API value.
+        //
+        // The old rule compared the typed value against `entry.baseModel`, while the
+        // sheet LOADS from `entry.model` (= overrides overlaid on baseModel). That
+        // asymmetry silently discards intent: a user who types a number equal to the
+        // current auto-detected value writes no override at all, so the next refresh
+        // that moves the vendor value simply shows the new one through. Reproduced on
+        // device: typing 1000000 into a field whose auto value was already 1000000 and
+        // pressing Save left `overrides.contextWindow` null.
+        //
+        // "Equal to the current auto value" and "has no opinion" are not the same
+        // thing. The UI already states the real rule — "leave empty to use the
+        // auto-detected value" — so EMPTY is the way back to auto, and a filled field
+        // is a choice that must persist. baseModel stays API truth either way (see the
+        // comment above): overrides is the only place a refresh preserves verbatim.
         var newOverrides = ModelOverrides()
 
         let effectiveTypedName = trimmedName.isEmpty ? updatedBaseModel.displayName : trimmedName
@@ -1593,17 +1958,28 @@ struct ModelEntryDetailSheet: View {
 
         newOverrides.maxOutputTokens = parsedMaxTokens
 
-        let baselineModality = entry.baseModel.modalityOverride
+        // All three fields below are loaded from `effective` (see loadFromEntry) and so
+        // must be recorded against what the sheet SHOWED, never against baseModel.
+        //
+        // Toggles have no empty state, so "the user filled it in" is not expressible for
+        // them; what IS expressible is "this still differs from the API's own value".
+        // Compare against the value the sheet displayed — i.e. keep an existing override
+        // alive when the vendor later catches up to it, instead of silently dropping it.
+        // Worked example of the old behaviour: base=false + override=true, a refresh sets
+        // base=true, the user re-saves unchanged, `true == true` clears the override, and
+        // a later vendor flip back to false loses the user's choice entirely.
+        let baselineModality = entry.model.modalityOverride
             ?? entry.baseModel.capabilities.supportedModalities
-        if modality != baselineModality {
+        if modality != baselineModality || entry.overrides.modalityOverride != nil {
             newOverrides.modalityOverride = modality
         }
 
-        if typedContextWindow != entry.baseModel.contextWindow {
-            newOverrides.contextWindow = typedContextWindow
-        }
+        // Filled → record it, even when equal to the current auto value. Empty → nil,
+        // which is the documented way back to auto-detection.
+        newOverrides.contextWindow = typedContextWindow
 
-        if supportsThinking != (entry.baseModel.supportsReasoning ?? false) {
+        let baselineThinking = entry.model.supportsReasoning ?? false
+        if supportsThinking != baselineThinking || entry.overrides.supportsReasoning != nil {
             newOverrides.supportsReasoning = supportsThinking
         }
 
@@ -1631,3 +2007,44 @@ private struct ProviderShareSheet: UIViewControllerRepresentable {
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
 
+
+// MARK: - [T-ios-model-refresh-visible] Refresh result line
+
+/// The line under the Models header after a tap on Refresh: what was found,
+/// or why the list did not change. Same three cases as Android's Refresh row.
+struct ModelRefreshSummary {
+    let text: String
+    /// True when the provider's own list was not used.
+    let isProblem: Bool
+    var systemImage: String { isProblem ? "exclamationmark.triangle" : "checkmark.circle" }
+
+    init(_ outcome: ModelRefreshOutcome) {
+        let why = outcome.vendorError ?? "-"
+        switch outcome.source {
+        case .vendor:
+            var line = String(format: AppLocalized("Found %lld models (%lld new, %lld removed)"),
+                              outcome.diff.total, outcome.diff.added, outcome.diff.removed)
+            // A model the provider stopped listing is not deleted at once (its
+            // overrides would go with it); say so, or it looks like the
+            // refresh ignored the provider.
+            if outcome.diff.unlisted > 0 {
+                let days = Int(ProviderConfigStore.modelAbsenceGracePeriod / 86_400)
+                line += " " + String(format: AppLocalized("%lld no longer listed by the provider; kept for %lld days, then removed."),
+                                     outcome.diff.unlisted, days)
+            }
+            text = line
+            isProblem = false
+        case .kept:
+            text = String(format: AppLocalized("Couldn't refresh: %@. The current list was kept."), why)
+            isProblem = true
+        case .modelsDev:
+            text = String(format: AppLocalized("The provider's list was unavailable (%@). Used the public model catalog instead: %lld models."),
+                          why, outcome.diff.total)
+            isProblem = true
+        case .builtIn:
+            text = String(format: AppLocalized("The provider's list was unavailable (%@). Used the built-in model list instead: %lld models."),
+                          why, outcome.diff.total)
+            isProblem = true
+        }
+    }
+}

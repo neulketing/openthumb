@@ -66,9 +66,24 @@ jobs:
                 src/android/app/provider-customization.properties || true
           mkdir -p .claude/skills/debug-server
 
+      # rclone.aar also carries the embedded Tailscale node, and the app does not
+      # link without it. Pinned: tailscale's JSON dependency does not build on
+      # Go 1.27.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.5'
+          cache: false
+
       - name: Build native dependencies
         run: |
           ./deps/build_proot.sh
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          export PATH="$(go env GOPATH)/bin:$PATH"
+          gomobile init
+          ./deps/build_rclone_android.sh
+          mkdir -p src/android/app/libs
+          cp deps/build/rclone/rclone.aar src/android/app/libs/
           # The rootfs is deliberately NOT baked in. Bundling it made the image
           # two thirds of the download (15.9 MB of a 23.9 MB release APK) for
           # bytes the app can fetch once, on first run, verified against
@@ -99,11 +114,13 @@ jobs:
           OPENTHUMB_KEY_ALIAS: ${{ secrets.OPENTHUMB_KEY_ALIAS }}
         run: ./gradlew :app:assembleRelease
 
-      # Named so nobody mistakes it for the fleet/debug build again.
+      # The name is the update protocol: UpdatePolicy reads the version and the
+      # build number from it. Clients on 1.5.0 and older only need OpenThumb-*.apk.
       - name: Stage asset
         run: |
           src=$(ls src/android/app/build/outputs/apk/release/*.apk | head -1)
-          cp "$src" "OpenThumb-${GITHUB_REF_NAME#v}-release.apk"
+          code=$(sed -n 's/.*versionCode = \([0-9]*\).*/\1/p' src/android/app/build.gradle.kts)
+          cp "$src" "OpenThumb-${GITHUB_REF_NAME#v}-build${code}-arm64-v8a.apk"
 
       # Checks the artifact rather than the secret: a keystore that failed to
       # decode, or an alias typo that sent gradle back to the debug config,
@@ -111,7 +128,7 @@ jobs:
       - name: Refuse to publish a debug-signed APK
         run: |
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -1)
-          dn=$("$apksigner" verify --print-certs OpenThumb-*-release.apk \
+          dn=$("$apksigner" verify --print-certs OpenThumb-*-arm64-v8a.apk \
                | sed -n 's/^Signer #1 certificate DN: //p')
           echo "signed by: $dn"
           case "$dn" in
@@ -127,7 +144,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" OpenThumb-*-release.apk \
+          gh release create "$GITHUB_REF_NAME" OpenThumb-*-arm64-v8a.apk \
             --title "OpenThumb ${GITHUB_REF_NAME#v}" \
             --notes-file notes.md
           echo "url=$(gh release view "$GITHUB_REF_NAME" --json url --jq .url)" >> "$GITHUB_OUTPUT"
@@ -135,7 +152,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: OpenThumb-*-release.apk
+          path: OpenThumb-*-arm64-v8a.apk
 
   # Mails the notes to the maintainer inbox. Skips cleanly when the SMTP
   # secrets are not configured (forks, local tests) — secrets can't be

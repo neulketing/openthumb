@@ -15,7 +15,7 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.fug.openthumb"
-            android:targetClass="com.fug.openthumb.MainActivity"
+            android:targetClass="com.openminis.app.MainActivity"
             android:data="minis://action/new_chat" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
@@ -28,7 +28,7 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.fug.openthumb"
-            android:targetClass="com.fug.openthumb.MainActivity"
+            android:targetClass="com.openminis.app.MainActivity"
             android:data="minis://action/voice_chat" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>
@@ -41,7 +41,7 @@
         <intent
             android:action="android.intent.action.VIEW"
             android:targetPackage="com.fug.openthumb"
-            android:targetClass="com.fug.openthumb.MainActivity"
+            android:targetClass="com.openminis.app.MainActivity"
             android:data="minis://action/camera_chat" />
         <categories android:name="android.shortcut.conversation" />
     </shortcut>

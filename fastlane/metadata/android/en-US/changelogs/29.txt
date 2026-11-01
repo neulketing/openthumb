@@ -8,7 +8,7 @@
   beside the old rather than over it. The socket is now named after the
   application id. Verified on a Note8 with 1.0.x and this build running at the
   same time: both processes alive, no crash, bound as
-  com.fug.openthumb.native-offload.
+  com.openminis.app.native-offload.
 
 -- Added
 - Nothing the agent writes reaches another person without someone saying

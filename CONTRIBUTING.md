@@ -33,18 +33,13 @@ arm64 device or emulator image.
 CI (`.github/workflows/android.yml`) runs the same sequence on every push and
 pull request against `main`.
 
-## The JNI / package-rename trap
+## Package names
 
-JNI entry points encode the Java package path in the C symbol name:
-`com.fug.openthumb.sandbox.PtyBridge.forkExec` is exported from
-`src/android/app/src/main/cpp/pty_bridge.c` as
-`Java_com_neulketing_openthumb_sandbox_PtyBridge_forkExec`.
-
-So renaming the package means renaming those C/C++ symbols in lockstep. Miss it
-and **nothing fails at build time** — the APK links, installs and starts, then
-the shell dies the moment it tries to bind the native method. `scripts/rebrand.sh`
-rewrites both sides together; if you rename by hand, grep `Java_com_` under
-`src/android/app/src/main/cpp/` and fix every hit.
+The Kotlin package and the file paths stay upstream's (`com.openminis.app`), so
+`git merge upstream/main` stays cheap. Only `applicationId` (`com.fug.openthumb`)
+is ours. Do not rename the package: JNI symbols encode it, and every upstream
+publish would conflict on every file. After a merge, run `scripts/rebrand.py` to
+put the product name and contact points back.
 
 ## Commit messages
 

@@ -4,6 +4,11 @@ import os.log
 
 private let logger = AppLogger(category: "OpenAIAgent")
 
+/// [T-thinking-rules-phase1] Separate category so the resolution trace can be grepped
+/// on its own — "which rule produced this request" is the first question in any
+/// thinking-parameter report (design §8).
+private let thinkingLogger = AppLogger(category: "Thinking")
+
 /// AgentProvider implementation that wraps OpenAIProvider for the unified agent loop.
 /// Handles both Chat Completions (API key) and Responses API (OAuth/Codex) formats.
 final class OpenAIAgentProvider: AgentProvider {
@@ -24,14 +29,81 @@ final class OpenAIAgentProvider: AgentProvider {
     /// AND same model id.
     static let responsesAPIProviderKind: String = "openai-responses"
 
+    /// [T-responses-reasoning-inherit issue #368] Identity an encrypted
+    /// reasoning item may be replayed to.
+    ///
+    /// `providerKind` alone is a FAMILY tag, so two unrelated relays both
+    /// speaking the Responses protocol share it; `model.id` alone changes on
+    /// every model-group fallback hop even when the upstream is the same relay.
+    /// Neither is the right question. What actually has to match is the
+    /// endpoint that minted the blob, because `encrypted_content` is opaque and
+    /// only that endpoint can decrypt it.
+    ///
+    /// So identity is the base URL (nil for official OpenAI). A fallback hop
+    /// between two entries on the SAME instance now keeps its reasoning instead
+    /// of silently dropping the head off a turn that still carries
+    /// `function_call` items — the shape that produced the 400 in #368. A hop
+    /// to a genuinely different upstream still degrades rather than replaying a
+    /// foreign blob.
+    var reasoningUpstreamIdentity: String {
+        provider.customBaseURL ?? "openai-official"
+    }
+
     let provider: OpenAIProvider
 
     var name: String { provider.name }
     var model: LLMModel { provider.model }
     var defaultMaxTokens: Int { provider.usesChatCompletionsAPI ? 16_384 : 32_768 }
 
+    /// [T-sse-idle-timeout] The provider's own setting, on the Chat
+    /// Completions path only. The Responses API / Codex path keeps the default.
+    var responseIdleTimeout: TimeInterval {
+        guard provider.usesChatCompletionsAPI else { return TimeInterval(ResponseIdleTimeoutSetting.defaultSeconds) }
+        return TimeInterval(ResponseIdleTimeoutSetting.seconds(forInstanceId: provider.providerInstanceId))
+    }
+
+    // BEGIN ChatCompletionsReasoningActivity
+    /// [T-sse-idle-timeout] Does this chunk's `delta` carry reasoning the model
+    /// actually produced? Used to keep the stall watchdog fed while the
+    /// thinking level is off: such reasoning is accumulated but not streamed
+    /// to the UI, so without this a model that reasons for two minutes looked
+    /// exactly like a dead stream.
+    ///
+    /// Only real output counts. An empty string, a missing field, a role-only
+    /// delta and an SSE comment / keepalive line do not - a relay can send
+    /// those forever after its upstream has died.
+    static func deltaCarriesReasoning(_ delta: [String: Any], interleavedField: String?) -> Bool {
+        var fields = ["reasoning_content", "reasoning", "reasoning_text"]
+        if let f = interleavedField, !f.isEmpty, !fields.contains(f) { fields.append(f) }
+        for f in fields {
+            if let s = delta[f] as? String, !s.isEmpty { return true }
+        }
+        if let details = delta["reasoning_details"] as? [[String: Any]] {
+            for item in details {
+                switch item["type"] as? String {
+                case "reasoning.text": if let s = item["text"] as? String, !s.isEmpty { return true }
+                case "reasoning.summary": if let s = item["summary"] as? String, !s.isEmpty { return true }
+                case "reasoning.encrypted": if let s = item["data"] as? String, !s.isEmpty { return true }
+                default: break
+                }
+            }
+        }
+        return false
+    }
+    // END ChatCompletionsReasoningActivity
+
     init(provider: OpenAIProvider) {
         self.provider = provider
+    }
+
+    /// [T-ctx-count-reasoning] Chat Completions sends a captured
+    /// `reasoning_content` back on every past assistant turn whatever the
+    /// thinking level ("presence is the trigger"), except where the field is
+    /// forbidden. The Responses API replays encrypted items instead.
+    /// Keep in step with `forbidReasoningField` in
+    /// flattenChatCompletionsMessages.
+    func echoesReasoningContent(thinkingLevel: ThinkingLevel) -> Bool {
+        provider.usesChatCompletionsAPI && !(provider.isMistral || provider.isCerebras)
     }
 
     func streamAgentMessageClamped(
@@ -89,11 +161,39 @@ final class OpenAIAgentProvider: AgentProvider {
             "messages": allMessages,
             "stream": true,
         ]
+        // [T-codex-prompt-cache-headers] Same stable per-conversation key the
+        // Responses path sends. OpenAI's prompt-caching guide states that on
+        // GPT-5.6+ you *must* set `prompt_cache_key` to get the more reliable
+        // prefix matching, and this path had no key at all — so any GPT-5.x
+        // model reached over an OpenAI-compatible chat-completions endpoint
+        // was matching on the weaker heuristic.
+        //
+        // [T-ios-prompt-cache-key-400] Gated as of this fix. The original
+        // version sent the key UNCONDITIONALLY on the assumption that vendors
+        // which don't recognise it would ignore it as a harmless extra key.
+        // That assumption is false: strict-schema third-party gateways reject
+        // unknown request fields outright with
+        // `400 UNKNOWN_FIELD: 未知请求字段：prompt_cache_key`, which fails the
+        // whole request rather than degrading to an uncached one. Only the
+        // official OpenAI endpoint gets the key on this path.
+        if Self.shouldSendPromptCacheKey(for: provider) {
+            body["prompt_cache_key"] = Self.derivePromptCacheKey(from: messages)
+        }
         if provider.useOpenRouterCompat {
             body["max_tokens"] = maxTokens
         } else {
             body["max_completion_tokens"] = maxTokens
             body["stream_options"] = ["include_usage": true]
+        }
+        // [GH#191] Opt this request into Anthropic prompt caching. OpenRouter
+        // passes the field through to Anthropic but never injects it for us, so
+        // without it Claude requests cache nothing at all. Top-level "automatic"
+        // form: the breakpoint advances to the last cacheable block on its own as
+        // the conversation grows, which is what an agent loop wants — the
+        // per-block form would need us to manage a 4-breakpoint budget by hand.
+        // Gated on host + `anthropic/` prefix, so no other model's body changes.
+        if provider.needsOpenRouterAnthropicCacheControl {
+            body["cache_control"] = ["type": "ephemeral"]
         }
         if !toolsPayload.isEmpty {
             body["tools"] = toolsPayload
@@ -122,10 +222,22 @@ final class OpenAIAgentProvider: AgentProvider {
             // the provider-appropriate off value: official OpenAI understands
             // "none"; custom-base vendors get "minimal" (Ark's smallest tier,
             // also a valid OpenAI value, so relays serving gpt models work too).
-            if !provider.isMistral {
-                let offEffort = Self.explicitOffEffort(for: provider, model: model, level: thinkingLevel)
-                Self.injectThinkingParams(into: &body, model: model, level: thinkingLevel, isOpenRouter: provider.useOpenRouterCompat, maxTokens: maxTokens, offEffort: offEffort, unifiedReasoningEffort: provider.usesUnifiedReasoningEffort)
-            }
+            // [T-thinking-rules-phase1] The Mistral prohibition is now a RULE inside the
+            // resolver (`mistral-official` → .omitEverything) rather than an `if` wrapped
+            // around this call. Same outcome — zero thinking keys for Mistral — but the
+            // reason is now visible in the trace instead of being invisible at the call
+            // site, and it can no longer be lost when a second injection path is added
+            // (which is exactly how the Responses API path ended up ungated, 37bab14c).
+            let offEffort = Self.explicitOffEffort(for: provider, model: model, level: thinkingLevel)
+            Self.injectThinkingParams(into: &body, model: model, level: thinkingLevel, isOpenRouter: provider.useOpenRouterCompat, maxTokens: maxTokens, offEffort: offEffort, unifiedReasoningEffort: provider.usesUnifiedReasoningEffort, isMistral: provider.isMistral, isXAI: provider.isXAI, isDashScope: provider.isDashScope, isCerebras: provider.isCerebras, providerInstanceId: provider.providerInstanceId)
+        }
+
+        // [T-xai-priority-processing] xAI Priority Processing, agent Chat
+        // Completions path. This is the one that matters in practice: xAI is an
+        // OpenAI-compatible Chat Completions provider, so normal Grok chat flows
+        // through here rather than the Responses builders.
+        if provider.sendsPriorityServiceTier {
+            body["service_tier"] = "priority"
         }
 
         let (lineStream, _) = try await provider.streamRaw(body: body, isResponsesAPI: false)
@@ -143,6 +255,17 @@ final class OpenAIAgentProvider: AgentProvider {
                 // round-trip that empty value back as history rather than fabricating
                 // placeholder text the model would learn to imitate.
                 var sawReasoningFieldEver = false
+                // [T-openai-done-overwrite] GH#263. Set once a finish_reason chunk
+                // has yielded `.done`. OpenRouter (and OpenAI) always follow it
+                // with `data: [DONE]`, and the [DONE] branch used to yield a
+                // SECOND `.done(.endTurn)` — which the consumer let win, so a
+                // truncated reply (`length` → .maxTokens) or a content-filter
+                // block (.refusal) was reported as "Model returned an empty
+                // response". The first terminal reason is the real one.
+                var emittedDone = false
+                // [T-openrouter-reasoning-details] Count of opaque
+                // `reasoning.encrypted` items seen, for the finish log line.
+                var encryptedReasoningChunks = 0
                 // [T-ios-think-prefix-live-stream] Parser for content-embedded
                 // <think> prefixes (MiniMax M-series, Qwen, …): streams the
                 // reasoning live and trims the post-</think> body.
@@ -161,6 +284,8 @@ final class OpenAIAgentProvider: AgentProvider {
                 var diagDataLineCount = 0
                 var diagYieldedAnyContent = false
                 let diagCaptureLimit = 8
+                // [T-agent-model-identity] Chunk-level `model`, reported once.
+                var reportedModel: String? = nil
 
                 // Emit a (thinking, visible) pair from the think parser:
                 // thinking accumulates for end-of-turn persistence and streams
@@ -169,7 +294,12 @@ final class OpenAIAgentProvider: AgentProvider {
                 func emitParsed(_ out: (thinking: String, visible: String)) {
                     if !out.thinking.isEmpty {
                         reasoningContent += out.thinking
-                        if thinkingLevel.isEnabled { continuation.yield(.thinkingDelta(out.thinking)) }
+                        if thinkingLevel.isEnabled {
+                            continuation.yield(.thinkingDelta(out.thinking))
+                        } else {
+                            // [T-sse-idle-timeout] Hidden <think> text is still output.
+                            continuation.yield(.streamActivity)
+                        }
                     }
                     if !out.visible.isEmpty {
                         if !emittedTextStart {
@@ -196,8 +326,13 @@ final class OpenAIAgentProvider: AgentProvider {
                             if sawReasoningFieldEver || !reasoningContent.isEmpty {
                                 continuation.yield(.reasoningContent(reasoningContent))
                             }
-                            let reason: AgentStopReason = hasToolCalls ? .toolUse : .endTurn
-                            continuation.yield(.done(stopReason: reason))
+                            // A proxy that sends no finish_reason still needs
+                            // [DONE] to end the turn.
+                            if !emittedDone {
+                                let reason: AgentStopReason = hasToolCalls ? .toolUse : .endTurn
+                                continuation.yield(.done(stopReason: reason))
+                                emittedDone = true
+                            }
                             break
                         }
 
@@ -210,6 +345,13 @@ final class OpenAIAgentProvider: AgentProvider {
                             let code = error["code"] as? Int
                             logger.error("SSE stream error: \(message)")
                             throw LLMError.providerError(message: "[\(code ?? -1)] \(message)")
+                        }
+
+                        // [T-agent-model-identity] Every chunk carries the served
+                        // model id; yield the first non-empty one.
+                        if reportedModel == nil, let m = event["model"] as? String, !m.isEmpty {
+                            reportedModel = m
+                            continuation.yield(.responseModel(m))
                         }
 
                         // Usage
@@ -256,16 +398,86 @@ final class OpenAIAgentProvider: AgentProvider {
                             reasoningContent += rc
                             if thinkingLevel.isEnabled, !rc.isEmpty { continuation.yield(.thinkingDelta(rc)) }
                         }
+                        // [T-copilot-reasoning-fields] GitHub Copilot streams its
+                        // reasoning as `delta.reasoning_text`:
+                        //
+                        //     "delta":{"content":null,"role":"assistant",
+                        //              "reasoning_text":" this is a standard mod"}
+                        //
+                        // This branch knew only the two names above, so every such
+                        // delta was parsed as nothing — 274 of them on one observed
+                        // Android turn, ending with reasoningLen=0. The model really
+                        // did reason and the user saw a blank Thinking block.
+                        //
+                        // The name is not new to this file: the Responses API branch
+                        // has handled `response.reasoning_text.delta` all along. Only
+                        // the chat-completions branch had never seen it, which is the
+                        // path Copilot takes (it sets no forceResponsesAPI).
+                        if let rc = delta["reasoning_text"] as? String {
+                            sawReasoningField = true
+                            reasoningContent += rc
+                            if thinkingLevel.isEnabled, !rc.isEmpty { continuation.yield(.thinkingDelta(rc)) }
+                        }
+                        // [T-openrouter-reasoning-details] GH#263. OpenRouter also
+                        // (and for some models ONLY) streams reasoning as a
+                        // structured array:
+                        //
+                        //   "reasoning_details":[{"type":"reasoning.text","text":"…"},
+                        //                        {"type":"reasoning.summary","summary":"…"},
+                        //                        {"type":"reasoning.encrypted","data":"…"}]
+                        //
+                        // None of the string reads above see it, so a model that
+                        // spent its whole budget reasoning this way ended with
+                        // text empty AND reasoning empty — "empty response".
+                        //
+                        // When the same chunk already carried non-empty string
+                        // reasoning, OpenRouter is sending the SAME text twice
+                        // (string + details); reading both would double it.
+                        let chunkHadStringReasoning = ["reasoning_content", "reasoning", "reasoning_text"]
+                            .contains { ((delta[$0] as? String) ?? "").isEmpty == false }
+                        if !chunkHadStringReasoning,
+                           let details = delta["reasoning_details"] as? [[String: Any]] {
+                            for item in details {
+                                let text: String?
+                                switch item["type"] as? String {
+                                case "reasoning.text": text = item["text"] as? String
+                                case "reasoning.summary": text = item["summary"] as? String
+                                case "reasoning.encrypted":
+                                    // Opaque: nothing to show, but the model did reason.
+                                    sawReasoningField = true
+                                    encryptedReasoningChunks += 1
+                                    text = nil
+                                default: text = nil
+                                }
+                                guard let rc = text else { continue }
+                                sawReasoningField = true
+                                reasoningContent += rc
+                                if thinkingLevel.isEnabled, !rc.isEmpty { continuation.yield(.thinkingDelta(rc)) }
+                            }
+                        }
                         // Also check model-specific interleaved field (e.g. "reasoning_details")
                         if thinkingLevel.isEnabled,
                            let field = self.model.interleavedReasoningField,
                            field != "reasoning_content",
+                           // [T-copilot-reasoning-fields] `reasoning` and
+                           // `reasoning_text` are consumed above; without these
+                           // a model configured with either as its interleaved
+                           // field would have every delta counted twice.
+                           field != "reasoning",
+                           field != "reasoning_text",
                            let rc = delta[field] as? String {
                             sawReasoningField = true
                             reasoningContent += rc
                             if !rc.isEmpty { continuation.yield(.thinkingDelta(rc)) }
                         }
                         if sawReasoningField { sawReasoningFieldEver = true }
+                        // [T-sse-idle-timeout] With thinking off none of the
+                        // reasoning reads above yields anything, so the agent
+                        // loop saw silence while the model was reasoning.
+                        if !thinkingLevel.isEnabled,
+                           Self.deltaCarriesReasoning(delta, interleavedField: self.model.interleavedReasoningField) {
+                            continuation.yield(.streamActivity)
+                        }
 
                         // Text delta — route through the think-prefix parser so
                         // models that embed reasoning in content (MiniMax
@@ -327,7 +539,7 @@ final class OpenAIAgentProvider: AgentProvider {
                             // Flush the think parser's tail (idempotent — the
                             // [DONE] handler may flush again harmlessly).
                             emitParsed(thinkParser.finishTurn())
-                            logger.info("SSE finish_reason=\(fr) hasToolCalls=\(hasToolCalls) emittedTextStart=\(emittedTextStart) reasoningLen=\(reasoningContent.count)")
+                            logger.info("SSE finish_reason=\(fr) hasToolCalls=\(hasToolCalls) emittedTextStart=\(emittedTextStart) reasoningLen=\(reasoningContent.count) encryptedReasoningChunks=\(encryptedReasoningChunks)")
                             // Emit completed tool calls
                             for (_, entry) in toolCallAccum.sorted(by: { $0.key < $1.key }) {
                                 let args = Self.parseJsonToDict(entry.json)
@@ -357,7 +569,10 @@ final class OpenAIAgentProvider: AgentProvider {
                                 reason = .refusal
                             default: reason = hasToolCalls ? .toolUse : .endTurn
                             }
-                            continuation.yield(.done(stopReason: reason))
+                            if !emittedDone {
+                                continuation.yield(.done(stopReason: reason))
+                                emittedDone = true
+                            }
                         }
                     }
                     // Empty-stream diagnostic. The "no content, no stop reason"
@@ -399,20 +614,41 @@ final class OpenAIAgentProvider: AgentProvider {
             "store": false,
             "parallel_tool_calls": true,
             "input": inputMessages,
-            // Stable per-conversation key so the Responses API can hit prompt cache
-            // across turns. Codex CLI sets this to its conversation_id; we don't have
-            // one at this layer, so we derive a stable hash from the first user
-            // message's text, which is prepended every turn of the same chat.
-            // Required for custom/third-party endpoints (e.g. sub2api) that do not
-            // synthesize a fallback key server-side — see Wei-Shaw/sub2api#1134.
-            "prompt_cache_key": Self.derivePromptCacheKey(from: messages),
         ]
+        // Stable per-conversation key so the Responses API can hit prompt cache
+        // across turns. Codex CLI sets this to its conversation_id; we don't have
+        // one at this layer, so we derive a stable hash from the first user
+        // message's text, which is prepended every turn of the same chat.
+        // Required for custom/third-party endpoints (e.g. sub2api) that do not
+        // synthesize a fallback key server-side — see Wei-Shaw/sub2api#1134.
+        //
+        // [T-ios-prompt-cache-key-400] Now gated. Unlike the chat path this one
+        // deliberately KEEPS the key for `forceResponsesAPI` relays: that flag
+        // is an explicit "this base speaks the Responses API" opt-in, sub2api is
+        // the documented reason the field was added here, and those relays need
+        // it because they synthesize no server-side fallback. What is excluded
+        // is the un-opted-in custom base — the case that produced the 400.
+        if Self.shouldSendPromptCacheKey(for: provider) {
+            body["prompt_cache_key"] = Self.derivePromptCacheKey(from: messages)
+        }
         // Thinking level → Responses API `reasoning.effort`.
         // Applies to every Responses flavor (Codex OAuth + forceResponsesAPI +
         // custom-base). Previously only Codex honored the user's level, so
         // Responses-API provider types silently ignored thinking settings.
         var reasoningRequested = false
-        if thinkingLevel.isEnabled, let effort = Self.reasoningEffort(for: model, level: thinkingLevel) {
+        // [T-ios-mistral-reasoning-422] Mistral rejects the reasoning request
+        // parameter outright (`422 extra_forbidden body.reasoning`, OpenMinis#87),
+        // and its ChatCompletionRequest-era guard only ever covered the Chat
+        // Completions path (the `if !provider.isMistral` around
+        // injectThinkingParams). This builder is a SECOND, independent injection
+        // site: a Mistral instance with useResponsesAPI enabled reached it
+        // ungated and put `reasoning` back on the wire. Suppress the whole block
+        // — for Mistral the answer to "should any thinking field be sent" is
+        // NEVER, on every request path.
+        if provider.isMistral {
+            // No reasoning key, and reasoningRequested stays false so the
+            // encrypted-reasoning include below is skipped too.
+        } else if thinkingLevel.isEnabled, let effort = Self.reasoningEffort(for: model, level: thinkingLevel) {
             // `summary: "auto"` opts in to streaming the human-readable
             // reasoning summary (delivered as `response.reasoning_summary_text.delta`
             // SSE events). Without it the Responses API only returns
@@ -473,15 +709,34 @@ final class OpenAIAgentProvider: AgentProvider {
         // OpenAIProvider.buildResponsesAPIRequest covers only the offload /
         // non-agent paths, which is why the first device trace showed Codex
         // requests without the field. Wire value: codex_cli_rs sends
-        // service_tier="priority" for its Fast mode. Broadened per user
-        // request from Codex-OAuth-only to every Responses-API flavor (this
+        // service_tier="priority" for its Fast mode. Broadened
+        // from Codex-OAuth-only to every Responses-API flavor (this
         // function IS the Responses path — incl. forceResponsesAPI relays
         // like sub2api, which pass service_tier through) gated on a
         // gpt-family model id, mirroring the official fast catalog.
-        if UserDefaults.standard.bool(forKey: OpenAIProvider.fastModeDefaultsKey),
-           model.id.lowercased().contains("gpt") {
+        // [T-codex-speed-tier] Value follows the chosen tier; Ultrafast only
+        // for a whitelisted model, Fast otherwise (SpeedTierSettings).
+        if let tier = SpeedTierSettings.responsesServiceTier(
+            stored: SpeedTierSettings.storedTier(), modelId: model.id) {
+            body["service_tier"] = tier
+        }
+        // [T-ultrafast-unsupported-log] Say so when Ultrafast was chosen but is
+        // not what this model / account supports.
+        if let note = SpeedTierSettings.ultrafastUnsupportedNote(
+            stored: SpeedTierSettings.storedTier(), modelId: model.id) {
+            logger.info("[SpeedTier] \(note)")
+        }
+        // [T-xai-priority-processing] xAI Priority Processing, agent Responses
+        // path. Reads the same global Fast Mode toggle as the block above; the
+        // two are mutually exclusive in practice (that one requires a gpt-family
+        // model id, this one an xAI host) and would write the identical value
+        // anyway, so they cannot conflict.
+        if provider.sendsPriorityServiceTier {
             body["service_tier"] = "priority"
         }
+        // [T-codex-speed-tier] What was asked for, logged next to the tier the
+        // response echoes in response.completed.
+        let requestedServiceTier = body["service_tier"] as? String
 
         let (lineStream, _) = try await provider.streamRaw(body: body, isResponsesAPI: true)
 
@@ -489,8 +744,27 @@ final class OpenAIAgentProvider: AgentProvider {
             let task = Task {
                 var emittedTextStart = false
                 var hasToolCalls = false
-                // Track current function call items: [item_id: (call_id, name, accumulatedJSON)]
-                var functionCallAccum: [String: (callId: String, name: String, json: String)] = [:]
+                // [T-ios-responses-empty-args] Function calls being assembled
+                // from their stream events; see ResponsesFunctionCallAssembler.
+                var functionCalls = ResponsesFunctionCallAssembler()
+                func logFunctionCallNotes() {
+                    for note in functionCalls.takeNotes() { logger.warning("[RespArgs] \(note)") }
+                }
+                func yieldFunctionCall(_ call: ResponsesFunctionCallAssembler.Completed, source: String) {
+                    let combinedId = Self.combineResponsesAPIIds(callId: call.callId, fcId: call.itemId)
+                    if !call.announced {
+                        emittedTextStart = false
+                        hasToolCalls = true
+                        continuation.yield(.contentBlockStart(.toolUse(id: combinedId, name: call.name)))
+                    }
+                    let args = Self.parseJsonToDict(call.json)
+                    if args.isEmpty {
+                        Self.diagEmptyToolArgs(rawJson: call.json, toolName: call.name, toolId: combinedId, model: self.model.id, source: source)
+                    }
+                    continuation.yield(.toolCallComplete(
+                        id: combinedId, name: call.name, args: args, metadata: nil
+                    ))
+                }
 
                 // Per-item streamed summary text. Keyed by reasoning item id.
                 // OpenAI Responses API can emit multiple reasoning items in a
@@ -547,13 +821,20 @@ final class OpenAIAgentProvider: AgentProvider {
                             }
 
                         case "response.function_call_arguments.delta":
-                            if let itemId = event["item_id"] as? String,
-                               let delta = event["delta"] as? String,
-                               var entry = functionCallAccum[itemId] {
-                                entry.json += delta
-                                functionCallAccum[itemId] = entry
-                                continuation.yield(.toolInputDelta(name: entry.name, accumulated: entry.json))
+                            if let delta = event["delta"] as? String,
+                               let progress = functionCalls.delta(
+                                itemId: event["item_id"] as? String,
+                                outputIndex: event["output_index"] as? Int, delta: delta) {
+                                continuation.yield(.toolInputDelta(name: progress.name, accumulated: progress.accumulated))
                             }
+                            logFunctionCallNotes()
+
+                        case "response.function_call_arguments.done":
+                            functionCalls.argumentsDone(
+                                itemId: event["item_id"] as? String,
+                                outputIndex: event["output_index"] as? Int,
+                                arguments: event["arguments"] as? String)
+                            logFunctionCallNotes()
 
                         case "response.output_item.done":
                             if let item = event["item"] as? [String: Any],
@@ -569,8 +850,8 @@ final class OpenAIAgentProvider: AgentProvider {
                                 // ReasoningEcho at response.completed and
                                 // round-tripped to the same model on next
                                 // turn — UI hiding is decoupled from chain-
-                                // of-thought continuity. Matches Hermes Agent
-                                // (NousResearch) and Codex CLI behavior.
+                                // of-thought continuity. Matches Codex CLI
+                                // behavior.
                                 let itemId = item["id"] as? String ?? ""
                                 if currentReasoningItemId == itemId {
                                     currentReasoningItemId = nil
@@ -578,17 +859,13 @@ final class OpenAIAgentProvider: AgentProvider {
                             } else if let item = event["item"] as? [String: Any],
                                let itemType = item["type"] as? String,
                                itemType == "function_call",
-                               let itemId = item["id"] as? String,
-                               let entry = functionCallAccum[itemId] {
-                                let combinedId = Self.combineResponsesAPIIds(callId: entry.callId, fcId: itemId)
-                                let args = Self.parseJsonToDict(entry.json)
-                                if args.isEmpty {
-                                    Self.diagEmptyToolArgs(rawJson: entry.json, toolName: entry.name, toolId: combinedId, model: self.model.id, source: "responsesAPI.outputItemDone")
+                               let itemId = item["id"] as? String {
+                                if let call = functionCalls.itemDone(
+                                    itemId: itemId, callId: item["call_id"] as? String,
+                                    name: item["name"] as? String, arguments: item["arguments"] as? String) {
+                                    yieldFunctionCall(call, source: "responsesAPI.outputItemDone")
                                 }
-                                continuation.yield(.toolCallComplete(
-                                    id: combinedId, name: entry.name, args: args, metadata: nil
-                                ))
-                                functionCallAccum.removeValue(forKey: itemId)
+                                logFunctionCallNotes()
                             }
 
                         case "response.output_item.added":
@@ -613,7 +890,8 @@ final class OpenAIAgentProvider: AgentProvider {
                                 emittedTextStart = false
                                 hasToolCalls = true
                                 let combinedId = Self.combineResponsesAPIIds(callId: callId, fcId: itemId)
-                                functionCallAccum[itemId] = (callId: callId, name: name, json: "")
+                                functionCalls.added(itemId: itemId, callId: callId, name: name,
+                                                    outputIndex: event["output_index"] as? Int)
                                 continuation.yield(.contentBlockStart(.toolUse(id: combinedId, name: name)))
                             }
 
@@ -652,8 +930,18 @@ final class OpenAIAgentProvider: AgentProvider {
                                        ? " — output hit max_output_tokens; raise the model's Max Output Tokens or shorten the request."
                                        : ""))
 
+                        case "response.created":
+                            // [T-agent-model-identity] The served model, named by
+                            // the API as soon as the response object exists.
+                            if let m = (event["response"] as? [String: Any])?["model"] as? String, !m.isEmpty {
+                                continuation.yield(.responseModel(m))
+                            }
+
                         case "response.completed":
                             let response = event["response"] as? [String: Any]
+                            if let m = response?["model"] as? String, !m.isEmpty {
+                                continuation.yield(.responseModel(m))
+                            }
                             let apiStatus = response?["status"] as? String
                             let apiStopReason = response?["stop_reason"] as? String
                                 ?? (response?["incomplete_details"] as? [String: Any])?["reason"] as? String
@@ -672,6 +960,12 @@ final class OpenAIAgentProvider: AgentProvider {
                             // account/model isn't eligible.
                             let effectiveTier = response?["service_tier"] as? String
                             logger.info("response.completed — status: \(apiStatus ?? "nil"), stop_reason: \(apiStopReason ?? "nil"), service_tier: \(effectiveTier ?? "nil"), hasToolCalls: \(hasToolCalls), reasoningItems: \(reasoningItems.count), reasoningTokens: \(reasoningTokens)")
+                            // [T-codex-ultrafast-echo] Logged side by side, with
+                            // no verdict: under ChatGPT auth the echoed tier is
+                            // not a reliable record of what ran (see SpeedTier).
+                            if let requestedServiceTier {
+                                logger.info("[SpeedTier] requested service_tier=\(requestedServiceTier); server echoed service_tier=\(effectiveTier ?? "nil") (not verifiable for ChatGPT auth)")
+                            }
 
                             // Aggregate per-item streamed summary text into a
                             // single `reasoningContent` field on the assistant
@@ -699,8 +993,10 @@ final class OpenAIAgentProvider: AgentProvider {
 
                             // Capture native reasoning items (id + encrypted_content
                             // + summary[]) for in-memory multi-turn replay. These
-                            // are echoed back to the SAME model id only — cross-
-                            // model switches strip them in convertMessagesResponsesAPI.
+                            // are echoed back to the SAME upstream only — a hop to a
+                            // different relay degrades to an id-only item in
+                            // convertMessagesResponsesAPI rather than replaying a
+                            // blob that endpoint cannot decrypt.
                             // See ReasoningEcho for the isolation contract.
                             if !reasoningItems.isEmpty {
                                 let captured: [ReasoningEcho.Item] = reasoningItems.compactMap { item in
@@ -709,15 +1005,33 @@ final class OpenAIAgentProvider: AgentProvider {
                                     let summary: [String] = ((item["summary"] as? [[String: Any]]) ?? []).compactMap { part in
                                         part["text"] as? String
                                     }
-                                    // Drop items with neither encrypted content nor any
-                                    // summary text — nothing useful to echo or display.
-                                    if encrypted == nil && summary.isEmpty { return nil }
+                                    // [T-responses-keep-id-only-echo] An item with
+                                    // neither encrypted content nor summary text used
+                                    // to be dropped here as "nothing useful to echo".
+                                    // That was backwards: what it carries is the
+                                    // server-minted `id`, and a real id is the ONLY
+                                    // thing that may legally appear as `reasoning.id`
+                                    // in a later request. Dropping it emptied the echo,
+                                    // which sent the turn down the placeholder path —
+                                    // the path that used to fabricate an id and 404.
+                                    //
+                                    // Measured on the live endpoint (store:false):
+                                    // replaying a real id with no `encrypted_content`
+                                    // returns 200, so keeping these is safe as well as
+                                    // useful. Reasoning summaries are off by default,
+                                    // and relays commonly strip `encrypted_content`,
+                                    // so this is a frequent shape, not a rare one.
                                     return .openaiReasoning(id: id, encryptedContent: encrypted, summary: summary)
                                 }
                                 if !captured.isEmpty {
                                     let echo = ReasoningEcho(
                                         providerKind: Self.responsesAPIProviderKind,
                                         modelId: self.model.id,
+                                        // [T-responses-reasoning-inherit issue #368]
+                                        // Stamp the minting upstream so a fallback
+                                        // hop between two entries on the SAME relay
+                                        // can still replay this.
+                                        upstreamIdentity: self.reasoningUpstreamIdentity,
                                         items: captured
                                     )
                                     continuation.yield(.reasoningEcho(echo))
@@ -727,14 +1041,42 @@ final class OpenAIAgentProvider: AgentProvider {
                             if let usage {
                                 let inputDetails = usage["input_tokens_details"] as? [String: Any]
                                 let cacheRead = inputDetails?["cached_tokens"] as? Int
+                                // `input_tokens` is the FULL input and ALREADY INCLUDES the
+                                // cached portion, so subtract it to keep `inputTokens`
+                                // fresh-only — the convention every other consumer assumes
+                                // (UsageStatsView's hit rate divides by
+                                // input + cacheRead + cacheCreate, and latestContextTokens
+                                // sums the same way). This parser used to pass `input_tokens`
+                                // through raw, double-counting the cached tokens: measured on
+                                // device at 9817 input / 7680 cached, the UI showed 43.9%
+                                // when the true rate was 78.2%, and latestContextTokens read
+                                // 17497 for a context that was really 9817.
+                                // Matches OpenAIProvider.parseResponsesAPIUsageDict and
+                                // parseChatCompletionsUsage, which both already subtract.
+                                let totalInput = usage["input_tokens"] as? Int ?? 0
+                                let freshInput = (cacheRead.map { totalInput - $0 }).flatMap { $0 >= 0 ? $0 : nil } ?? totalInput
                                 let u = LLMUsage(
-                                    inputTokens: usage["input_tokens"] as? Int ?? 0,
+                                    inputTokens: freshInput,
                                     outputTokens: usage["output_tokens"] as? Int ?? 0,
                                     cacheCreationInputTokens: nil,
                                     cacheReadInputTokens: cacheRead
                                 )
                                 continuation.yield(.usage(u))
                             }
+                            // [T-ios-responses-empty-args] Calls whose
+                            // output_item.done never arrived, completed from
+                            // the response's own output items.
+                            var outputArguments: [String: String] = [:]
+                            for item in outputItems where (item["type"] as? String) == "function_call" {
+                                if let id = item["id"] as? String, let a = item["arguments"] as? String {
+                                    outputArguments[id] = a
+                                }
+                            }
+                            for call in functionCalls.flush(outputArguments: outputArguments) {
+                                yieldFunctionCall(call, source: "responsesAPI.completedFlush")
+                            }
+                            logFunctionCallNotes()
+
                             // Use the API's actual stop reason to decide loop continuation.
                             // Codex models may emit text + function_calls in the same response;
                             // relying on hasToolCalls alone could miss edge cases.
@@ -766,6 +1108,38 @@ final class OpenAIAgentProvider: AgentProvider {
 
     // MARK: - Prompt Cache Key
 
+    /// [T-ios-prompt-cache-key-400] Whether this provider may receive the
+    /// `prompt_cache_key` request field.
+    ///
+    /// ALLOWLIST, not blanket — same shape as `explicitOffEffort`. The field is
+    /// a pure cache-locality hint with no behavioural meaning, so the cost of
+    /// omitting it is a weaker cache hit rate, while the cost of sending it to a
+    /// vendor that doesn't know it can be total request failure: strict-schema
+    /// gateways answer `400 UNKNOWN_FIELD: 未知请求字段：prompt_cache_key`
+    /// (reported against self-hosted deepseek-v4 endpoints) instead of ignoring
+    /// the extra key. That asymmetry is why the default must be "don't send".
+    ///
+    /// Allowed:
+    ///   • official OpenAI base (`customBaseURL == nil`, non-Azure) — the vendor
+    ///     that defines the field; required on GPT-5.6+ for reliable prefix
+    ///     matching.
+    ///   • `forceResponsesAPI` relays — an explicit user opt-in declaring the
+    ///     base speaks the Responses API (sub2api and friends). These need the
+    ///     key because they synthesize no server-side fallback
+    ///     (Wei-Shaw/sub2api#1134), and opting in is the user asserting
+    ///     Responses-API compatibility.
+    ///
+    /// Everyone else — plain custom-base OpenAI-compatible endpoints, Azure —
+    /// gets the field omitted, which is the pre-regression behaviour.
+    ///
+    /// TODO: if a specific non-`forceResponsesAPI` gateway is later confirmed to
+    /// handle the field correctly, add it here by base-URL match rather than
+    /// widening the default.
+    static func shouldSendPromptCacheKey(for provider: OpenAIProvider) -> Bool {
+        if provider.customBaseURL == nil && !provider.isAzure { return true }
+        return provider.forceResponsesAPI
+    }
+
     /// Derives a stable per-conversation `prompt_cache_key` for the Responses API.
     ///
     /// The Responses API hits prompt cache by matching stable prefixes keyed on
@@ -774,20 +1148,52 @@ final class OpenAIAgentProvider: AgentProvider {
     /// is re-sent verbatim on every turn of the same chat and therefore stable
     /// across turns while differing between chats.
     ///
-    /// Falls back to a random UUID when there is no user text yet (first turn
-    /// with an empty placeholder, tool-only input, etc.) — cache miss that turn
-    /// is fine.
+    /// When there is no user text yet (first turn with an empty placeholder,
+    /// tool-only input, etc.) it falls back to hashing the FIRST message's
+    /// structural shape instead. That shape is re-sent verbatim on later turns,
+    /// so the key stays stable for the conversation.
+    ///
+    /// It used to return a fresh `UUID()` in that case, which guaranteed a
+    /// different key on every request of such a conversation and therefore a
+    /// permanent 100% cache miss — the exact failure mode this key exists to
+    /// prevent. A constant is not an option either: distinct conversations must
+    /// not collide onto one key.
     private static func derivePromptCacheKey(from messages: [AgentMessage]) -> String {
         for msg in messages where msg.role == .user {
             for part in msg.parts {
                 if case .text(let t) = part, !t.isEmpty {
-                    let digest = SHA256.hash(data: Data(t.utf8))
-                    let hex = digest.map { String(format: "%02x", $0) }.joined()
-                    return "minis-\(hex.prefix(32))"
+                    return cacheKey(hashing: t)
                 }
             }
         }
-        return "minis-\(UUID().uuidString.lowercased())"
+        // No user text anywhere — derive from the first message's shape so the
+        // key is still deterministic across turns.
+        if let first = messages.first {
+            let shape = first.parts.map { part -> String in
+                switch part {
+                case .text(let t): return "t:\(t.count)"
+                case .toolUse(let id, let name, _, _): return "tu:\(name):\(id)"
+                case .toolResult(let id, let name, _, _, _, _, _, _, _): return "tr:\(name):\(id)"
+                case .imageData(_, let mime, _): return "img:\(mime)"
+                }
+            }.joined(separator: "|")
+            if !shape.isEmpty {
+                return cacheKey(hashing: "\(first.role)|\(shape)")
+            }
+        }
+        // Truly nothing to key on (empty message list). Constant rather than a
+        // random UUID: with no content there is no prefix to collide over, and a
+        // fixed value at least lets consecutive such requests share a cache
+        // entry instead of guaranteeing a miss.
+        return cacheKey(hashing: "minis-empty-conversation")
+    }
+
+    /// `minis-<first 32 hex of SHA256>` — the shared shape for every cache key
+    /// this type derives.
+    private static func cacheKey(hashing input: String) -> String {
+        let digest = SHA256.hash(data: Data(input.utf8))
+        let hex = digest.map { String(format: "%02x", $0) }.joined()
+        return "minis-\(hex.prefix(32))"
     }
 
     // MARK: - Thinking Config
@@ -862,174 +1268,122 @@ final class OpenAIAgentProvider: AgentProvider {
     ///   self-reasoning skip) are bypassed so those models fall through to the
     ///   generic `reasoning_effort` path instead. Only Ark/Azure set this, so
     ///   official direct DeepSeek/GLM/Kimi endpoints keep their native behavior.
-    static func injectThinkingParams(into body: inout [String: Any], model: LLMModel, level: ThinkingLevel, isOpenRouter: Bool = false, maxTokens: Int = 0, offEffort: String? = nil, unifiedReasoningEffort: Bool = false) {
-        let lid = model.id.lowercased()
-        // [T-thinking-off-explicit] Families whose backends validate
-        // reasoning_effort against a STRICT low/medium/high enum and reject
-        // everything else (the same backends the xhigh clamp exists for:
-        // MiMo-2.5/Pro 400s, Agnes 422s). Device test 2026-07-21 (iPhone 11,
-        // api.xiaomimimo.com): `reasoning_effort:"minimal"` killed the whole
-        // request — no reply at all, worse than the vendor-default reasoning
-        // we were trying to avoid. For these, OFF keeps omitting the field.
-        let strictEffortEnum = lid.contains("mimo") || lid.contains("agnes")
-        let offEffort = strictEffortEnum ? nil : offEffort
-
-        // OpenRouter: unified `reasoning` parameter — auto-adapts to backend provider.
-        // When thinking is off, omit the parameter entirely so forced-reasoning models
-        // (DeepSeek R1, Kimi K2.5, etc.) use their default behavior instead of rejecting
-        // `effort: "none"` with "Reasoning is mandatory for this endpoint".
-        if isOpenRouter {
-            guard level.isEnabled else { return }
-            let effort: String = switch level {
-            case .off: "low" // unreachable due to guard above
-            case .low: "low"
-            case .medium: "medium"
-            case .high: "high"
-            case .xhigh: "xhigh"
-            // [T-ios-ultra-effort-clamp] Ultra → "max" on the wire (see
-            // reasoningEffort(for:level:)); "ultra" is a client-side orchestration
-            // concept, never a valid server effort string.
-            case .max, .ultra: "max"
-            }
-            body["reasoning"] = ["effort": effort]
-            return
-        }
-
-        // OpenAI native o-series and GPT-5.x: reasoning_effort
-        if lid.hasPrefix("o1") || lid.hasPrefix("o3") || lid.hasPrefix("o4")
-            || lid.hasPrefix("gpt-5") || lid.hasPrefix("gpt-4") {
-            if let effort = reasoningEffort(for: model, level: level) {
-                body["reasoning_effort"] = effort
-            } else if !level.isEnabled, let offEffort, model.supportsReasoning ?? false {
-                // [T-thinking-off-explicit] OFF must be SENT, not omitted:
-                // with the field missing, each vendor applies its own default
-                // tier (OpenAI "none", Volcano Ark "minimal", others higher) —
-                // user report: toggle off, capture showed no reasoning field
-                // and the server still reasoned. Same supportsReasoning gate
-                // as the enabled path: non-reasoning models (e.g. gpt-4o)
-                // reject the parameter outright.
-                body["reasoning_effort"] = offEffort
-            }
-            return
-        }
-
-        // Qwen3 models: enable_thinking + thinking_budget
-        // DashScope expects these in extra_body; some endpoints accept top-level.
-        // Send both for maximum compatibility.
-        // When off, explicitly disable — Qwen3 thinks by default.
-        if lid.contains("qwen") {
-            let enabled = level.isEnabled
-            var budget: Int = switch level {
-            case .off: 0
-            case .low: 4096
-            case .medium: 16384
-            case .high: 32768
-            case .xhigh, .max, .ultra: 65536
-            }
-            // [T-ios-qwen3-thinking-budget-max-tokens-constraint] (issue #35, #641)
-            // DashScope/Bailian enforces a STRICT `thinking_budget <
-            // max_completion_tokens` and 400s otherwise — equal values are
-            // rejected too ("[16384] must be greater than [16384]"). Our budget
-            // ladder is independent of maxTokens, so xhigh=65536 vs a 64000 max,
-            // or medium=16384 vs a 16384 max, both violate it. Clamp strictly
-            // below max_completion_tokens (== maxTokens) with a margin for the
-            // answer after thinking. The margin and ceiling are computed
-            // relative to maxTokens (which varies per qwen model — 64000,
-            // 16384, …), never a hardcoded threshold, and the ceiling is forced
-            // to at least maxTokens-1 so a tiny maxTokens can't leave the budget
-            // >= max. maxTokens<=0 means "not provided" (e.g. the title-gen
-            // reference) — skip the clamp then.
-            if budget > 0 && maxTokens > 0 {
-                if maxTokens < 2 {
-                    // No room for any positive budget strictly below max — drop
-                    // thinking_budget entirely rather than emit an invalid value.
-                    budget = 0
-                } else {
-                    let margin = max(2048, maxTokens / 8)
-                    // Stay strictly below max; never let the ceiling collapse to
-                    // <=0 when maxTokens is small — fall back to maxTokens-1.
-                    let ceiling = max(1, min(maxTokens - margin, maxTokens - 1))
-                    if budget >= ceiling {
-                        budget = ceiling
-                    }
-                }
-            }
-            body["enable_thinking"] = enabled
-            if budget > 0 { body["thinking_budget"] = budget }
-            body["extra_body"] = [
-                "enable_thinking": enabled,
-                "thinking_budget": budget > 0 ? budget : NSNull(),
-            ] as [String: Any]
-            return
-        }
-
-        // DeepSeek V4 (deepseek-v4-flash / deepseek-v4-pro):
-        // Thinking is ON by default on V4 and must be toggled explicitly via the
-        // `thinking` object — distinct from deepseek-reasoner, which always reasons
-        // with no user-facing toggle. deepseek-chat (V3) and deepseek-reasoner keep
-        // the forced-reasoning path below so existing behavior is preserved.
-        // [T-unified-reasoning-effort] On Volcengine Ark / Azure, deepseek-v4 is
-        // controlled by the platform's uniform `reasoning_effort` field, NOT the
-        // vendor-native `thinking:{}` object — sending the latter leaves thinking
-        // uncontrolled (user report #7). Skip this branch there and fall through
-        // to the generic reasoning_effort path below.
-        if lid.contains("deepseek-v4") && !unifiedReasoningEffort {
-            if level.isEnabled {
-                let effort: String = switch level {
-                case .off, .low, .medium: "high"
-                case .high, .xhigh, .max, .ultra: "max"
-                }
-                body["thinking"] = ["type": "enabled", "reasoning_effort": effort]
-            } else {
-                body["thinking"] = ["type": "disabled"]
-            }
-            return
-        }
-
-        // DeepSeek (pre-V4), GLM, Kimi, MiniMax, etc.:
-        // These models always return reasoning_content when they reason.
-        // No additional params needed — the model ID itself determines thinking.
-        // We just let the response parsing handle reasoning_content / <think> tags.
+    /// Inject the provider-specific thinking parameters for one request.
+    ///
+    /// [T-thinking-rules-phase1] The body of this function used to be a six-branch
+    /// if-return chain keyed on model-id substrings. That logic now lives in
+    /// `ThinkingRuleResolver` as a data-driven rule registry (see design §4/§5); this
+    /// remains as the call-site-compatible entry point so every caller — and the golden
+    /// snapshot that pins this exact signature — is unchanged.
+    ///
+    /// Behaviour is byte-for-byte identical to the pre-refactor chain, enforced by
+    /// ThinkingWireGoldenSnapshotTests (105 rows generated against the old code and
+    /// committed before the refactor, fdc28e2b).
+    ///
+    /// PHASE 1 SCOPE: OpenAI-compatible endpoints only. Gemini and Anthropic keep their
+    /// own emitters and are not routed through the resolver yet.
+    static func injectThinkingParams(into body: inout [String: Any], model: LLMModel, level: ThinkingLevel, isOpenRouter: Bool = false, maxTokens: Int = 0, offEffort: String? = nil, unifiedReasoningEffort: Bool = false, isMistral: Bool = false, isXAI: Bool = false, isDashScope: Bool = false, isCerebras: Bool = false, providerInstanceId: String? = nil) {
+        // [T-thinking-rules-phase2] Load this instance's user-authored rules. Absent an
+        // instance id (title-gen references, tests) or with no rules stored, this is []
+        // and resolution is byte-for-byte the Phase 1 behaviour.
+        let userRules = providerInstanceId.map { ThinkingRuleCache.shared.rules(for: $0) } ?? []
+        let ctx = ThinkingResolveContext(
+            modelId: model.id,
+            supportsReasoning: model.supportsReasoning,
+            declaredEffortValues: model.reasoningEffortValues,
+            declaresNoEffortTiers: model.declaresNoEffortTiers ?? false,
+            effortDeclarationIsAuthoritative: model.effortDeclarationIsAuthoritative ?? false,
+            isXAI: isXAI,
+            level: level,
+            maxTokens: maxTokens,
+            isOpenRouter: isOpenRouter,
+            usesUnifiedReasoningEffort: unifiedReasoningEffort,
+            isMistral: isMistral,
+            isDashScope: isDashScope,
+            isCerebras: isCerebras,
+            offEffort: offEffort,
+            userRules: userRules
+        )
+        // [T-thinking-vision-diag] The INPUTS the decision turned on, logged before the
+        // decision itself. Every one of these was reconstructed by hand at least once
+        // during the thinking-off 400 investigation — `authoritative` in particular is
+        // invisible from the request body, from the model id, and from the endpoint URL,
+        // so without it a log reader cannot tell a vendor's own declaration from a guess
+        // about somebody else's relay.
         //
-        // [T-unified-reasoning-effort] EXCEPTION: on Volcengine Ark / Azure these
-        // families are re-hosted behind a uniform OpenAI surface that controls
-        // thinking ONLY via `reasoning_effort` (min tier `minimal`) — omitting it
-        // there means the gateway applies its own default and the user's level
-        // (including OFF) is ignored (user reports #6/#8/#9). Fall through to the
-        // generic reasoning_effort path in that case; keep the native skip for
-        // direct vendor endpoints.
-        if !unifiedReasoningEffort,
-           ["deepseek", "glm", "kimi", "minimax"].contains(where: { lid.contains($0) }) {
-            return
-        }
+        // Debug-level: this is one extra line per request and, unlike the `[resolve]`
+        // line below, it is only of interest once something already looks wrong.
+        // Metadata only — no prompt, no key, no image.
+        thinkingLogger.debug(
+            "[resolve.in] model=\(model.id) level=\(level.rawValue)"
+            + " supportsReasoning=\(model.supportsReasoning.map(String.init(describing:)) ?? "nil")"
+            + " declaredTiers=\(model.reasoningEffortValues.map { "[\($0.joined(separator: ","))]" } ?? "nil")"
+            + " authoritative=\(model.effortDeclarationIsAuthoritative.map(String.init(describing:)) ?? "nil")"
+            + " noEffortTiers=\(model.declaresNoEffortTiers.map(String.init(describing:)) ?? "nil")"
+            + " offEffort=\(offEffort ?? "nil")"
+            + " endpoint=[openrouter=\(isOpenRouter) unified=\(unifiedReasoningEffort)"
+            + " mistral=\(isMistral) xai=\(isXAI) dashscope=\(isDashScope)]"
+            + " userRules=\(userRules.count)"
+        )
+        let trace = ThinkingRuleResolver.apply(to: &body, ctx: ctx)
+        // [T-thinking-rules-observability] Design §8 / OpenMinis#100: which rule actually
+        // won must be inspectable, or a rule layer just replaces one hidden variable with
+        // a more complicated one. minis-config exposure is Phase 2.
+        //
+        // [T-thinking-vision-diag] `trace.logLine` now also carries `gates=[…]` whenever a
+        // gate intervened, so this single INFO line answers both "which rule won" and
+        // "did anything override it, on what evidence" — the two questions the original
+        // "Provider error: 400" report could not answer at all.
+        thinkingLogger.info("[resolve] model=\(model.id) level=\(level.rawValue) \(trace.logLine)")
+    }
 
-        // [T-reasoning-effort-fallback] Generic fallback for OpenAI-compatible
-        // third-party reasoning models whose IDs match none of the branches
-        // above (e.g. Volcano/Ark "seed" models): inject the standard Chat
-        // Completions `reasoning_effort` field. Tri-state supportsReasoning:
-        // only a hard `false` blocks injection — nil (unknown) lets the user
-        // enable thinking in the UI, so the request must honor that here too.
-        guard model.supportsReasoning != false else { return }
-        if !level.isEnabled {
-            // [T-thinking-off-explicit] Same as the OpenAI-native branch: send
-            // the provider's off tier instead of omitting the field, so the
-            // vendor default (Ark "minimal", etc.) can't silently re-enable
-            // thinking. nil offEffort keeps the historical omit.
-            if let offEffort { body["reasoning_effort"] = offEffort }
-            return
-        }
-        let effort: String = switch level {
-        case .off: "low" // unreachable — level.isEnabled guarded above
-        case .low: "low"
+    /// [T-thinking-levels-data-driven] The wire effort string for a UI level,
+    /// before any per-model clamp. Single source for the mapping that was
+    /// previously re-spelled in each branch.
+    ///
+    /// `.off` maps to "low" so callers can use this unconditionally — every
+    /// caller guards on `level.isEnabled` first, and the OFF wire value is
+    /// chosen separately by `explicitOffEffort`.
+    /// [T-ios-ultra-effort-clamp] `.ultra` is a client-side orchestration
+    /// concept; on the wire it tops out at "max".
+    static func wireEffort(for level: ThinkingLevel) -> String {
+        switch level {
+        case .off, .low: "low"
         case .medium: "medium"
         case .high: "high"
         case .xhigh: "xhigh"
-        // [T-ios-ultra-effort-clamp] Ultra → "max" on the wire (see
-        // reasoningEffort(for:level:)); "ultra" is a client-side orchestration
-        // concept, never a valid server effort string.
         case .max, .ultra: "max"
         }
-        body["reasoning_effort"] = effort
+    }
+
+    /// [T-reasoning-effort-data-driven] Snap an effort string onto the tiers the
+    /// model actually declares.
+    ///
+    /// Necessary because the catalog's effort sets are far from uniform —
+    /// `["low","medium","high"]`, `["high","max"]`, `["high","xhigh"]`,
+    /// `["none","high","max"]` all occur. Sending an undeclared tier is the same
+    /// class of failure the MiMo/Agnes xhigh clamp already exists for ("Invalid
+    /// reasoning_effort: xhigh" 400s), so honoring the declaration is what makes
+    /// enabling these families safe.
+    ///
+    /// Nearest-tier semantics: walk down to the closest declared tier at or below
+    /// the request, and only if none exists walk up to the lowest declared one.
+    /// Downgrading is preferred because overshooting costs the user money and
+    /// latency they did not ask for. `values == nil` (no declaration) passes the
+    /// string through untouched, preserving the pre-existing behavior.
+    static func clampEffort(_ effort: String, to values: [String]?) -> String {
+        guard let values, !values.isEmpty else { return effort }
+        if values.contains(effort) { return effort }
+        // Canonical weakest → strongest ladder. Anything the catalog lists that
+        // isn't on this ladder (unknown future tier) is ignored for ordering
+        // purposes but still honored by the exact-match check above.
+        let ladder = ["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+        guard let want = ladder.firstIndex(of: effort) else { return effort }
+        let declared = values.compactMap { v in ladder.firstIndex(of: v).map { ($0, v) } }
+            .sorted { $0.0 < $1.0 }
+        guard !declared.isEmpty else { return effort }
+        if let below = declared.last(where: { $0.0 <= want }) { return below.1 }
+        return declared[0].1
     }
 
     // MARK: - DashScope Cache Control
@@ -1085,7 +1439,7 @@ final class OpenAIAgentProvider: AgentProvider {
 
             // Check if this is a tool_result message
             let toolResults = msg.parts.compactMap { part -> (String, String, Bool)? in
-                if case .toolResult(let id, _, let content, let isError, _, _, _, _) = part {
+                if case .toolResult(let id, _, let content, let isError, _, _, _, _, _) = part {
                     return (id, content, isError)
                 }
                 return nil
@@ -1110,7 +1464,7 @@ final class OpenAIAgentProvider: AgentProvider {
 
             // Check for tool_use parts (assistant message with function calls)
             let toolUses = msg.parts.compactMap { part -> (String, String, [String: Any])? in
-                if case .toolUse(let id, let name, let input) = part { return (id, name, input) }
+                if case .toolUse(let id, let name, let input, _) = part { return (id, name, input) }
                 return nil
             }
 
@@ -1142,15 +1496,25 @@ final class OpenAIAgentProvider: AgentProvider {
                     switch part {
                     case .text(let text):
                         contentParts.append(["type": "text", "text": text])
-                    case .imageData(let data, let mimeType, _):
+                    case .imageData(let data, let mimeType, let linuxPath):
                         if supportsImages {
                             let base64 = data.base64EncodedString()
                             contentParts.append([
                                 "type": "image_url",
                                 "image_url": ["url": "data:\(mimeType);base64,\(base64)"],
                             ])
+                            // [T-ios-image-path-metadata] Where the visible
+                            // image lives, so file-level follow-ups are
+                            // possible. The note says it is the SAME image
+                            // shown above, not another one.
+                            if let note = VisionGroupResolver.visionImagePathNote(linuxPath: linuxPath) {
+                                contentParts.append(["type": "text", "text": note])
+                            }
                         } else {
-                            contentParts.append(["type": "text", "text": "[Image attached but this model does not support vision input]"])
+                            // [T-ios-vision-group-t264 #182] Points the model at
+                            // read_image (with the real path) when a Vision Group
+                            // is configured; unchanged wording otherwise.
+                            contentParts.append(["type": "text", "text": VisionGroupResolver.attachmentPlaceholder(linuxPath: linuxPath)])
                         }
                     default:
                         break
@@ -1192,6 +1556,23 @@ final class OpenAIAgentProvider: AgentProvider {
         let modelAlwaysReasons = model.supportsReasoning == true
         let modelMayReason     = model.supportsReasoning ?? true
         let includeReasoning   = (thinkingLevel.isEnabled || modelAlwaysReasons) && modelMayReason
+        // [T-ios-mistral-reasoning-422] Mistral message-level validation is
+        // strict (AssistantMessage additionalProperties:false) — the
+        // reasoning_content field may NEVER be sent there, regardless of
+        // thinking level or where the history came from. Same detection the
+        // thinking-param skip already uses (provider.isMistral, base URL
+        // contains mistral.ai).
+        // [T-ios-cerebras-reasoning-400] Cerebras (OpenMinis#361) has the same
+        // closed assistant schema: echoing a captured reasoning_content answers
+        // `400 … property 'messages.N.assistant.reasoning_content' is
+        // unsupported`, so turn 1 works and turn 2 onwards always fails.
+        //
+        // Deliberately gated on the ENDPOINT, not on thinking level or model:
+        // the injection below is intentionally independent of `includeReasoning`
+        // (Mimo V2.5 400s when the field is ABSENT — see the note there), so
+        // this suppression is the only correct lever, and it must stay narrow
+        // enough that Mimo / DeepSeek keep receiving the field.
+        let forbidReasoningField = provider.isMistral || provider.isCerebras
         // Placeholder is a subset of the echo path. Two triggers:
         //  1. forced-reasoning model with thinking enabled (legacy: tool-call turns
         //     where reasoning wasn't captured),
@@ -1216,7 +1597,7 @@ final class OpenAIAgentProvider: AgentProvider {
             // see the original .toolResult(.., imageData) untouched.
             // [T-openai-tool-result-image]
             let toolResults = msg.parts.compactMap { part -> (id: String, name: String, content: String, isError: Bool, imageData: Data?, imageMime: String?)? in
-                if case .toolResult(let id, let name, let content, let isError, let imageData, let imageMime, _, _) = part {
+                if case .toolResult(let id, let name, let content, let isError, let imageData, let imageMime, _, _, _) = part {
                     return (id, name, content, isError, imageData, imageMime)
                 }
                 return nil
@@ -1244,6 +1625,21 @@ final class OpenAIAgentProvider: AgentProvider {
                         ])
                     }
                 }
+                // [T-404-summary-after-tool-results] Text that shares a message
+                // with tool results (the compaction summary after the anchor,
+                // a reminder) used to be dropped here: only role:tool entries
+                // were emitted. Send it as a user message after the replies -
+                // sanitizeToolCallAdjacency still moves every role:tool entry
+                // directly under its tool_calls, so this lands after them.
+                let texts = msg.parts.compactMap { part -> String? in
+                    if case .text(let t) = part, !t.isEmpty { return t }
+                    return nil
+                }
+                if texts.count == 1 {
+                    result.append(["role": "user", "content": texts[0]])
+                } else if !texts.isEmpty {
+                    result.append(["role": "user", "content": texts.map { ["type": "text", "text": $0] }])
+                }
             } else {
                 // Defensive: drop assistant messages that carry no echoable
                 // content (no text, no tool_use). Such rows can land in DB if a
@@ -1262,7 +1658,8 @@ final class OpenAIAgentProvider: AgentProvider {
                 result.append(convertSingleMessageChatCompletions(
                     msg,
                     includeReasoning: includeReasoning,
-                    injectReasoningPlaceholder: placeholderAllowed
+                    injectReasoningPlaceholder: placeholderAllowed,
+                    forbidReasoningField: forbidReasoningField
                 ))
             }
         }
@@ -1438,7 +1835,8 @@ final class OpenAIAgentProvider: AgentProvider {
     private func convertSingleMessageChatCompletions(
         _ msg: AgentMessage,
         includeReasoning: Bool = false,
-        injectReasoningPlaceholder: Bool = false
+        injectReasoningPlaceholder: Bool = false,
+        forbidReasoningField: Bool = false
     ) -> [String: Any] {
         let role = msg.role == .user ? "user" : "assistant"
         var result: [String: Any] = ["role": role]
@@ -1459,7 +1857,17 @@ final class OpenAIAgentProvider: AgentProvider {
         //   - UI default thinkingLevel == .off
         //   - → includeReasoning = false
         //   - → previously the gate dropped the captured rc → 400
-        if msg.role == .assistant {
+        //
+        // [T-ios-mistral-reasoning-422] …and why the OPPOSITE holds for
+        // Mistral (issue OpenMinis#87): Mistral's OpenAPI declares
+        // AssistantMessage with `additionalProperties: false` (only
+        // role/content/tool_calls/prefix) — `reasoning_content` is
+        // categorically forbidden and 422s the whole request the moment a
+        // history turn carries one (e.g. after switching a conversation
+        // from a reasoning model to a Mistral model). Their native
+        // reasoning representation is content ThinkChunks, not this field,
+        // so `forbidReasoningField` suppresses BOTH echo paths entirely.
+        if msg.role == .assistant, !forbidReasoningField {
             if let rc = msg.reasoningContent {
                 // The Responses-API encrypted-reasoning summary ("Reasoning: N
                 // tokens (encrypted)") is a UI-only string that has no value as
@@ -1491,7 +1899,7 @@ final class OpenAIAgentProvider: AgentProvider {
         }
 
         let toolUses = msg.parts.compactMap { part -> (String, String, [String: Any])? in
-            if case .toolUse(let id, let name, let input) = part { return (id, name, input) }
+            if case .toolUse(let id, let name, let input, _) = part { return (id, name, input) }
             return nil
         }
 
@@ -1520,15 +1928,24 @@ final class OpenAIAgentProvider: AgentProvider {
                 switch part {
                 case .text(let text):
                     contentParts.append(["type": "text", "text": text])
-                case .imageData(let data, let mimeType, _):
+                case .imageData(let data, let mimeType, let linuxPath):
                     if supportsImages {
                         let base64 = data.base64EncodedString()
                         contentParts.append([
                             "type": "image_url",
                             "image_url": ["url": "data:\(mimeType);base64,\(base64)"],
                         ])
+                        // [T-ios-image-path-metadata] Where the visible
+                        // image lives, so file-level follow-ups are
+                        // possible. The note says it is the SAME image
+                        // shown above, not another one.
+                        if let note = VisionGroupResolver.visionImagePathNote(linuxPath: linuxPath) {
+                            contentParts.append(["type": "text", "text": note])
+                        }
                     } else {
-                        contentParts.append(["type": "text", "text": "[Image attached but this model does not support vision input]"])
+                        // [T-ios-vision-group-t264 #182] See the sibling site in
+                        // convertMessagesChatCompletions.
+                        contentParts.append(["type": "text", "text": VisionGroupResolver.attachmentPlaceholder(linuxPath: linuxPath)])
                     }
                 default:
                     break
@@ -1546,9 +1963,45 @@ final class OpenAIAgentProvider: AgentProvider {
 
     // MARK: - Responses API Message Conversion
 
-    private func convertMessagesResponsesAPI(_ messages: [AgentMessage]) -> [[String: Any]] {
+    // Internal rather than private ONLY so ToolResultImageWireTests can pin the
+    // tool-result image contract directly. See [T-openai-tool-result-image].
+    func convertMessagesResponsesAPI(_ messages: [AgentMessage]) -> [[String: Any]] {
         var result: [[String: Any]] = []
+
+        // [T-openai-tool-result-image] Tool-result images are carried by a
+        // synthetic role:"user" input_image item, because function_call_output
+        // items cannot hold pixels. Those carriers must NOT be emitted inline,
+        // immediately after the output they belong to: with PARALLEL tool calls
+        // (three results, an image on the second) that splits the run of
+        // function_call_output items —
+        //   output(call_01), output(call_02), user(input_image), output(call_03)
+        // — and a strict Responses-compatible relay rejects the split run the
+        // same way DeepSeek rejects it on Chat Completions ("No tool output
+        // found for tool call call_…", Android 030d059cb). Chat Completions only
+        // survives the identical inline emission because
+        // `sanitizeToolCallAdjacency` runs afterwards and pulls every tool reply
+        // back next to its tool_calls; the Responses path has no such pass.
+        //
+        // So carriers are BUFFERED while a run of function_call_output items is
+        // being emitted and flushed once the run closes — at the first non-output
+        // item, at the end of the message, and at the end of the conversion.
+        // Buffer order is emission order, so two images among three results
+        // still arrive in tool-result order. With a single tool result (or none)
+        // the flush happens immediately after the one output, i.e. the wire bytes
+        // are unchanged from the inline form.
+        var pendingImageCarriers: [[String: Any]] = []
+        func flushImageCarriers() {
+            guard !pendingImageCarriers.isEmpty else { return }
+            result.append(contentsOf: pendingImageCarriers)
+            pendingImageCarriers.removeAll()
+        }
+
         for msg in messages {
+            /// [T-responses-reasoning-inherit issue #368] Whether this assistant
+            /// turn already put a reasoning item on the wire. Drives the
+            /// placeholder below, which only fires for a turn that carries tool
+            /// calls and has nothing to replay.
+            var emittedReasoningForTurn = false
             // Replay native reasoning items at the head of this assistant turn.
             // Order matters: Responses API rejects reasoning items that appear
             // after function_call items belonging to the same turn. Cross-model
@@ -1556,8 +2009,25 @@ final class OpenAIAgentProvider: AgentProvider {
             // model-specific and meaningless (often 400-inducing) elsewhere.
             if msg.role == .assistant,
                let echo = msg.reasoningEcho,
-               echo.providerKind == Self.responsesAPIProviderKind,
-               echo.modelId == self.model.id {
+               echo.providerKind == Self.responsesAPIProviderKind {
+                // [T-responses-reasoning-inherit issue #368] Replay the blob only
+                // to the upstream that minted it; otherwise keep the item but drop
+                // the payload. Dropping the whole HEAD was the bug: the turn's
+                // `function_call` items are emitted regardless, and a validating
+                // relay answers
+                //   400 The `reasoning_text` in the thinking mode must be passed
+                //       back to the API.
+                // when it sees a function_call with no reasoning ahead of it.
+                //
+                // `upstreamIdentity == nil` is history from before this field
+                // existed: fall back to the old model-id test so behaviour is
+                // unchanged for it rather than newly permissive.
+                let sameUpstream: Bool = {
+                    if let recorded = echo.upstreamIdentity {
+                        return recorded == self.reasoningUpstreamIdentity
+                    }
+                    return echo.modelId == self.model.id
+                }()
                 for item in echo.items {
                     if case .openaiReasoning(let id, let encrypted, let summary) = item {
                         // `summary` is a required field on input reasoning items
@@ -1570,20 +2040,70 @@ final class OpenAIAgentProvider: AgentProvider {
                             "id": id,
                             "summary": summary.map { ["type": "summary_text", "text": $0] },
                         ]
-                        if let encrypted, !encrypted.isEmpty {
+                        if sameUpstream, let encrypted, !encrypted.isEmpty {
                             entry["encrypted_content"] = encrypted
                         }
+                        flushImageCarriers()
                         result.append(entry)
+                        emittedReasoningForTurn = true
                     }
                 }
+            }
+
+            // [T-responses-reasoning-fallback issue #368,
+            //  T-responses-no-synthetic-item-id] Placeholder head for a
+            // tool-calling assistant turn we have no reasoning for at all.
+            //
+            // The echo does not always survive (see ReasoningEcho): a turn can
+            // reach here with `reasoningEcho == nil` while its `function_call`
+            // items survive, and a relay that validates passback answers
+            //   400 The `reasoning_text` in the thinking mode must be passed
+            //       back to the API.
+            // to a `function_call` with no reasoning ahead of it.
+            //
+            // CRITICAL — this item carries NO `id`. It used to synthesize one
+            // (`rs_syn_<call_id>`), which made every request from an affected
+            // session fail with
+            //   404 Item with id 'rs_syn_…' not found. Items are not persisted
+            //       when `store` is set to false.
+            // because `rs_…` is not a local label: it is a SERVER-OWNED resource
+            // key, and we send `store: false`, so an id the server never minted
+            // can only be a dangling reference. (`function_call.id` tolerates the
+            // same trick — `fc_syn_` below — only because it is a per-request
+            // label whose real pairing key is `call_id`.)
+            //
+            // Measured against the live endpoint (gpt-5.6-sol, store:false),
+            // replaying this exact history shape:
+            //   • synthetic `rs_syn_…` id      → 404   (the reported failure)
+            //   • well-formed but foreign id   → 404   (so no id is "safe")
+            //   • NO id, `summary: []`         → 200   ← what we send
+            //   • no reasoning item at all     → 200
+            // An id-less item asserts "here is reasoning submitted with this
+            // request", not "look up this stored item", which is exactly true
+            // and is what keeps both the strict relay and the official endpoint
+            // happy without either side having to be identified.
+            //
+            // `summary` stays required even with no id (omitting it measured
+            // 400 Missing required parameter: 'input[N].summary'), and
+            // `encrypted_content` is still never fabricated — there is nothing
+            // to decrypt and a made-up blob is what a strict endpoint rejects.
+            if msg.role == .assistant, !emittedReasoningForTurn,
+               msg.parts.contains(where: { if case .toolUse = $0 { return true }; return false }) {
+                flushImageCarriers()
+                result.append([
+                    "type": "reasoning",
+                    "summary": [] as [[String: Any]],
+                ])
+                logger.info("emitted id-less reasoning head for tool turn (no echo available)")
             }
             for part in msg.parts {
                 switch part {
                 case .text(let text):
                     let role = msg.role == .user ? "user" : "assistant"
+                    flushImageCarriers()
                     result.append(["role": role, "content": text])
 
-                case .toolUse(let id, let name, let input):
+                case .toolUse(let id, let name, let input, _):
                     let argsStr = (try? JSONSerialization.data(withJSONObject: input)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
                     let (callId, fcId) = Self.splitResponsesAPIIds(id)
                     let safeCallId = Self.capResponsesId(callId)
@@ -1613,9 +2133,10 @@ final class OpenAIAgentProvider: AgentProvider {
                         }
                         entry["id"] = "fc_syn_\(safeCallId.suffix(24))"
                     }
+                    flushImageCarriers()
                     result.append(entry)
 
-                case .toolResult(let id, _, let content, _, let imageData, let imageMime, _, _):
+                case .toolResult(let id, _, let content, _, let imageData, let imageMime, _, _, _):
                     let (callId, _) = Self.splitResponsesAPIIds(id)
                     result.append([
                         "type": "function_call_output",
@@ -1628,11 +2149,16 @@ final class OpenAIAgentProvider: AgentProvider {
                     // role:"user" item with input_image. Gated on vision
                     // support so we don't poison text-only o-mini variants.
                     // [T-openai-tool-result-image]
+                    //
+                    // BUFFERED rather than appended here: see
+                    // `pendingImageCarriers` at the top of this function —
+                    // emitting it inline would split the function_call_output run
+                    // whenever several tool calls ran in parallel.
                     if let data = imageData,
                        model.capabilities.supportedModalities.contains(.imageInput) {
                         let mime = imageMime ?? "image/jpeg"
                         let base64 = data.base64EncodedString()
-                        result.append([
+                        pendingImageCarriers.append([
                             "role": "user",
                             "content": [
                                 ["type": "input_image", "image_url": "data:\(mime);base64,\(base64)"],
@@ -1640,20 +2166,166 @@ final class OpenAIAgentProvider: AgentProvider {
                         ])
                     }
 
-                case .imageData(let data, let mimeType, _):
+                case .imageData(let data, let mimeType, let linuxPath):
+                    flushImageCarriers()
                     if model.capabilities.supportedModalities.contains(.imageInput) {
                         let base64 = data.base64EncodedString()
+                        // [T-ios-image-path-metadata] Pixels plus the path they
+                        // came from, in ONE item so the note cannot be read as a
+                        // separate image. Responses uses input_text/input_image
+                        // rather than text/image_url.
+                        var content: [[String: Any]] = [
+                            ["type": "input_image", "image_url": "data:\(mimeType);base64,\(base64)"],
+                        ]
+                        if let note = VisionGroupResolver.visionImagePathNote(linuxPath: linuxPath) {
+                            content.append(["type": "input_text", "text": note])
+                        }
                         result.append([
                             "role": msg.role == .user ? "user" : "assistant",
-                            "content": [
-                                ["type": "input_image", "image_url": "data:\(mimeType);base64,\(base64)"],
-                            ],
+                            "content": content,
                         ])
                     }
                 }
             }
+            // The run closes at the message boundary too: a tool-result message
+            // whose LAST part carried the image has nothing following it inside
+            // the loop, and the next message starts a new turn.
+            flushImageCarriers()
         }
-        return result
+        // Belt and braces — a trailing tool-result message is the common case, so
+        // its carriers are flushed by the loop above; this covers any future
+        // early-exit path that skips it.
+        flushImageCarriers()
+        return Self.sanitizeResponsesToolPairing(result, logger: logger)
+    }
+
+    /// [T-responses-orphan-tool-output] Last gate before a Responses request
+    /// goes out: every `function_call_output` must have a `function_call` with
+    /// the same `call_id` EARLIER in the array, and vice versa.
+    ///
+    /// Field report (2026-09): the upstream answered
+    ///     No tool call found for function call output with call_id call_… .
+    ///     (invalid_request_error)
+    /// and, because the request array is rebuilt deterministically, it repeated
+    /// on every retry and every fallback model until the session was cleared.
+    ///
+    /// Chat Completions has had `sanitizeToolCallAdjacency` for exactly this
+    /// since forever; the Responses builder had NO pairing pass at all — a gap
+    /// this file's own comment noted ("the Responses path has no such pass")
+    /// without closing it. `function_call_output` was emitted unconditionally,
+    /// so every upstream mechanism that can strand a tool result reached the
+    /// wire unchecked.
+    ///
+    /// `AIChatViewModel.dropOrphanedToolParts` repairs the history one layer up
+    /// and catches most of this, but it cannot be the only defence:
+    ///
+    ///   * it compares `AgentMessage` ids, while the wire ids are those ids
+    ///     split on "|" and capped — a different equality (now aligned, see
+    ///     [T-responses-tool-id-normalize], but the layers can drift again);
+    ///   * several orphan sources bypass it entirely — `ChatStore.pruneOldMessages`
+    ///     deletes rows with no pairing awareness, and iCloud merges message
+    ///     records one at a time, so an assistant row can be skipped while its
+    ///     tool-result sibling lands.
+    ///
+    /// Repair mirrors the Chat Completions pass:
+    ///   * orphaned `function_call_output` → DROP. Its call is gone and nothing
+    ///     can reconstruct it.
+    ///   * orphaned `function_call` → synthesize an error output rather than
+    ///     deleting the call, which would silently discard the assistant's own
+    ///     turn. The trailing run is EXEMPT: a request ending on a
+    ///     `function_call` is exactly what the API expects mid-round, and
+    ///     fabricating a failure there would tell the model a tool it is about
+    ///     to run has already failed.
+    ///
+    /// Ordering is preserved. This deliberately does NOT re-splice items the
+    /// way the Chat Completions pass does: the Responses builder already emits
+    /// reasoning → function_call → function_call_output in the required order,
+    /// and the buffered image carriers ([T-openai-tool-result-image]) depend on
+    /// the output run staying contiguous. Moving items here would break that
+    /// invariant to fix a problem this path does not have.
+    static func sanitizeResponsesToolPairing(_ items: [[String: Any]],
+                                             logger: AppLogger) -> [[String: Any]] {
+        func callId(_ item: [String: Any], _ type: String) -> String? {
+            guard (item["type"] as? String) == type else { return nil }
+            return item["call_id"] as? String
+        }
+
+        var callIds: Set<String> = []
+        var answeredIds: Set<String> = []
+        // [T-responses-dedupe-tool-output] A call_id answered more than once
+        // (a duplicate tool-result row left by a retry / resume / sync merge)
+        // is sent with every copy, which the API can reject as a whole. Keep
+        // the FIRST output, like the Chat Completions sanitizer does.
+        var duplicateOutputs = 0
+        for item in items {
+            if let id = callId(item, "function_call") { callIds.insert(id) }
+            if let id = callId(item, "function_call_output") {
+                if !answeredIds.insert(id).inserted { duplicateOutputs += 1 }
+            }
+        }
+
+        // Trailing calls are legitimately unanswered — the loop is between
+        // "model asked" and "results appended". Walk back over the final run of
+        // function_call items (plus the reasoning head that precedes them) and
+        // exempt those ids.
+        var trailingCallIds: Set<String> = []
+        for item in items.reversed() {
+            let type = item["type"] as? String
+            if type == "function_call" {
+                if let id = item["call_id"] as? String { trailingCallIds.insert(id) }
+                continue
+            }
+            if type == "reasoning" { continue }
+            break
+        }
+
+        let orphanedOutputs = answeredIds.subtracting(callIds)
+        let unansweredCalls = callIds.subtracting(answeredIds).subtracting(trailingCallIds)
+        guard !orphanedOutputs.isEmpty || !unansweredCalls.isEmpty || duplicateOutputs > 0 else { return items }
+
+        logger.warning("[sanitize-responses] orphan tool items in OUTGOING request — repairing. duplicateOutputs=\(duplicateOutputs) orphanedOutputs=\(orphanedOutputs.count) [\(orphanedOutputs.sorted().prefix(3).joined(separator: ","))] unansweredCalls=\(unansweredCalls.count) [\(unansweredCalls.sorted().prefix(3).joined(separator: ","))] itemCount=\(items.count)")
+
+        var out: [[String: Any]] = []
+        out.reserveCapacity(items.count)
+        // Placeholders are emitted once the RUN of function_call items closes,
+        // never inline after the individual call. With parallel tool calls the
+        // API expects
+        //     function_call ×N, function_call_output ×N
+        // and splitting that with an output in the middle is the same wire
+        // defect [T-openai-tool-result-image] buffers image carriers to avoid.
+        var pendingPlaceholders: [[String: Any]] = []
+        func flushPlaceholders() {
+            guard !pendingPlaceholders.isEmpty else { return }
+            out.append(contentsOf: pendingPlaceholders)
+            pendingPlaceholders.removeAll()
+        }
+
+        var emittedOutputIds: Set<String> = []
+        for item in items {
+            if let id = callId(item, "function_call_output"), orphanedOutputs.contains(id) {
+                continue
+            }
+            if let id = callId(item, "function_call_output"), !emittedOutputIds.insert(id).inserted {
+                logger.warning("[sanitize-responses] dropping duplicate function_call_output call_id=\(id)")
+                continue
+            }
+            // A real output for this turn closes the call run just as well as a
+            // placeholder does, so the placeholders must land BEFORE it to keep
+            // every output for the turn in one contiguous block.
+            if (item["type"] as? String) != "function_call" { flushPlaceholders() }
+            out.append(item)
+            if let id = callId(item, "function_call"), unansweredCalls.contains(id) {
+                let name = (item["name"] as? String) ?? "unknown"
+                logger.warning("[sanitize-responses] injecting placeholder output for orphan function_call id=\(id) name=\(name)")
+                pendingPlaceholders.append([
+                    "type": "function_call_output",
+                    "call_id": id,
+                    "output": "Tool execution result is unavailable (history was truncated or interrupted).",
+                ])
+            }
+        }
+        flushPlaceholders()
+        return out
     }
 
     // MARK: - Tool Conversion
@@ -1662,6 +2334,13 @@ final class OpenAIAgentProvider: AgentProvider {
         tools.map { tool in
             var properties: [String: [String: Any]] = [:]
             for (name, param) in tool.parameters {
+                // [T-user-ask] A structured param renders its nested schema.
+                if let schema = param.schema {
+                    var prop = schema.jsonSchema()
+                    prop["description"] = param.description
+                    properties[name] = prop
+                    continue
+                }
                 var prop: [String: Any] = [
                     "type": param.type.rawValue,
                     "description": param.description,
@@ -1691,6 +2370,13 @@ final class OpenAIAgentProvider: AgentProvider {
         tools.map { tool in
             var properties: [String: [String: Any]] = [:]
             for (name, param) in tool.parameters {
+                // [T-user-ask] A structured param renders its nested schema.
+                if let schema = param.schema {
+                    var prop = schema.jsonSchema()
+                    prop["description"] = param.description
+                    properties[name] = prop
+                    continue
+                }
                 var prop: [String: Any] = [
                     "type": param.type.rawValue,
                     "description": param.description,
@@ -1936,3 +2622,152 @@ final class OpenAIAgentProvider: AgentProvider {
         id.count <= maxResponsesAPIIdLength ? id : String(id.prefix(maxResponsesAPIIdLength))
     }
 }
+
+// MARK: - Responses API function-call assembly
+
+// BEGIN ResponsesFunctionCallAssembler
+/// [T-ios-responses-empty-args] Builds each Responses API `function_call`
+/// from its stream events.
+///
+/// The stream used to take a call's arguments ONLY from the
+/// `function_call_arguments.delta` events keyed by `item_id`. An upstream that
+/// never streams deltas (some relays and compatible endpoints send the full
+/// arguments only on `output_item.done`), or whose deltas name a different
+/// `item_id`, left the buffer empty, and the call went out as `{}` — which the
+/// tool preflight then blocks with `chunkCount=0`.
+///
+/// Arguments are now picked, first non-empty wins:
+///   1. `arguments` on the `output_item.done` item (authoritative full value),
+///   2. `arguments` on `function_call_arguments.done`,
+///   3. the concatenated deltas.
+/// Each item completes at most once; calls still open at `response.completed`
+/// are flushed from the response's `output` array. Pure value type (Foundation
+/// only) so a standalone test compiles this exact block.
+struct ResponsesFunctionCallAssembler {
+    struct Completed: Equatable {
+        let itemId: String
+        let callId: String
+        let name: String
+        let json: String
+        /// "item", "argumentsDone" or "deltas" — where `json` came from.
+        let source: String
+        /// False when no `output_item.added` announced this call, so the caller
+        /// still owes the UI its block start.
+        let announced: Bool
+    }
+
+    private struct Pending {
+        let callId: String
+        let name: String
+        let announced: Bool
+        var deltas = ""
+        var argumentsDone: String?
+    }
+
+    private var pending: [String: Pending] = [:]
+    private var order: [String] = []
+    private var itemIdByOutputIndex: [Int: String] = [:]
+    private var completedIds: Set<String> = []
+    private var rerouteNoted: Set<String> = []
+    private var notes: [String] = []
+
+    /// Diagnostics gathered since the last call, for the caller to log.
+    mutating func takeNotes() -> [String] {
+        defer { notes.removeAll() }
+        return notes
+    }
+
+    mutating func added(itemId: String, callId: String, name: String, outputIndex: Int?) {
+        guard pending[itemId] == nil, !completedIds.contains(itemId) else { return }
+        pending[itemId] = Pending(callId: callId, name: name, announced: true)
+        order.append(itemId)
+        if let outputIndex { itemIdByOutputIndex[outputIndex] = itemId }
+    }
+
+    /// The open call an event refers to: its own `item_id`, else the call at
+    /// its `output_index`, else the only open call.
+    private func resolve(itemId: String?, outputIndex: Int?) -> String? {
+        if let itemId, pending[itemId] != nil { return itemId }
+        if let outputIndex, let id = itemIdByOutputIndex[outputIndex], pending[id] != nil { return id }
+        if pending.count == 1 { return pending.keys.first }
+        return nil
+    }
+
+    /// Returns the call's name and arguments so far (for `.toolInputDelta`),
+    /// or nil when the delta matches no open call.
+    mutating func delta(itemId: String?, outputIndex: Int?, delta: String) -> (name: String, accumulated: String)? {
+        guard let id = resolve(itemId: itemId, outputIndex: outputIndex), var entry = pending[id] else {
+            notes.append("arguments delta for unknown item_id=\(itemId ?? "nil") output_index=\(outputIndex.map(String.init) ?? "nil") dropped (\(delta.utf8.count) bytes)")
+            return nil
+        }
+        if id != itemId, rerouteNoted.insert(itemId ?? "nil").inserted {
+            notes.append("arguments delta item_id=\(itemId ?? "nil") matches no call; routed to \(id)")
+        }
+        entry.deltas += delta
+        pending[id] = entry
+        return (entry.name, entry.deltas)
+    }
+
+    mutating func argumentsDone(itemId: String?, outputIndex: Int?, arguments: String?) {
+        guard let arguments else { return }
+        guard let id = resolve(itemId: itemId, outputIndex: outputIndex) else {
+            if let itemId, completedIds.contains(itemId) { return }
+            notes.append("function_call_arguments.done for unknown item_id=\(itemId ?? "nil") ignored (\(arguments.utf8.count) bytes)")
+            return
+        }
+        pending[id]?.argumentsDone = arguments
+    }
+
+    /// `output_item.done` for a function_call. `callId` / `name` from the item
+    /// let a call whose `output_item.added` never arrived still be delivered.
+    mutating func itemDone(itemId: String, callId: String?, name: String?, arguments: String?) -> Completed? {
+        guard !completedIds.contains(itemId) else {
+            notes.append("duplicate output_item.done for \(itemId) ignored")
+            return nil
+        }
+        var entry = pending.removeValue(forKey: itemId)
+        if entry == nil {
+            guard let callId, !callId.isEmpty, let name, !name.isEmpty else {
+                notes.append("output_item.done for unannounced item \(itemId) without call_id/name dropped")
+                return nil
+            }
+            notes.append("output_item.done for unannounced item \(itemId); delivering it anyway")
+            entry = Pending(callId: callId, name: name, announced: false)
+        }
+        order.removeAll { $0 == itemId }
+        completedIds.insert(itemId)
+        return finish(itemId: itemId, entry!, itemArguments: arguments)
+    }
+
+    /// `response.completed`: deliver calls whose `output_item.done` never came,
+    /// in announcement order. `outputArguments` maps item id → `arguments` from
+    /// the response's `output` array.
+    mutating func flush(outputArguments: [String: String]) -> [Completed] {
+        let ids = order
+        order.removeAll()
+        return ids.compactMap { id in
+            guard let entry = pending.removeValue(forKey: id) else { return nil }
+            completedIds.insert(id)
+            notes.append("call \(id) had no output_item.done; completed at response.completed")
+            return finish(itemId: id, entry, itemArguments: outputArguments[id])
+        }
+    }
+
+    private mutating func finish(itemId: String, _ entry: Pending, itemArguments: String?) -> Completed {
+        func nonEmpty(_ s: String?) -> String? {
+            guard let s, !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return s
+        }
+        let json: String, source: String
+        if let a = nonEmpty(itemArguments) { (json, source) = (a, "item") }
+        else if let a = nonEmpty(entry.argumentsDone) { (json, source) = (a, "argumentsDone") }
+        else { (json, source) = (entry.deltas, "deltas") }
+        // Only worth a line when the deltas alone would have produced a different call.
+        if source != "deltas", json != entry.deltas {
+            notes.append("call \(itemId) name=\(entry.name) arguments from \(source) (\(json.utf8.count) bytes); streamed deltas had \(entry.deltas.utf8.count) bytes")
+        }
+        return Completed(itemId: itemId, callId: entry.callId, name: entry.name, json: json,
+                         source: source, announced: entry.announced)
+    }
+}
+// END ResponsesFunctionCallAssembler

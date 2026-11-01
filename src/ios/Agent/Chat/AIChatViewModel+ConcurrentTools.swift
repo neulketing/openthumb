@@ -16,13 +16,69 @@ import UIKit
 
 private let ctLogger = AppLogger(category: "AIChatVM")
 
+// MARK: - [T-tool-title-reminder] Gentle one-time nudge for a missing tool_title
+
+/// Some models skip the `tool_title` argument even though the schema marks it
+/// required. The tool still runs, but its card can only show the raw command
+/// (e.g. a long `ssh user@… 'cd ~/src/…'` line), which reads poorly.
+///
+/// The model gets a short, soft `<system-reminder>` appended to the result of
+/// a titled tool that came back without a title — not every time: on the 1st,
+/// 11th, 21st… such call. The counting and throttling live in
+/// `ToolLoopDetector.recordToolTitle` (the loop detector's lock, warning
+/// buckets and reset lifecycle); this type only holds the text and the
+/// display-side helpers.
+///
+/// Only the model-facing copy carries it. The live tool card shows the tool's
+/// own output, and the reload paths strip it with `stripForDisplay`, so the
+/// user never sees the note.
+enum ToolTitleReminder {
+    /// Unique tag inside the reminder, so detection and stripping never touch
+    /// any other `<system-reminder>` (cancel notices, offload stubs, …).
+    static let marker = "[minis:tool-title-reminder]"
+
+    static let text = "<system-reminder>\(marker) This is a soft reminder. This tool call has no `tool_title`; please include a short one next time.</system-reminder>"
+
+    /// True when the call has no usable title: absent, not a string, or blank.
+    static func isMissingTitle(_ args: [String: Any]) -> Bool {
+        guard let title = args["tool_title"] as? String else { return true }
+        return title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Only tools whose schema asks for a title (built-in tools); MCP and other
+    /// tools without the parameter are never "missing" one.
+    static func declaresTitle(_ parameterNames: some Sequence<String>) -> Bool {
+        parameterNames.contains("tool_title")
+    }
+
+    /// Append the note to a tool result's content, after the real output.
+    static func appending(to content: String) -> String {
+        content.isEmpty ? text : content + "\n\n" + text
+    }
+
+    private static let displayRe = try! NSRegularExpression(
+        pattern: "\\n*<system-reminder>\\[minis:tool-title-reminder\\][\\s\\S]*?</system-reminder>"
+    )
+
+    /// The tool output as the user should see it: this note removed, nothing
+    /// else touched (other reminders, e.g. a cancel notice, stay).
+    static func stripForDisplay(_ text: String) -> String {
+        guard text.contains(marker) else { return text }
+        let ns = text as NSString
+        return displayRe.stringByReplacingMatches(
+            in: text, range: NSRange(location: 0, length: ns.length), withTemplate: "")
+    }
+}
+// END ToolTitleReminder
+
 extension AIChatViewModel {
 
     /// Hard cap on simultaneous in-flight tool executions per agent turn.
     /// 10 is the requested ceiling; iSH itself can fan out further but
     /// concurrent shell forks on the emulator past this start to compete
-    /// for emulator scheduling.
-    static let maxConcurrentTools = 10
+    /// for emulator scheduling. Defined with the other caps in
+    /// `ConcurrencyLimits` ([T-limits-per-parent]).
+    static var maxConcurrentTools: Int { ConcurrencyLimits.toolsPerTurn }
 
     /// Set-typed view of currently-running shell PIDs.
     ///
@@ -88,6 +144,34 @@ extension AIChatViewModel {
         batchBudget: BatchImageBudget
     ) async -> ToolExecOutcome {
         let blockIdx = tu.blockIdx
+
+        // [T-perf-cpu-probe] Every tool call in the app funnels through this
+        // function, so one pair of samples here covers them all — no per-tool
+        // instrumentation to keep in sync as tools are added.
+        //
+        // `defer` rather than a call before each `return`: this function exits
+        // from many places (early cancel checks, per-tool error paths, two
+        // catch blocks), and a missed exit would silently drop the "after"
+        // sample for exactly the failure cases most worth measuring.
+        // [T-perf-cpu-probe] Identify WHICH conversation issued the call, not
+        // just which tool ran. A sub agent reports its job id (and its agent
+        // name, since several agents can share a tool and the name is what a
+        // reader recognises); the main conversation reports its session id.
+        // Without this, a `browser_use` line under concurrent sub agents says
+        // the tool is expensive but not which agent is spending it.
+        let perfJobId: String = {
+            if let cfg = helperConfig {
+                let name = cfg.subAgentName.isEmpty ? "builtin" : cfg.subAgentName
+                return "\(name)#\(cfg.jobId.prefix(8))"
+            }
+            return "main:\(sessionId?.prefix(8) ?? "none")"
+        }()
+        let perfStarted = PerfProbe.toolBefore(tool: tu.name, job: perfJobId)
+        defer { PerfProbe.toolAfter(tool: tu.name, job: perfJobId, started: perfStarted) }
+        // [T-crash-breadcrumbs] Tool name only - never its arguments.
+        let crumbTool = String(tu.name.prefix(40))
+        CrashBreadcrumbs.record("tool.start", detail: crumbTool)
+        defer { CrashBreadcrumbs.record("tool.end", detail: crumbTool) }
 
         // Graceful cancel pre-check: any task that begins after the user
         // tapped Stop short-circuits with a synthetic cancellation result
@@ -162,6 +246,10 @@ extension AIChatViewModel {
             }
             return false
         }()
+        // [T-truncated-args-visibility #119] Tracks whether THIS call's
+        // arguments arrived truncated and were glued shut by the repair pass.
+        // Non-nil ⇒ the args are not what the model actually emitted.
+        var truncationRepairTag: String? = nil
         if needsRepair {
             let rawJoined = tu.inputChunkRing.joined()
             let repairOutcome = Self.repairToolArgs(
@@ -172,6 +260,133 @@ extension AIChatViewModel {
                     "[ToolRepair] REPAIRED tool=\(tu.name) id=\(tu.id) strategies=[\(repairOutcome.repairs.joined(separator: ", "))] beforeKeys=[\(tu.args.keys.sorted().joined(separator: ","))] afterKeys=[\(repairOutcome.args.keys.sorted().joined(separator: ","))] rawJoined=<<<\(rawJoined.prefix(500))>>>"
                 )
                 toolArgs = repairOutcome.args
+                // Only the truncation strategy means "the value itself was cut
+                // short". Type-coercion and fuzzy-name repairs fix the SHAPE of
+                // a fully-received argument and are not a data-loss signal.
+                truncationRepairTag = repairOutcome.repairs.first { $0.hasPrefix("truncation+") }
+            }
+        }
+
+        // [T-truncated-args-visibility #119] Refuse to execute a WRITE whose
+        // argument stream was truncated.
+        //
+        // The repair pass closes an unterminated JSON string by appending `"}`,
+        // which for file_write is indistinguishable from the model having ended
+        // `content` right there: the JSON parses, every required field is
+        // present, preflight passes, and a HALF file lands on disk while both
+        // the UI and the model's tool result report plain success. The user
+        // finds a truncated file later; the model, seeing "success", keeps
+        // building on it.
+        //
+        // For writes a partial artifact is strictly worse than none — it is
+        // silent corruption of the user's data, and unlike a blocked call it
+        // cannot be recovered by simply retrying. Read-only and shell tools
+        // keep the existing repair-and-run behaviour: there the repaired call
+        // is at worst a wasted round-trip, and refusing them would regress
+        // recoveries that work today.
+        if let tag = truncationRepairTag,
+           tu.name == "file_write" || tu.name == "file_edit" {
+            let path = (toolArgs["path"] as? String) ?? (toolArgs["file_path"] as? String) ?? ""
+            AppLogger(category: "ToolPreflight").warning(
+                "[ToolRepair] REFUSED truncated write tool=\(tu.name) id=\(tu.id) strategy=\(tag) path=\(path)"
+            )
+            let uiMessage = AppLocalized("Blocked: arguments were truncated in transit")
+            let modelMessage = """
+            Error: This call was NOT executed. Its argument stream was truncated in transit \
+            (repair strategy: \(tag)), so the `content` your client sent was cut short and would \
+            have written an incomplete file\(path.isEmpty ? "" : " to \(path)"). Nothing was \
+            written to disk — the target file is unchanged.
+
+            The most likely cause is the response hitting its output-token limit mid-argument. \
+            Re-issue this write in smaller pieces: write the first part, then append the rest \
+            with follow-up calls, rather than repeating the same oversized call.
+            """
+            if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                messages[msgIdx].blocks[blockIdx].content = uiMessage
+                messages[msgIdx].blocks[blockIdx].toolStatus = .failed(message: uiMessage)
+            }
+            toolLoopDetector.record(
+                toolName: tu.name, params: tu.args,
+                result: nil, errorMessage: modelMessage, toolCallId: tu.id
+            )
+            let refusedSnap = ToolSnapshot(type: .text, text: modelMessage, mediaRef: nil, duration: nil)
+            let item = ToolSnapshotItem(
+                id: tu.id, toolName: tu.name, snapshot: refusedSnap,
+                mediaResolver: await ChatStore.shared.mediaFileURLResolver()
+            )
+            return ToolExecOutcome(
+                toolId: tu.id, toolName: tu.name,
+                resultPart: .toolResult(id: tu.id, name: tu.name, content: modelMessage, isError: true),
+                snapshotEntry: (toolName: tu.name, snapshot: refusedSnap),
+                snapshotItem: item,
+                cancelled: false
+            )
+        }
+
+        // [T-offload-placeholder-write-guard issue #374] Refuse to execute a
+        // WRITE whose payload IS an offload placeholder.
+        //
+        // offloadContextIfNeeded rewrites a historical file_write's `content`
+        // argument in `agentHistory` to the "[CONTEXT OFFLOADED] … saved to: …"
+        // stub, to reclaim the tokens. That rewritten tool_use is what the model
+        // sees from then on — so a call re-issued from it (a retry, a resumed
+        // pending call, the model copying its own earlier call) carries the
+        // ~130-char stub where the real file body used to be. Nothing in the
+        // write path could tell the difference: the args are complete and
+        // well-formed, so the stub landed on disk over the user's real file and
+        // was reported as a plain success with a byte count matching the stub.
+        //
+        // Same reasoning as the truncated-write refusal above: for a write, a
+        // wrong artifact is strictly worse than none, and it silently destroys
+        // data. Refuse, and tell the model what actually happened so it re-reads
+        // the offloaded file instead of repeating the call verbatim. Reads and
+        // shell calls are untouched — a stub as a *path* is just a miss.
+        if tu.name == "file_write" || tu.name == "file_edit" {
+            // Only the fields whose value BECOMES file bytes: file_write's
+            // `content` and file_edit's replacement text. A stub in
+            // file_edit's `old_string` is merely a search that will not match,
+            // which the edit tool already reports clearly.
+            let payloadKeys = tu.name == "file_write" ? ["content"] : ["new_string"]
+            // Both stub formats, current and legacy — see isOffloadedStub.
+            if let offendingKey = payloadKeys.first(where: {
+                guard let v = toolArgs[$0] as? String else { return false }
+                return Self.isOffloadedStub(v)
+            }) {
+                let path = (toolArgs["path"] as? String) ?? (toolArgs["file_path"] as? String) ?? ""
+                AppLogger(category: "ToolPreflight").warning(
+                    "[ToolRepair] REFUSED offload-placeholder write tool=\(tu.name) id=\(tu.id) field=\(offendingKey) path=\(path)"
+                )
+                let uiMessage = AppLocalized("Blocked: content was offloaded from context")
+                let modelMessage = """
+                Error: This call was NOT executed. Its `\(offendingKey)` is an offload \
+                placeholder, not real content — the original text was moved out of context \
+                to free tokens, and only a reference notice survived in the conversation. \
+                Writing it would have replaced the file\(path.isEmpty ? "" : " at \(path)") \
+                with that notice. Nothing was written to disk — the target file is unchanged.
+
+                Use file_read on the path named inside the placeholder to recover the real \
+                content, then re-issue this write with it. Do not resend the placeholder.
+                """
+                if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                    messages[msgIdx].blocks[blockIdx].content = uiMessage
+                    messages[msgIdx].blocks[blockIdx].toolStatus = .failed(message: uiMessage)
+                }
+                toolLoopDetector.record(
+                    toolName: tu.name, params: tu.args,
+                    result: nil, errorMessage: modelMessage, toolCallId: tu.id
+                )
+                let refusedSnap = ToolSnapshot(type: .text, text: modelMessage, mediaRef: nil, duration: nil)
+                let item = ToolSnapshotItem(
+                    id: tu.id, toolName: tu.name, snapshot: refusedSnap,
+                    mediaResolver: await ChatStore.shared.mediaFileURLResolver()
+                )
+                return ToolExecOutcome(
+                    toolId: tu.id, toolName: tu.name,
+                    resultPart: .toolResult(id: tu.id, name: tu.name, content: modelMessage, isError: true),
+                    snapshotEntry: (toolName: tu.name, snapshot: refusedSnap),
+                    snapshotItem: item,
+                    cancelled: false
+                )
             }
         }
 
@@ -181,12 +396,14 @@ extension AIChatViewModel {
             AppLogger(category: "ToolPreflight").warning(
                 "[ToolPreflight] BLOCKED tool=\(tu.name) id=\(tu.id) reason=\"\(preflightError)\" argsKeys=[\(tu.args.keys.sorted().joined(separator: ","))] chunkCount=\(chunkRing.count) lastChunk=<<<\(chunkRing.last?.prefix(500) ?? "")>>>"
             )
-            let uiMessage = String(localized: "Blocked invalid tool call")
+            let uiMessage = AppLocalized("Blocked invalid tool call")
             let modelMessage = "Error: Tool call rejected before execution. \(preflightError) The arguments your client sent were empty or missing required fields — re-issue the call with all required parameters filled in. Do not retry with the same empty arguments."
             if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
                 messages[msgIdx].blocks[blockIdx].content = uiMessage
                 messages[msgIdx].blocks[blockIdx].toolStatus = .failed(message: uiMessage)
             }
+            // [T-user-ask-notsent-merge] Fold it into a run of not-sent asks.
+            if tu.name == UserAskTool.name { regroupUserAskNotSent(msgIdx: msgIdx) }
             toolLoopDetector.record(
                 toolName: tu.name, params: tu.args,
                 result: nil, errorMessage: modelMessage, toolCallId: tu.id
@@ -290,18 +507,44 @@ extension AIChatViewModel {
                 }
             }
 
+            // [T-aojit-shell-stats] Counters before the command; the [AOJIT]
+            // log line after it reports what this command compiled and how
+            // much of it came from AOT images.
+            let aojitToken = await AOJITShellStats.begin()
             let preSnapshot = snapshotMinisFiles()
             let result: CommandResult
             do {
                 var lineBuffer: [String] = []
                 var lastFlush = Date.distantPast
                 let kMaxStreamingDisplayChars = 30_000
+                // [T-ios-flushlines-mainactor] Hop to the main actor before
+                // touching `messages`.
+                //
+                // This closure runs on ISHShellExecutor's reader queue (it is
+                // `executeCommand`'s per-line callback), but `messages` is
+                // @Published on a @MainActor view model and
+                // `scrollToBottomSignal` drives UI. Writing both from a
+                // background queue is a data race on SwiftUI state — the kind
+                // that corrupts the view graph rather than failing cleanly.
+                //
+                // The buffer drain stays OUTSIDE the hop and remains
+                // synchronous: `lineBuffer` and `lastFlush` belong to the
+                // reader queue, and deferring their reset would let the next
+                // callback re-read lines this flush already claimed. So the
+                // lines are taken here, and only the UI write is hopped.
+                //
+                // The bounds check moves inside the hop with the access it
+                // guards — checking on the reader queue and using the value on
+                // the main actor would be checking a snapshot that could have
+                // changed by the time it is used.
                 let flushLines: () -> Void = { [weak self] in
                     guard let self, !lineBuffer.isEmpty else { return }
                     let joined = lineBuffer.joined(separator: "\n")
                     lineBuffer.removeAll()
                     lastFlush = Date()
-                    if msgIdx < self.messages.count && blockIdx < self.messages[msgIdx].blocks.count {
+                    Task { @MainActor in
+                        guard msgIdx < self.messages.count,
+                              blockIdx < self.messages[msgIdx].blocks.count else { return }
                         let current = self.messages[msgIdx].blocks[blockIdx].content
                         var newContent: String
                         if current.hasSuffix("Executing...") {
@@ -316,6 +559,19 @@ extension AIChatViewModel {
                         self.scrollToBottomSignal.send()
                     }
                 }
+                // [T-tool-exec-breadcrumb] Durable, written BEFORE the command
+                // launches. `[ToolLifecycle] COMPLETED` only lands after a tool
+                // returns, so a process killed mid-execution (watchdog SIGKILL,
+                // Jetsam, SIGABRT) left no record of what was running. This line
+                // is on disk (O_SYNC) before executeCommand is entered, so the
+                // last breadcrumb after a kill names the command that was live.
+                // Command is truncated — enough to identify it, not enough to
+                // bloat the file with a large heredoc.
+                #if DEBUG
+                CrashReporter.writeToolBreadcrumb(
+                    "[ToolExec] STARTING shell_execute id=\(tu.id.prefix(20)) sid=\(sessionId?.prefix(8) ?? "nil") timeout=\(timeout)s command=\"\(command.prefix(500))\""
+                )
+                #endif
                 result = try await executeCommand(command, timeout: timeout) { [weak self] line in
                     guard let self else { return }
                     let (cleanedLine, capturedURLs) = MinisURLMarker.extract(from: line)
@@ -339,6 +595,17 @@ extension AIChatViewModel {
             } catch {
                 result = CommandResult(output: "Error: \(error.localizedDescription)", exitCode: -1)
             }
+            await AOJITShellStats.end(aojitToken, command: command, exitCode: result.exitCode)
+            // [T-tool-exec-breadcrumb] Pair for the STARTING line above. The
+            // existing `[ToolLifecycle] COMPLETED` covers every tool, but it
+            // travels the droppable NSLog pipe; this one shares the STARTING
+            // line's durable file so a STARTING with no matching FINISHED is
+            // unambiguous evidence that the process died inside this command.
+            #if DEBUG
+            CrashReporter.writeToolBreadcrumb(
+                "[ToolExec] FINISHED shell_execute id=\(tu.id.prefix(20)) exit=\(result.exitCode)"
+            )
+            #endif
             if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
                 let existingContent = messages[msgIdx].blocks[blockIdx].content
                 let hasStreamedContent = !existingContent.isEmpty
@@ -458,10 +725,17 @@ extension AIChatViewModel {
             }
 
         case "browser_use":
+            // [T-tools-master-switch] Not in the schema when off; a request
+            // built before the switch flipped can still name it.
+            guard AgentToolSwitch.isToolEnabled(tu.name) else {
+                toolOutput = Self.toolsDisabledMessage
+                toolSuccess = false
+                break
+            }
             var browserResult: BrowserActionResult
             if let input = BrowserActionInput.parse(from: argsJson) {
                 do {
-                    browserResult = try await browserTabPool.execute(action: input)
+                    browserResult = try await browserTabPool.execute(action: input, owner: sessionId)
                 } catch {
                     browserResult = .error(error.localizedDescription)
                 }
@@ -493,19 +767,11 @@ extension AIChatViewModel {
             toolSuccess = browserResult.success
             toolPageURL = browserResult.pageURL
             if let b64 = browserResult.base64Image, let data = Data(base64Encoded: b64) {
-                toolImageData = Self.resizedImageData(data, maxLongEdge: 2000) ?? data
-                toolImageMimeType = "image/jpeg"
+                let inference = Self.browserUseInferenceImage(data)
+                toolImageData = inference.data
+                toolImageMimeType = inference.mimeType
 
-                let timestamp = Int(Date().timeIntervalSince1970)
-                let screenshotFilename = "screenshot_\(timestamp).jpg"
-                let sid = sessionId ?? "unknown"
-                let persistDir = Self.minisBrowserPersistentDir(for: sid)
-                let fm = FileManager.default
-                try? fm.createDirectory(at: persistDir, withIntermediateDirectories: true)
-                let persistPath = persistDir.appendingPathComponent(screenshotFilename)
-                try? data.write(to: persistPath)
-
-                let linuxPath = "\(Self.minisBrowserLinuxDir)/\(screenshotFilename)"
+                let linuxPath = Self.writeBrowserScreenshotCopy(data, sessionId: sessionId)
                 toolImageLinuxPath = linuxPath
 
                 if let minisURL = linuxPathToMinisURL(linuxPath) {
@@ -564,25 +830,13 @@ extension AIChatViewModel {
                let fileData = try? Data(contentsOf: fileURL),
                let uiImage = UIImage(data: fileData) {
                 let originalSize = fileData.count
-                let originalW = uiImage.cgImage.map { $0.width } ?? Int(uiImage.size.width)
-                let originalH = uiImage.cgImage.map { $0.height } ?? Int(uiImage.size.height)
+                let inference = Self.readImageInference(fileData: fileData, image: uiImage)
+                let originalW = inference.originalW
+                let originalH = inference.originalH
+                let inferenceData = inference.data
+                let resizedW = inference.resizedW
+                let resizedH = inference.resizedH
 
-                let inferenceData: Data
-                let resizedW: Int
-                let resizedH: Int
-                if let resized = Self.resizedImageData(fileData, maxLongEdge: 2000),
-                   let resizedImage = UIImage(data: resized) {
-                    inferenceData = resized
-                    resizedW = resizedImage.cgImage.map { $0.width } ?? Int(resizedImage.size.width)
-                    resizedH = resizedImage.cgImage.map { $0.height } ?? Int(resizedImage.size.height)
-                } else {
-                    inferenceData = uiImage.jpegData(compressionQuality: 0.85) ?? fileData
-                    resizedW = originalW
-                    resizedH = originalH
-                }
-
-                toolImageData = inferenceData
-                toolImageMimeType = "image/jpeg"
                 if pathArg.hasPrefix("/var/minis/") {
                     toolImageLinuxPath = pathArg
                 } else if pathArg.hasPrefix("minis://") {
@@ -598,18 +852,119 @@ extension AIChatViewModel {
                 if resizedW != originalW || resizedH != originalH {
                     meta += "\nResized for analysis: \(resizedW)x\(resizedH)"
                 }
-                meta += "\nMIME: image/jpeg"
-                toolOutput = meta
-                toolSuccess = true
+                meta += "\nMIME: \(inference.mimeType)"
 
+                // [T-ios-vision-group #182] Two ways to answer this call.
+                //
+                // Native-vision models keep the original behaviour exactly:
+                // attach the pixels and let the model look at them.
+                //
+                // A model WITHOUT native vision only reaches this line because a
+                // Vision Group is configured (that's the tool-exposure gate), so
+                // hand the bytes to that group and return its DESCRIPTION as
+                // text. Crucially we then leave `toolImageData` nil: attaching
+                // pixels a text-only model can't decode is what the providers
+                // silently drop today, and on the OpenAI Chat Completions path
+                // they'd be dropped without even a placeholder.
+                // [T-ios-vision-group-t264 #182] Optional caller-supplied question
+                // about the image. Only load-bearing on the vision-group branch —
+                // there it steers the describing model, which is the host model's
+                // only way to follow up on a detail it cannot look at itself.
+                let visionPrompt = (toolArgs["prompt"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // [T-ios-vision-branch-mismatch #182] MUST be the same source the
+                // registration used — see `activeModelHasNativeVision`. Reading
+                // `selectedModel` here (while the request is built from
+                // resolveCurrentEntry) is what made a text-only model fall into
+                // the native pixel branch and get metadata instead of a
+                // description.
+                let nativeVision = self.activeModelHasNativeVision
+                if nativeVision {
+                    toolImageData = inferenceData
+                    toolImageMimeType = inference.mimeType
+                    // Native models see the pixels, so the prompt isn't needed to
+                    // direct anything — but echo it so the transcript shows what
+                    // the model was looking for. Image data is untouched.
+                    if let p = visionPrompt, !p.isEmpty {
+                        toolOutput = meta + "\nRequested focus: \(p)"
+                    } else {
+                        toolOutput = meta
+                    }
+                    toolSuccess = true
+                } else {
+                    do {
+                        // [T-ios-vision-group-attribution #182] Name the model
+                        // that is currently reading, live. Previously the card
+                        // just said "Reading image <path>…" for however many
+                        // seconds the call took, so the user could not tell
+                        // which member of the group was working — nor see a
+                        // fallback happen. `onAttempt` fires before each
+                        // candidate, so a switch is visible as it occurs.
+                        let groupLabel = VisionGroupResolver.groupName()
+                        let pathForUI = pathArg
+                        let outcome = try await VisionGroupResolver.describe(
+                            imageData: inferenceData,
+                            mimeType: "image/jpeg",
+                            customPrompt: visionPrompt,
+                            seed: abs(tu.id.hashValue),
+                            onAttempt: { [weak self] attempt in
+                                guard let self,
+                                      msgIdx < self.messages.count,
+                                      blockIdx < self.messages[msgIdx].blocks.count else { return }
+                                let via = groupLabel.map { " (\($0))" } ?? ""
+                                let retry = attempt.index > 1
+                                    ? " — attempt \(attempt.index)/\(attempt.total)" : ""
+                                self.messages[msgIdx].blocks[blockIdx].content =
+                                    "Reading image \(pathForUI) via \(attempt.modelName)\(via)\(retry)…"
+                            }
+                        )
+                        let framed = VisionGroupResolver.framedDescription(
+                            outcome,
+                            groupName: groupLabel,
+                            question: visionPrompt
+                        )
+                        toolOutput = meta + "\n\n" + framed
+                        toolSuccess = true
+                        ctLogger.info("[read_image] vision-group described image (\(outcome.description.count) chars) via \(outcome.modelName), priorFailures=\(outcome.priorFailures.count)")
+                    } catch {
+                        // Deliberately a SUCCESSFUL result carrying failure text:
+                        // an errored tool result tends to make models retry in a
+                        // loop, whereas this lets the model tell the user plainly.
+                        let reason = (error as? VisionGroupResolver.VisionError)?.errorDescription
+                            ?? error.localizedDescription
+                        toolOutput = meta + "\n\n" + VisionGroupResolver.failureText(reason)
+                        toolSuccess = true
+                        ctLogger.error("[read_image] vision-group describe FAILED: \(reason)")
+                    }
+                }
+
+                // The on-screen tool block shows the image itself in BOTH
+                // branches — the user can always see what was read, regardless
+                // of what the model received.
                 if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
                     messages[msgIdx].blocks[blockIdx].imageFilePath = fileURL.path
-                    messages[msgIdx].blocks[blockIdx].content = meta
+                    messages[msgIdx].blocks[blockIdx].content = toolOutput
                 }
             } else {
                 ctLogger.error("[read_image] FAILED pathArg=\(pathArg) resolvedURL=\(resolvedURL?.path ?? "nil")")
-                toolOutput = "Error: Could not read image at '\(pathArg)'. Verify the path exists and is a valid image file."
+                // [T-readimage-fail-visible] Say WHICH failure it was. The
+                // single "Could not read image … Verify the path exists"
+                // text sent models off guessing (caches, delays) when the
+                // file simply did not exist yet.
+                let fileSize: Int? = resolvedURL.flatMap {
+                    (try? FileManager.default.attributesOfItem(atPath: $0.path)[.size]) as? Int
+                }
+                toolOutput = Self.readImageFailureText(pathArg: pathArg,
+                                                      resolved: resolvedURL != nil,
+                                                      fileSize: fileSize)
                 toolSuccess = false
+                // The live card and the detail sheet render the block's
+                // `content`, which still held the "Reading image <path>…"
+                // progress line - so a failure showed no reason at all.
+                if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                    messages[msgIdx].blocks[blockIdx].content = toolOutput
+                }
             }
 
         case "memory_write":
@@ -627,6 +982,72 @@ extension AIChatViewModel {
             }
             toolOutput = memResult.output
             toolSuccess = memResult.success
+
+        case UserAskTool.name:
+            // [T-user-ask] Waits for the user: card in the chat, a notification
+            // with answer actions when backgrounded, wall-clock timeout. A run
+            // that does not expose the tool (sub agent, Shortcut, job) gets a
+            // plain refusal if the model names it anyway.
+            guard userAskExposed else {
+                toolOutput = "Error: user_ask is not available in this run."
+                toolSuccess = false
+                if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                    messages[msgIdx].blocks[blockIdx].content = toolOutput
+                }
+                break
+            }
+            userAskAskedThisRun = true  // [T-user-ask-fallback]
+            let askResult = await executeUserAsk(args: toolArgs, toolUseId: tu.id, msgIdx: msgIdx, blockIdx: blockIdx)
+            toolOutput = askResult.output
+            toolSuccess = askResult.success
+
+        case SubAgentDefinition.toolName:
+            // [T-agents-debug-only] A refusal in the sub-agent result dialect,
+            // so HelperBlockInfo renders the block as "Rejected" (a plain
+            // string parsed as the `.starting` phase and left a spinner on a
+            // call that never ran — Release device run).
+            guard AgentToolSwitch.isToolEnabled(tu.name) else {
+                toolOutput = Self.jsonString(["ok": false, "status": "rejected", "reason": "tools_disabled",
+                                              "detail": Self.toolsDisabledMessage])
+                toolSuccess = false
+                // The live block reads `content`, not `toolOutput` — the latter
+                // only reaches the block via applyToolResults on a session
+                // reload. Without this write the row stayed on the "starting"
+                // spinner for the rest of the turn and only read "Rejected"
+                // after reopening the session. Same as HelperRunner.reject.
+                if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                    messages[msgIdx].blocks[blockIdx].content = toolOutput
+                }
+                break
+            }
+            // [T-sub-agents-v1] One tool, three actions:
+            // delegating and inspecting/stopping what was delegated are the
+            // same capability, so they share a declaration. `delegate` is the
+            // default because it is what the model calls almost every time.
+            switch (toolArgs["action"] as? String)?.lowercased() ?? "delegate" {
+            case "resume":
+                let r = await executeResumeAgents(args: toolArgs)
+                if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                    messages[msgIdx].blocks[blockIdx].content = r.output
+                }
+                toolOutput = r.output
+                toolSuccess = r.success
+            case "status", "steer", "cancel":
+                let statusResult = executeAgentStatus(args: toolArgs)
+                if msgIdx < messages.count, blockIdx < messages[msgIdx].blocks.count {
+                    messages[msgIdx].blocks[blockIdx].content = statusResult.output
+                }
+                toolOutput = statusResult.output
+                toolSuccess = statusResult.success
+            default:
+                // [T-p1-delegate-task] Runs a sub agent in a hidden child
+                // session; wait mode blocks this tool call on it. See
+                // HelperRunner.swift.
+                let helperResult = await executeDelegateTask(args: toolArgs, toolUseId: tu.id,
+                                                             msgIdx: msgIdx, blockIdx: blockIdx)
+                toolOutput = helperResult.output
+                toolSuccess = helperResult.success
+            }
 
         default:
             toolOutput = "Error: Unknown tool '\(tu.name)'"
@@ -670,14 +1091,17 @@ extension AIChatViewModel {
         let snapshot: ToolSnapshot
         switch tu.name {
         case "browser_use":
+            // [T-image-gate #412] When the result carried an image to the model,
+            // the snapshot stores THAT image (the gate's output): a restart
+            // resends the snapshot, and it must be the bytes the live turn sent.
+            // The original screenshot stays in browser/ (minis_url) for viewing.
             if let imagePath = (msgIdx < messages.count && blockIdx < messages[msgIdx].blocks.count)
                 ? messages[msgIdx].blocks[blockIdx].imageFilePath : nil,
-               let imageData = try? Data(contentsOf: URL(fileURLWithPath: imagePath)),
+               let imageData = toolImageData ?? (try? Data(contentsOf: URL(fileURLWithPath: imagePath))),
                let sid = sessionId {
-                let ref = await ChatStore.shared.saveMedia(
-                    data: imageData, mimeType: "image/jpeg", sessionId: sid,
-                    originalFileName: "browser_snapshot.jpg", subdir: "browser",
-                    linuxPath: toolImageLinuxPath
+                let ref = await Self.saveBrowserSnapshotMedia(
+                    imageData: imageData, sessionId: sid, linuxPath: toolImageLinuxPath,
+                    mimeType: toolImageData != nil ? (toolImageMimeType ?? "image/jpeg") : "image/jpeg"
                 )
                 snapshot = ToolSnapshot(type: .image, text: nil, mediaRef: ref, duration: toolDuration)
             } else {
@@ -686,15 +1110,15 @@ extension AIChatViewModel {
                 snapshot = ToolSnapshot(type: .text, text: lastLines, mediaRef: nil, duration: toolDuration)
             }
         case "read_image":
+            // [T-image-gate #412] Same as browser_use: the model image when one
+            // was sent (a text-only model's vision-group path sends none, and
+            // then the snapshot keeps the file read, for display only).
             if let imagePath = (msgIdx < messages.count && blockIdx < messages[msgIdx].blocks.count)
                 ? messages[msgIdx].blocks[blockIdx].imageFilePath : nil,
-               let imageData = try? Data(contentsOf: URL(fileURLWithPath: imagePath)),
+               let imageData = toolImageData ?? (try? Data(contentsOf: URL(fileURLWithPath: imagePath))),
                let sid = sessionId {
-                let fileURL = URL(fileURLWithPath: imagePath)
-                let mime = Self.detectImageMime(imageData)
-                let ref = await ChatStore.shared.saveMedia(
-                    data: imageData, mimeType: mime, sessionId: sid,
-                    originalFileName: fileURL.lastPathComponent, subdir: "images",
+                let ref = await Self.saveReadImageSnapshotMedia(
+                    imagePath: imagePath, imageData: imageData, sessionId: sid,
                     linuxPath: toolImageLinuxPath
                 )
                 snapshot = ToolSnapshot(type: .image, text: nil, mediaRef: ref, duration: toolDuration)
@@ -726,20 +1150,71 @@ extension AIChatViewModel {
             blk.toolDuration = toolDuration
             if cancelledHere {
                 blk.toolStatus = .cancelled
+            } else if toolSuccess, truncationRepairTag != nil {
+                // [T-truncated-args-visibility #119] A repaired call must not
+                // render as a clean success — that is exactly the silence the
+                // user reported. Surface it with the same weight the blocked
+                // path already gets, so "arguments were altered" is visible in
+                // the transcript rather than buried in a log line.
+                blk.toolStatus = .failed(
+                    message: AppLocalized("Arguments truncated in transit — result may be incomplete")
+                )
             } else {
                 blk.toolStatus = toolSuccess
                     ? .success
                     : .failed(message: toolOutput.components(separatedBy: "\n").first ?? "Failed")
             }
+            // [T-p2-agent-in-toolbar] A delegate_task that returned
+            // `status: running` (background mode) is NOT finished from the
+            // user's point of view: keep the block `.running` so the floating
+            // tool bar / Live Activity treat it as active until the job's
+            // completion hook writes the final state.
+            if tu.name == SubAgentDefinition.toolName,
+               let obj = AIChatViewModel.parseDelegateResult(toolOutput),
+               (obj["status"] as? String) == "running" {
+                blk.toolStatus = .running
+            }
             ctLogger.info("[ToolLifecycle] COMPLETED toolId=\(tu.id.prefix(20)) tool=\(tu.name) sid=\(sessionId?.prefix(8) ?? "nil") appState=\(UIApplication.shared.applicationState == .active ? "fg" : "bg") suspended=\(streamingUIUpdatesSuspended) isProcessing=\(isProcessing) success=\(toolSuccess) duration=\(String(format: "%.1f", toolDuration ?? 0))s")
             scrollToBottomSignal.send()
         }
+
+        // [T-offload-readback-loop] GH#343. Is this result merely the content of
+        // a file the offloader itself wrote, fetched back by `file_read`?
+        //
+        // Decided from the ARGUMENT the call was made with, before the content
+        // is looked at — by the time it is content, it is byte-for-byte the
+        // original payload and indistinguishable from new material, which is
+        // precisely the bug. Only `file_read` performs such a fetch; every
+        // other tool reaching the offload store produces genuinely new output.
+        let isOffloadReadback: Bool = {
+            guard tu.name == "file_read",
+                  let path = toolArgs["path"] as? String else { return false }
+            return AIChatViewModel.isOffloadStorePath(path)
+        }()
 
         // Compose finalOutput with truncation/offload.
         let maxToolResultLength = Self.kMaxToolResultChars
         var finalOutput: String
         if toolOutput.isEmpty {
             finalOutput = "(no output)"
+        } else if toolOutput.count > maxToolResultLength && isOffloadReadback {
+            // [T-offload-readback-loop] PATH B of the loop. This branch used to
+            // write a SECOND copy of content that is already on disk — the
+            // `file_read_<ts>_c-read-*.txt` files observed piling up on device —
+            // and hand the model a stub pointing at the new copy, which it read,
+            // which produced another copy.
+            //
+            // Truncate (the 15K cap still protects the context) but do NOT
+            // write, and point the model back at the file it already has. Note
+            // the tail differs from the normal branch on purpose: telling it to
+            // "use file_read to read the complete output" is exactly the advice
+            // that starts the cycle over.
+            finalOutput = String(toolOutput.prefix(maxToolResultLength))
+                + "\n\n[OUTPUT TRUNCATED] Showing the first \(maxToolResultLength) of \(toolOutput.count) chars. "
+                + "This content is already stored at the path you just read — it has not been copied "
+                + "anywhere new. To see more, call file_read on that same path again with the "
+                + "`offset` from the `next_offset=` value in the header above."
+            ctLogger.info("♻️[OffloadReadback] file_read id:\(tu.id.prefix(8)) returned offload-store content — truncated WITHOUT writing a second copy")
         } else if toolOutput.count > maxToolResultLength {
             let offloadResult = offloadToolOutput(toolOutput, toolName: tu.name, toolId: tu.id)
             let offloadMinisURL = linuxPathToMinisURL(offloadResult.linuxPath)
@@ -791,11 +1266,37 @@ extension AIChatViewModel {
                 finalOutput += "\n\n" + warningMsg
             }
         }
+        // [T-tool-title-reminder] Same channel as the loop warning above: the
+        // detector counts titled calls with no tool_title and hands back the
+        // soft reminder on the 1st, 11th, 21st… of them.
+        let titleDeclared = tools.first(where: { $0.name == tu.name })
+            .map { ToolTitleReminder.declaresTitle($0.parameters.keys) } ?? false
+        if toolLoopDetector.recordToolTitle(params: toolArgs, titleDeclared: titleDeclared) != nil {
+            finalOutput = ToolTitleReminder.appending(to: finalOutput)
+            ctLogger.info("[ToolTitleReminder] \(tu.name) came back without tool_title — soft reminder appended")
+        }
+
+        // [T-truncated-args-visibility #119] Tell the MODEL when the call it
+        // just got a success for was built from truncated arguments.
+        //
+        // Writes never reach here (refused above), so this covers the tools we
+        // still run repaired — shell_execute, browser_use, file_read, … There
+        // the repaired call may well have done the right thing, but the model
+        // has no way to know its own arguments were altered, and silently
+        // assuming they were intact is how a half-truth propagates downstream.
+        // Stating it lets the model verify rather than guess.
+        if let tag = truncationRepairTag {
+            finalOutput += "\n\n<system-reminder>The argument stream for this call was truncated in "
+                + "transit and auto-closed by the client (repair strategy: \(tag)) before execution. "
+                + "The arguments actually used may be incomplete — verify the result and re-issue "
+                + "the call with complete arguments if anything is missing.</system-reminder>"
+        }
 
         let resultPart = AgentContentPart.toolResult(
             id: tu.id, name: tu.name, content: finalOutput, isError: !toolSuccess,
             imageData: toolImageData, imageMimeType: toolImageMimeType,
-            pageURL: toolPageURL, imageLinuxPath: toolImageLinuxPath
+            pageURL: toolPageURL, imageLinuxPath: toolImageLinuxPath,
+            isOffloadReadback: isOffloadReadback
         )
 
         #if DEBUG
@@ -813,3 +1314,130 @@ extension AIChatViewModel {
         )
     }
 }
+
+// MARK: - [T-image-seams] Tool-image steps, callable on their own
+
+/// Moved verbatim out of `executeSingleToolUse` so tests can run the exact code
+/// the tool path runs. No behaviour change: same resize, quality, MIME, file
+/// names, directories and saveMedia arguments as the inline code they replace.
+extension AIChatViewModel {
+
+    /// browser_use: the screenshot bytes the live turn hands the model -
+    /// [T-image-gate] ModelImageGate's output, which the tool snapshot also
+    /// stores, so a restart resends these same bytes (#412). A screenshot the
+    /// gate cannot read goes out as captured; the request gate then replaces
+    /// it with a placeholder.
+    static func browserUseInferenceImage(_ data: Data) -> (data: Data, mimeType: String) {
+        let gated = ModelImageGate.prepare(data, maxBytes: Self.rawBytesForBase64Budget(Self.kPerImageMaxBytes))
+        return (gated.data ?? data, gated.mimeType ?? "image/jpeg")
+    }
+
+    /// browser_use: writes the ORIGINAL screenshot to the session's browser dir
+    /// (the file `minis_url` points at) and returns its Linux path.
+    static func writeBrowserScreenshotCopy(_ data: Data, sessionId: String?) -> String {
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let screenshotFilename = "screenshot_\(timestamp).jpg"
+        let sid = sessionId ?? "unknown"
+        let persistDir = Self.minisBrowserPersistentDir(for: sid)
+        let fm = FileManager.default
+        try? fm.createDirectory(at: persistDir, withIntermediateDirectories: true)
+        let persistPath = persistDir.appendingPathComponent(screenshotFilename)
+        try? data.write(to: persistPath)
+        return "\(Self.minisBrowserLinuxDir)/\(screenshotFilename)"
+    }
+
+    struct ReadImageInference {
+        let data: Data
+        let mimeType: String
+        let originalW: Int
+        let originalH: Int
+        let resizedW: Int
+        let resizedH: Int
+    }
+
+    /// read_image: the bytes the live turn hands the model, plus the sizes the
+    /// tool output reports. [T-image-gate] ModelImageGate's output: a file that
+    /// already follows the rule goes out as its own bytes (it used to be
+    /// re-encoded even when small), anything else converted; the snapshot
+    /// stores the same bytes (#412).
+    static func readImageInference(fileData: Data, image uiImage: UIImage) -> ReadImageInference {
+        let originalW = uiImage.cgImage.map { $0.width } ?? Int(uiImage.size.width)
+        let originalH = uiImage.cgImage.map { $0.height } ?? Int(uiImage.size.height)
+
+        let gated = ModelImageGate.prepare(fileData, maxBytes: Self.rawBytesForBase64Budget(Self.kPerImageMaxBytes))
+        guard let data = gated.data, let mime = gated.mimeType else {
+            // Not usable as an image for the model; the request gate turns it
+            // into a visible placeholder.
+            return ReadImageInference(data: fileData, mimeType: "image/jpeg",
+                                      originalW: originalW, originalH: originalH,
+                                      resizedW: originalW, resizedH: originalH)
+        }
+        return ReadImageInference(data: data, mimeType: mime,
+                                  originalW: originalW, originalH: originalH,
+                                  resizedW: gated.width, resizedH: gated.height)
+    }
+
+    /// browser_use: the tool snapshot's media file (its mediaRef is what a
+    /// reload resends when the result carried an image) - the model image.
+    static func saveBrowserSnapshotMedia(imageData: Data, sessionId sid: String, linuxPath: String?,
+                                         mimeType: String = "image/jpeg") async -> MediaRef {
+        await ChatStore.shared.saveMedia(
+            data: imageData, mimeType: mimeType, sessionId: sid,
+            originalFileName: "browser_snapshot.jpg", subdir: "browser",
+            linuxPath: linuxPath
+        )
+    }
+
+    /// read_image: the tool snapshot's media file - the model image when one
+    /// was sent, else a copy of the file that was read.
+    static func saveReadImageSnapshotMedia(imagePath: String, imageData: Data, sessionId sid: String, linuxPath: String?) async -> MediaRef {
+        let fileURL = URL(fileURLWithPath: imagePath)
+        let mime = Self.detectImageMime(imageData)
+        return await ChatStore.shared.saveMedia(
+            data: imageData, mimeType: mime, sessionId: sid,
+            originalFileName: fileURL.lastPathComponent, subdir: "images",
+            linuxPath: linuxPath
+        )
+    }
+}
+
+// BEGIN ReadImageFailureText
+extension AIChatViewModel {
+    /// [T-readimage-fail-visible] The tool result (and card text) for a
+    /// read_image that could not load its file. `resolved` is false when the
+    /// path does not map into the sandbox at all; `fileSize` is nil when
+    /// nothing exists there.
+    nonisolated static func readImageFailureText(pathArg: String, resolved: Bool, fileSize: Int?) -> String {
+        guard resolved else {
+            return "Error: '\(pathArg)' is not a readable Minis path. Use a path under /var/minis/ (e.g. /var/minis/workspace/chart.png) or a minis:// URL."
+        }
+        guard let size = fileSize else {
+            return "Error: No file at '\(pathArg)'. If a command in this same turn creates it, read it in the next turn after that command has finished."
+        }
+        if size == 0 {
+            return "Error: '\(pathArg)' exists but is empty (0 bytes) - it may still be being written."
+        }
+        return "Error: '\(pathArg)' exists (\(size) bytes) but is not a decodable image. Supported: PNG, JPEG, HEIC, GIF, WebP, BMP, TIFF."
+    }
+}
+// END ReadImageFailureText
+
+// BEGIN BatchToolOrder
+/// [T-batch-read-after-write] Which calls of one tool batch must wait for
+/// which. A reader (`read_image`, `file_read`) waits for every writer
+/// (`shell_execute`, `file_write`, `file_edit`) that precedes it in the
+/// batch, because the model routinely writes a file and reads it in the same
+/// turn. Nothing else is ordered: writers, browser calls, sub agents and
+/// readers with no writer before them still start together.
+enum BatchToolOrder {
+    static let writers: Set<String> = ["shell_execute", "file_write", "file_edit"]
+    static let readers: Set<String> = ["read_image", "file_read"]
+
+    /// Indices of the writers a call at `index` must wait for (empty when it
+    /// is not a reader, or no writer precedes it).
+    static func writersBefore(index: Int, in names: [String]) -> [Int] {
+        guard names.indices.contains(index), readers.contains(names[index]) else { return [] }
+        return names[..<index].indices.filter { writers.contains(names[$0]) }
+    }
+}
+// END BatchToolOrder

@@ -155,7 +155,12 @@ struct BrowserSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 5) {
-                        Image(systemName: pool.userAgentProfile.icon)
+                        // The selected tab's own profile - what the page on
+                        // screen was loaded with - not the global default,
+                        // which only says what the NEXT tab will get.
+                        Image(systemName: UserAgentProfile.panelProfile(
+                            activeTab: pool.activeManager?.currentProfile,
+                            globalDefault: pool.userAgentProfile).icon)
                             .font(.system(size: 12))
                             .foregroundStyle(.secondary)
                         Text(navigationTitle)
@@ -413,14 +418,13 @@ struct BrowserDownloadBanner: View {
 // MARK: - Floating download button (chat overlay)
 
 /// Round 36×36 floating button shown near the scroll-jump buttons while the
-/// session has active/unviewed native browser downloads. Mirrors the scroll
-/// buttons' visual language (semi-transparent system background circle, gray
-/// stroke, soft shadow). Badge = in-flight + unviewed terminal entries;
+/// session has active/unviewed native browser downloads. Shares the scroll
+/// buttons' surface (`FloatingCircleButtonSurface`: glass on iOS 26+,
+/// system-background circle + stroke + shadow below). Badge = in-flight + unviewed terminal entries;
 /// hidden entirely at badge 0. Tapping opens BrowserDownloadPanelSheet.
 /// [T-browser-download-ux-v2]
 struct BrowserDownloadFloatingButton: View {
     @ObservedObject private var center = BrowserDownloadCenter.shared
-    @Environment(\.colorScheme) private var colorScheme
     let sessionId: String
     let action: () -> Void
 
@@ -438,16 +442,15 @@ struct BrowserDownloadFloatingButton: View {
             Button(action: action) {
                 Image(systemName: "arrow.down.circle")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(FloatingCircleButtonSurface.glyphStyle)
                     .modifier(DownloadPulseModifier(active: downloading, legacyPulse: $legacyPulse))
                     .frame(width: 36, height: 36)
-                    .background {
-                        Color(.systemBackground)
-                            .opacity(colorScheme == .dark ? 0.8 : 0.5)
-                            .clipShape(Circle())
-                    }
-                    .overlay(Circle().stroke(Color.gray.opacity(0.25), lineWidth: 0.5))
-                    .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                    .modifier(FloatingCircleButtonSurface(
+                        legacyLightOpacity: 0.5,
+                        legacyStrokeOpacity: 0.25,
+                        legacyShadowOpacity: 0.12,
+                        legacyShadowRadius: 4
+                    ))
                     .overlay(alignment: .topTrailing) {
                         if badge > 0 {
                             Text("\(badge)")
@@ -549,7 +552,7 @@ struct BrowserDownloadPanelSheet: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(String(localized: "Close")) { dismiss() }
+                    Button(AppLocalized("Close")) { dismiss() }
                 }
             }
         }
@@ -605,7 +608,7 @@ private struct BrowserDownloadPanelRow: View {
                         .progressViewStyle(.linear)
                         .tint(Color.accentColor)
                 case .completed(let sizeText):
-                    Text("\(sizeText) · \(String(localized: "Show in Files", comment: "Completed download row hint"))")
+                    Text("\(sizeText) · \(AppLocalized("Show in Files", comment: "Completed download row hint"))")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 case .failed(let reason):
@@ -646,7 +649,7 @@ private struct BrowserDownloadPanelRow: View {
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             if entry.state != .downloading {
                 Button(role: .destructive, action: onClear) {
-                    Label(String(localized: "Clear"), systemImage: "trash")
+                    Label(AppLocalized("Clear"), systemImage: "trash")
                 }
             }
         }
@@ -750,7 +753,7 @@ struct BrowserDownloadCardRow: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         case .completed(let sizeText):
-            Text("\(sizeText) · \(String(localized: "Tap to view", comment: "Completed download card"))")
+            Text("\(sizeText) · \(AppLocalized("Tap to view", comment: "Completed download card"))")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         case .failed(let reason):

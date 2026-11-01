@@ -27,16 +27,22 @@ enum MessageListItem: Hashable {
     case assistantBlock(UUID, UUID)  // (messageId, blockId)
     /// Footer area: typing indicator, error, resume, usage.
     case assistantFooter(UUID)
+    /// [T-fold-consecutive-tools] The "Ran N tools" row standing in for a
+    /// folded run of tool blocks (see ToolFoldPlanner). Collapsed, the run's
+    /// blocks are not in the list; expanded, they follow this row as ordinary
+    /// `.assistantBlock` items.
+    case toolGroup(UUID, UUID)  // (messageId, first folded blockId)
 
     /// The message ID this item belongs to.
     var messageId: UUID {
         switch self {
         case .wholeMessage(let id), .assistantHeader(let id),
              .assistantFooter(let id): return id
-        case .assistantBlock(let msgId, _): return msgId
+        case .assistantBlock(let msgId, _), .toolGroup(let msgId, _): return msgId
         }
     }
 }
+
 
 // MARK: - Self-Sizing Cell
 
@@ -66,25 +72,22 @@ class SelfSizingCell: UICollectionViewCell {
     /// SwiftUI's view graph and triggering a geometry observer race.
     private var lastComputedHeight: CGFloat?
 
-    /// The width at which `lastComputedHeight` was measured. Used by the
-    /// short-window dedup so a width change still re-measures.
+    /// The width at which `lastComputedHeight` was measured. A width change
+    /// still re-measures; an unchanged width reuses the cached height without
+    /// calling `super.preferredLayoutAttributesFitting` or
+    /// `systemLayoutSizeFitting`, either of which re-enters
+    /// UIHostingConfiguration's view graph and races SwiftUI's async
+    /// display-link thread (FB13213926).
     private var lastComputedWidth: CGFloat?
 
-    /// CACurrentMediaTime() of the last successful self-measure. Within a
-    /// short window after a measure, repeated `preferredLayoutAttributesFitting`
-    /// calls (UICollectionView fires several per frame on bounds change /
-    /// scroll begin / pinch / etc.) reuse the cached height *without* calling
-    /// `super.preferredLayoutAttributesFitting` or `systemLayoutSizeFitting`.
-    /// This shrinks the window where the main thread races with SwiftUI's
-    /// async display-link thread mutating ViewGraphGeometryObservers
-    /// (FB13213926) — the recurring crash on the
-    /// `nswtsUU8p6mRY9Pj7c7tU.xccrashpoint`. Set high enough to absorb the
-    /// burst of measure calls one collection-view layout pass triggers,
-    /// low enough that genuine content/state changes still re-measure
-    /// promptly (applyContentConfiguration / clearCachedHeight reset it
-    /// to nil unconditionally).
+    /// CACurrentMediaTime() of the last successful self-measure.
+    ///
+    /// [T-ios-plaf-quiescent-graph-reentry] This no longer GATES the cache —
+    /// see the note in `preferredLayoutAttributesFitting`. It is retained as
+    /// diagnostics (how long ago this cell last really measured) and because
+    /// re-introducing a time bound, should a genuine staleness case ever turn
+    /// up, is then a one-line change rather than a re-plumb.
     private var lastMeasureMediaTime: CFTimeInterval?
-    private static let measureDedupWindow: CFTimeInterval = 0.050 // 50 ms
 
     /// [T-ios-scroll-decel-height-drift] Pre-seeded height from the layout's
     /// content-keyed real-height memo, set in `configureCell` AFTER
@@ -109,6 +112,14 @@ class SelfSizingCell: UICollectionViewCell {
     /// `indexPath(for:) == nil` (idx=-1) window during reuse, where an
     /// index-based write would miss.
     var contentKey: String?
+
+    /// [T-first-text-scroll-jump] Set by configureCell: this cell hosts a text
+    /// block with visible content. Such a cell can never really be < 4pt tall,
+    /// so a near-zero measurement of it is a measure taken before its freshly
+    /// created markdown text view had a width (device log:
+    /// `REJECT-NAN-INF-NEG size=0.0x-16.0` + `[MK-VIEW] new textView` in the
+    /// same millisecond as the reconfigure) and must not be applied.
+    var rendersNonEmptyText = false
 
     #if DEBUG
     /// [T-ios-scroll-metrics-ring] Stable content-hash identity (set by
@@ -153,8 +164,8 @@ class SelfSizingCell: UICollectionViewCell {
     override func preferredLayoutAttributesFitting(
         _ layoutAttributes: UICollectionViewLayoutAttributes
     ) -> UICollectionViewLayoutAttributes {
-        // Short-window dedup BEFORE super: when UIKit fires repeated
-        // self-sizing calls within `measureDedupWindow`, return the cached
+        // Cache-hit short-circuit BEFORE super: when UIKit re-asks a cell to
+        // self-size at a width it already measured, return the cached
         // height directly and skip both `super.preferredLayoutAttributesFitting`
         // *and* `systemLayoutSizeFitting`. Calling either re-enters
         // UIHostingConfiguration's view graph, which races with SwiftUI's
@@ -163,11 +174,33 @@ class SelfSizingCell: UICollectionViewCell {
         // `nswtsUU8p6mRY9Pj7c7tU` crashpoint). The cache is invalidated
         // by applyContentConfiguration / prepareForReuse / clearCachedHeight,
         // so genuine content changes still re-measure promptly.
+        // [T-ios-plaf-quiescent-graph-reentry, crash 2026-08-03 23:35 1.11(15)
+        // iOS 27] Fifth crash of the FB13213926 series, and the first in the
+        // QUIESCENT window: symbolication put the main thread in this cell's
+        // `super.preferredLayoutAttributesFitting` reached from
+        // `-[UICollectionView _updateLayoutAttributesForExistingVisibleViewsFading…]`
+        // — a plain visible-cell attribute refresh, with `deferSelfSizing`
+        // false and NO active streaming. Both later guards (e9d167c2's
+        // interaction window, 81e43b58's streaming window) were therefore
+        // inert, and only this dedup stood between that refresh and a hosting-
+        // graph re-entry — but its 50ms timer had long since expired on a
+        // settled screen, so every such pass re-measured.
+        //
+        // The time bound is dropped: a cached height whose WIDTH still matches
+        // is not stale merely because it is old. Every real invalidation is
+        // explicit and unconditional — applyContentConfiguration (content
+        // swapped), prepareForReuse (cell recycled), clearCachedHeight (async
+        // image load, markdown re-render, font/appearance change) all set
+        // `lastComputedHeight = nil`. Nothing about elapsed time can make a
+        // still-valid cache wrong, so the timer only bought extra graph
+        // re-entries on exactly the settled screens where the crash lands.
+        //
+        // `lastMeasureMediaTime` is kept (still written, still cleared) — it
+        // remains useful diagnostics and leaves the 50ms window one line away
+        // if a height-staleness case this reasoning missed ever shows up.
         if let cached = lastComputedHeight,
            let cachedW = lastComputedWidth,
-           let lastT = lastMeasureMediaTime,
-           abs(layoutAttributes.size.width - cachedW) < 1,
-           CACurrentMediaTime() - lastT < Self.measureDedupWindow {
+           abs(layoutAttributes.size.width - cachedW) < 1 {
             let copy = layoutAttributes.copy() as! UICollectionViewLayoutAttributes
             copy.size.width = cachedW
             copy.size.height = cached
@@ -237,13 +270,20 @@ class SelfSizingCell: UICollectionViewCell {
         //     active (their content isn't changing mid-stream; an in-place
         //     change like an async image load clears the cache via
         //     clearCachedHeight() and falls through to a live measure);
-        //  B. the streaming cell itself returns the layout's precalc height —
-        //     the real-TextKit-engine calibration reseeded on every chunk,
-        //     i.e. the exact value prepare() already laid out — so per-chunk
-        //     growth stays graph-free too. Cells without a precalc (tool
-        //     capsules, thinking, footer) keep the live measure; the
-        //     stream-end settle (ranges cleared → guards inert) re-measures
-        //     everything authoritatively.
+        //  B. (REMOVED, [T-stream-precalc-freeze]) the streaming cell used to
+        //     return the layout's precalc height without measuring, on the
+        //     premise that precalc was "reseeded on every chunk". Nothing ever
+        //     reseeds it: precalc is only written when a snapshot applies
+        //     (block-count changes), so mid-stream it is the height of the text
+        //     as it was at that snapshot. It was harmless while growing text
+        //     blocks had no precalc; once the cross-load memo
+        //     ([T-scroll-estimate-fidelity], 358818abd) gave a brand-new empty
+        //     text block the remembered ~32 pt of an earlier empty block, the
+        //     live block stayed 32 pt tall while its text grew past 1800 pt
+        //     ([TableCellShort] cellH=32 tvH=1856, 2026-10-04 11:02) and drew
+        //     over the rows around it until the turn ended. The streaming cell
+        //     is measured live again (its pre-10-03 behaviour in practice);
+        //     the stream-end settle still re-measures everything.
         if let cv = superview as? UICollectionView,
            let layout = cv.collectionViewLayout as? MessageListLayout {
             let item = layoutAttributes.indexPath.item
@@ -256,12 +296,6 @@ class SelfSizingCell: UICollectionViewCell {
                 let copy = layoutAttributes.copy() as! UICollectionViewLayoutAttributes
                 copy.size.width = cachedW
                 copy.size.height = cached
-                return copy
-            }
-            if isStreamingItem,
-               let precalc = layout.precalcHeight(at: item) {
-                let copy = layoutAttributes.copy() as! UICollectionViewLayoutAttributes
-                copy.size.height = precalc
                 return copy
             }
         }
@@ -291,6 +325,13 @@ class SelfSizingCell: UICollectionViewCell {
             lastComputedHeight = sh
             lastComputedWidth = layoutAttributes.size.width
             lastMeasureMediaTime = CACurrentMediaTime()
+            #if DEBUG
+            // [T-table-layout-true-width] The seed replaces a real measure, so a
+            // wrong one never shows up as a MemoWrite. Log every use, keyed like
+            // the memo, so a height that later proves short ([TableCellShort])
+            // can be traced to the seed that set it.
+            Self.sizingLogger.info("[MemoSeed] key=\(contentKey.map { Self.renderQualifiedKey($0, for: self) } ?? "-") h=\(String(format: "%.1f", sh)) w=\(String(format: "%.0f", sw)) — skipped systemLayoutSizeFitting")
+            #endif
             let copy = layoutAttributes.copy() as! UICollectionViewLayoutAttributes
             copy.size.height = sh
             return copy
@@ -422,7 +463,7 @@ class SelfSizingCell: UICollectionViewCell {
                 key: contentKey ?? "",
                 src: lastComputedHeight == nil ? "first" : "re",
                 pos: phase, offset: cv.contentOffset.y,
-                note: String(format: "%.1fms", elapsed),
+                note: String(format: "%.1fms", elapsed) + " sv=\(superview != nil ? 1 : 0) win=\(window != nil ? 1 : 0)",
                 tag: metricsTag ?? "")
         }
         #endif
@@ -464,6 +505,71 @@ class SelfSizingCell: UICollectionViewCell {
             Self.sizingLogger.info("[TextDrift] ⚠️ CELL GREW FROM ~0: idx=\(idx) \(String(format: "%.0f", layoutAttributes.size.height))→\(String(format: "%.0f", fittingSize.height))pt — potential text overlap during this transition")
         }
         guard configGeneration == gen else { return attrs }
+        // [T-first-text-scroll-jump] A text block with content measured as
+        // ~0pt: the measure ran before its new text view was laid out. Keep the
+        // height the layout already holds (the filled-signal handler leaves a
+        // real or one-line height there) instead of collapsing the row to 0 -
+        // with the list pinned to the bottom, that collapse moved everything
+        // above the reply down by a line until the next streaming re-measure
+        // ~0.25s later. Not cached, so the next pass measures again.
+        if rendersNonEmptyText, fittingSize.height < 4, layoutAttributes.size.height >= 4 {
+            Self.sizingLogger.info("[TextDrift] kept idx=\(idx) held=\(String(format: "%.0f", layoutAttributes.size.height))pt — non-empty text measured \(String(format: "%.0f", fittingSize.height))pt (text view not laid out yet)")
+            return layoutAttributes
+        }
+        #if DEBUG
+        // [BottomGapDiag] Catch "the layout is holding a taller height than the
+        // cell actually renders" — the shape behind every reported blank strip
+        // so far, whatever the trigger.
+        //
+        // Established for the thinking pill: `[ThinkingCollapse] auto-collapse`
+        // fired 6 times while `post` (the height-invalidation notification)
+        // fired 0 times, so the collection view kept the EXPANDED height after
+        // the pill collapsed and the difference showed as dead space. The tool
+        // card case has no equivalent invalidation path at all — there is no
+        // `.toolBlockToggled` anywhere in the tree — so if a tool card changes
+        // height nothing tells the layout.
+        //
+        // Rather than instrument each suspect separately, this logs the
+        // DISAGREEMENT itself: whenever the height the layout proposed exceeds
+        // what the cell needs by a visible margin, print both plus the cell's
+        // content key. That names the offending cell regardless of which state
+        // change caused it, and a run with no such line rules the whole class
+        // out. Threshold 24pt is well above sub-pixel/rounding noise and below
+        // the ~190pt gap seen in the report.
+        let proposed = layoutAttributes.size.height
+        if proposed - fittingSize.height > 24, fittingSize.height > 4 {
+            Self.sizingLogger.info(
+                "[BottomGapDiag][stale-height] idx=\(idx) held=\(String(format: "%.1f", proposed)) "
+                + "needs=\(String(format: "%.1f", fittingSize.height)) "
+                + "excess=\(String(format: "%.1f", proposed - fittingSize.height))pt "
+                + "key=\(contentKey ?? "-") — layout reserved more than the cell renders (blank strip)")
+        }
+        // [BottomGapDiag][seed-drift] Long-user-message report: log the SIGNED
+        // disagreement between the height the layout came in holding (from the
+        // estimator / precalc seed) and what the cell actually needs, for BOTH
+        // directions and at a much lower threshold than the 24pt strip probe.
+        //
+        // Direction matters and the two are different bugs:
+        //   held > needs  → layout reserved dead space (visible blank strip)
+        //   held < needs  → cell laid out SHORT; SwiftUI Text truncates, then
+        //                   expands on re-measure, shoving neighbours around.
+        // The estimator's own comments admit boundingRect runs ~2.4pt/line
+        // tighter than SwiftUI's rendered line box and that the CJK correction
+        // is a FLAT +7 calibrated on 1–4 line bubbles, so the drift should grow
+        // with line count. Printing `perLine` makes that testable directly:
+        // if it is roughly constant across short and long bubbles, the error is
+        // per-line and the flat correction is the bug.
+        let delta = proposed - fittingSize.height
+        if abs(delta) >= 4, fittingSize.height > 4, proposed > 4 {
+            let approxLines = max(1, Int((fittingSize.height / 20).rounded()))
+            Self.sizingLogger.info(
+                "[BottomGapDiag][seed-drift] idx=\(idx) held=\(String(format: "%.1f", proposed)) "
+                + "actual=\(String(format: "%.1f", fittingSize.height)) "
+                + "delta=\(String(format: "%+.1f", delta))pt "
+                + "approxLines=\(approxLines) perLine=\(String(format: "%+.2f", delta / CGFloat(approxLines)))pt "
+                + "dir=\(delta > 0 ? "RESERVED-TOO-MUCH" : "LAID-OUT-SHORT") key=\(contentKey ?? "-")")
+        }
+        #endif
         attrs.size.height = fittingSize.height
         // Don't cache very small heights (< 4pt) — these typically represent
         // empty text blocks that will receive content shortly via streaming.
@@ -485,7 +591,18 @@ class SelfSizingCell: UICollectionViewCell {
             if let key = contentKey,
                let cv = superview as? UICollectionView,
                let layout = cv.collectionViewLayout as? MessageListLayout {
-                layout.recordMeasuredHeight(forKey: key, height: fittingSize.height, boundsWidth: cv.bounds.width)
+                // [T-ios-memo-key-ignores-render-state] Qualify the key with the
+                // block's CURRENT async-attachment render state. `contentKey` is
+                // built from `block.content.count`, which a LaTeX render does
+                // not change (`$P_A$` is the same string before and after
+                // MathJax), so without this a height measured while the
+                // formulas were still blank placeholders is stored under the
+                // same key as the finished layout — and seeded back forever.
+                let renderKey = Self.renderQualifiedKey(key, for: self)
+                layout.recordMeasuredHeight(forKey: renderKey, height: fittingSize.height, boundsWidth: cv.bounds.width)
+                #if DEBUG
+                AppLogger(category: "MemoWrite").info("[MemoWrite] key=\(renderKey) h=\(String(format: "%.1f", fittingSize.height)) w=\(String(format: "%.0f", cv.bounds.width))")
+                #endif
             }
         }
         #if DEBUG
@@ -514,6 +631,29 @@ class SelfSizingCell: UICollectionViewCell {
         }
     }
 
+    /// [T-ios-memo-key-ignores-render-state] Append the block's current
+    /// async-attachment render state to a content key.
+    ///
+    /// Walks the cell's subtree for the hosted `SelectableMarkdownTextView` and
+    /// asks it for `asyncAttachmentRenderSignal()` — the summed rendered height
+    /// of its math/image attachments. Returns the key unchanged when the cell
+    /// hosts no such view (headers, footers, tool capsules), so those keys keep
+    /// their existing shape and cache behaviour exactly as before.
+    static func renderQualifiedKey(_ key: String, for cell: UIView) -> String {
+        guard let signal = firstMarkdownRenderSignal(in: cell) else { return key }
+        return "\(key):r\(signal)"
+    }
+
+    private static func firstMarkdownRenderSignal(in view: UIView) -> Int? {
+        if let tv = view as? SelectableMarkdownTextView {
+            return tv.asyncAttachmentRenderSignal()
+        }
+        for sub in view.subviews {
+            if let s = firstMarkdownRenderSignal(in: sub) { return s }
+        }
+        return nil
+    }
+
     /// Clear the cached computed height so the next preferredLayoutAttributesFitting
     /// call re-measures via systemLayoutSizeFitting instead of returning stale data.
     func clearCachedHeight() {
@@ -524,9 +664,39 @@ class SelfSizingCell: UICollectionViewCell {
 
     override func prepareForReuse() {
         super.prepareForReuse()
+        rendersNonEmptyText = false
         lastComputedHeight = nil
         lastComputedWidth = nil
         lastMeasureMediaTime = nil
+        // [T-ios-contextmenu-liquidmorph-reuse] Cancel any context-menu
+        // presentation still in flight for THIS cell before UIKit hands it to a
+        // different message.
+        //
+        // TestFlight 1.10 (57), iPhone 17 Pro, iOS 27: EXC_BREAKPOINT (SIGTRAP)
+        // — "Swift runtime failure: Unexpectedly found nil while unwrapping an
+        // Optional" inside UIKit's own
+        // UIKitLiquidMorphAnimationContext.configureMorphAnimationHierarchyIfNeeded,
+        // reached from _UIContextMenuLiquidMorphPresentationAnimation
+        // .performTransition(). No Minis frames on the stack: iOS 26/27's Liquid
+        // Glass morph resolves the source view's hierarchy as the animation
+        // configures itself, and traps if that view is no longer in a window.
+        //
+        // This list recycles cells continuously while a reply streams, so a cell
+        // long-pressed just before it scrolls out is exactly that precondition.
+        // We cannot fix UIKit's force-unwrap, but we can stop handing it a
+        // detached source view: dismissing here ends the interaction while the
+        // cell is still valid. No-op when no menu is showing, so the ordinary
+        // reuse path is unaffected.
+        // Walk the subtree: SwiftUI's `.contextMenu` installs its
+        // UIContextMenuInteraction on a view INSIDE the hosting configuration,
+        // not on contentView itself, so checking only contentView would miss it.
+        var subtree: [UIView] = []
+        Self.collectSubtree(contentView, into: &subtree)
+        for view in subtree {
+            for interaction in view.interactions {
+                (interaction as? UIContextMenuInteraction)?.dismissMenu()
+            }
+        }
         // Note: do NOT set contentConfiguration = nil here.
         // Clearing the hosting configuration tears down the SwiftUI view graph,
         // but UIKit may later call isHiddenForReuse=false which tries to restore
@@ -587,6 +757,11 @@ final class NoAnimationCollectionView: UICollectionView {
     private static let watchdogProbe = AppLogger(category: "WatchdogProbe")
     #endif
 
+    /// [T-user-ask-expand-anim] Set by the caller for exactly one
+    /// `layoutIfNeeded()` made inside its own `UIView.animate`: that pass
+    /// skips the `performWithoutAnimation` below so cell frames animate.
+    var animatesNextLayoutPass = false
+
     override func layoutSubviews() {
         guard !isApplyingSnapshot else { return }
         // Skip expensive layout when backgrounded to avoid 0x8BADF00D watchdog kill.
@@ -641,7 +816,12 @@ final class NoAnimationCollectionView: UICollectionView {
         // During user scroll (tracking/decelerating), let UIKit handle layout
         // naturally — stripping animations mid-scroll kills the deceleration
         // curve and causes a visible jitter at the end.
-        if isTracking || isDecelerating {
+        if animatesNextLayoutPass {
+            // [T-user-ask-expand-anim] A caller-owned animated pass (a card the
+            // user expanded / collapsed in place): run inside the caller's
+            // UIView.animate so the cells around it move smoothly.
+            super.layoutSubviews()
+        } else if isTracking || isDecelerating {
             super.layoutSubviews()
         } else if streamingGrowAnimationEnabled, isStreamingNow, contentOverflowsViewport,
                   !isApplyingSnapshot, !inStreamingGrowLayout {
@@ -717,6 +897,13 @@ final class NoAnimationCollectionView: UICollectionView {
 
         #if DEBUG
         let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000
+        // [T-scroll-cell-build-diag] Whole layout pass: on a pass that brings
+        // a new row on screen this is where its build + measure + first layout
+        // land, so a dropped frame can be split into this vs everything else.
+        if elapsed >= 4, ScrollMetricsRecorder.shared.isEnabled {
+            ScrollMetricsRecorder.shared.record(kind: "cvl", a: elapsed, b: Double(visibleCells.count),
+                pos: isDecelerating ? "decel" : (isTracking ? "drag" : "idle"), offset: contentOffset.y)
+        }
         if elapsed >= 200 {
             Self.watchdogProbe.warning("[WatchdogProbe][cv-layout] slow layoutSubviews elapsed=\(String(format: "%.1f", elapsed))ms visibleCells=\(visibleCells.count) bounds=\(Int(newSize.width))x\(Int(newSize.height)) widthChanged=\(widthChanged ? 1 : 0)")
         }
@@ -746,6 +933,25 @@ final class NoAnimationCollectionView: UICollectionView {
 
     /// Tracks whether a SelectableMarkdownTextView currently has an active text selection.
     var hasActiveTextSelection: Bool = false
+
+    /// [T-ios-preapply-endediting] The message-list text view (if any) that is
+    /// currently first responder. Set in becomeFirstResponder / cleared in
+    /// resignFirstResponder by SelectableMarkdownTextView and TableCellTextView.
+    ///
+    /// This exists so applySnapshot can end editing BEFORE a structural
+    /// `dataSource.apply`, outside the batch-update transaction. Both TestFlight
+    /// crash families require a live first responder inside the collection view
+    /// at apply time: the AttributeGraph re-entry (super.resignFirstResponder's
+    /// responder-chain walk reads the graph mid-transaction) and the
+    /// _resignOrRebaseFirstResponderViewWithIndexPathMapping assertion (our
+    /// deferred resign returned false, refusing the rebase). Resigning up front
+    /// removes the shared precondition for both.
+    ///
+    /// Deliberately NOT `hasActiveTextSelection`: a text view can hold first
+    /// responder with no selection yet (long-press menu just presented), and the
+    /// gate must track responder status, not selection status. Weak, so cell
+    /// reuse or teardown can never leave a dangling pointer.
+    weak var trackedTextResponder: UIView?
 
     // MARK: - Text-selection edge auto-scroll
     //
@@ -890,6 +1096,19 @@ final class MessageListViewController: UIViewController {
         collectionView.keyboardDismissMode = .onDrag
         collectionView.alwaysBounceVertical = true
         collectionView.contentInsetAdjustmentBehavior = .automatic
+        // [T-chat-statusbar-scrolltotop-mistap] `scrollsToTop` is left at its
+        // default (true) ON PURPOSE — tapping the iOS status bar must still
+        // scroll this list to the top, which is standard platform behaviour
+        // users expect.
+        //
+        // An earlier revision of this fix turned it off here to stop a mis-tap
+        // of the trailing "..." menu (which sits just below the status bar)
+        // from throwing the conversation to its oldest message. That was too
+        // blunt: it removed the deliberate gesture along with the accidental
+        // one. The mis-tap is addressed at its source instead — see
+        // `HitPaddedButton`, which pads the "..." touch target out to the
+        // 44x44pt HIG minimum so a normal tap lands on the button rather than
+        // slipping onto the status bar above it.
         view.addSubview(collectionView)
     }
 
@@ -991,6 +1210,7 @@ final class CellStateBridgeV2: ObservableObject {
     @Published var onStop: (() -> Void)?
     @Published var onRetry: (() -> Void)?
     @Published var onEdit: (() -> Void)?
+    @Published var onDeleteFrom: (() -> Void)?
     @Published var onWithdraw: (() -> Void)?
     @Published var autoRetryAttempt: Int = 0
     @Published var autoRetryCountdown: Int = 0
@@ -998,7 +1218,7 @@ final class CellStateBridgeV2: ObservableObject {
     @Published var onResume: (() -> Void)?
     @Published var onCompact: (() -> Void)?
     @Published var onForceSync: (() -> Void)?
-    @Published var onCopyScreenshot: (() -> Void)?
+    @Published var onShareMessages: (() -> Void)?
     /// Read this whole reply aloud from the start (clears in-progress TTS).
     @Published var onReadAloud: (() -> Void)?
     /// [T-selection-menu-minis-tts] Speak an arbitrary text snippet (the

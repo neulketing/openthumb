@@ -81,6 +81,25 @@ enum DebugMethodRegistry {
             example: ["last": true]
         ),
         MethodSpec(
+            name: "debug.agentTrace.clear",
+            description: "Drop all recorded agent traces AND captured LLM request/response bodies, freeing their memory. Clears the in-flight trace too.",
+            params: [
+                ParamSpec(name: "llmRequests", type: "bool", required: false, default: true, description: "Also clear debug.llmRequests captures (where the request/response BODIES live — usually the bulk of the memory). false = clear step traces only."),
+            ],
+            returns: "{clearedTraces: int, clearedLLMRequests: bool, clearedLLMRequestCount?: int}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.agentTrace.pause",
+            description: "Pause/resume in-memory recording of agent traces and LLM requests, so a captured state can be pulled without later requests growing or overwriting it. Omit `paused` to just read the current state.",
+            params: [
+                ParamSpec(name: "paused", type: "bool", required: false, default: nil, description: "true = stop recording, false = resume. Omit to query only."),
+                ParamSpec(name: "llmRequests", type: "bool", required: false, default: true, description: "Also pause debug.llmRequests capture."),
+            ],
+            returns: "{paused: bool, llmRequestsPaused: bool}",
+            example: ["paused": true]
+        ),
+        MethodSpec(
             name: "debug.ls",
             description: "List directory contents under the app sandbox.",
             params: [
@@ -156,6 +175,18 @@ enum DebugMethodRegistry {
             example: ["command": "ls /var/minis/workspace", "timeout": 30, "stdinScript": true, "sessionId": "ABC123..."]
         ),
         MethodSpec(
+            name: "debug.chatSearch",
+            description: "[T-in-chat-search] Drive \"Search in Chat\" on the chat on screen (or sessionId): open the bar (optionally with a query), set the query, step to the next/previous result, close it, or read its state. action=spike renders every assistant text block and compares the text the cell highlights with the text the search computed from markdown.",
+            params: [
+                ParamSpec(name: "action", type: "string", required: false, default: "state", description: "open | query | next | previous | done | state | spike"),
+                ParamSpec(name: "query", type: "string", required: false, default: nil, description: "open: prefill; query: the new query; spike: also compare occurrence counts of this query."),
+                ParamSpec(name: "sessionId", type: "string", required: false, default: nil, description: "Defaults to the chat on screen."),
+                ParamSpec(name: "waitMs", type: "int", required: false, default: nil, description: "Wait before reading back the state (default 600 after open/query, 150 otherwise)."),
+            ],
+            returns: "{active, query, count, truncated, counter, currentIndex, current{messageId, blockId, field, ordinal}, notice} or, for spike, {textBlocks, identical, different, queryCountMismatches, blocksWith, examples}",
+            example: ["action": "open", "query": "table"]
+        ),
+        MethodSpec(
             name: "debug.scrollMetrics",
             description: "In-memory scroll diagnostics ring buffer (DEBUG builds only, OFF by default). Call with enabled=true to arm recording, then scroll, then call without 'enabled' to dump: every cell self-size (measure), layout height correction (inv), settle flush (flush), settle anchor shift (settle), full re-flow (prepare) and per-frame offset sample (scroll). No thresholds — complete data.",
             params: [
@@ -171,6 +202,91 @@ enum DebugMethodRegistry {
             params: [],
             returns: "{app, version, build, buildDate, paths, diskUsage}",
             example: [:]
+        ),
+        MethodSpec(
+            name: "debug.backup.export",
+            description: "Build a .minisbak package (export only; unencrypted, stage 1).",
+            params: [
+                ParamSpec(name: "categories", type: "array", required: false, default: nil,
+                          description: "Category raw values; default = all. Known: chats, shared_files, skills, memory, providers, mcp_servers, voice_corrections"),
+                ParamSpec(name: "maxFileBytes", type: "int", required: false, default: nil,
+                          description: "Per-file size cap; omit for unlimited (the default)"),
+                ParamSpec(name: "keep", type: "boolean", required: false, default: false,
+                          description: "Move the package into Documents so it survives tmp cleanup"),
+                ParamSpec(name: "includeCredentials", type: "boolean", required: false, default: true,
+                          description: "Include Keychain credentials in secrets.json. false = share copy."),
+                ParamSpec(name: "passphrase", type: "string", required: false, default: nil,
+                          description: "Encrypt the package (minisbak-enc/1). REQUIRED when credentials are included."),
+                ParamSpec(name: "deliver", type: "boolean", required: false, default: false,
+                          description: "Move the package into Files-visible shared storage (Minis ▸ Backups), the path the Backup UI uses."),
+            ],
+            returns: "{backupId, path, bytes, durationMs, categories, skippedFiles, skippedBytes, skippedPaths}",
+            example: ["keep": true]
+        ),
+        MethodSpec(
+            name: "debug.backup.restore",
+            description: "Import a .minisbak package (stage 2: Merge mode, unencrypted).",
+            params: [
+                ParamSpec(name: "path", type: "string", required: true, default: nil,
+                          description: "Path to the .minisbak file"),
+                ParamSpec(name: "categories", type: "array", required: false, default: nil,
+                          description: "Category raw values; default = all present in the package"),
+                ParamSpec(name: "skipIntegrityCheck", type: "boolean", required: false, default: false,
+                          description: "Diagnostics only — skip the SHA-256 verification pass"),
+                ParamSpec(name: "passphrase", type: "string", required: false, default: nil,
+                          description: "Required to restore an encrypted package"),
+            ],
+            returns: "{backupId, durationMs, integrityChecked, integrityFailed, rolledBack, totals, categories, warnings}",
+            example: ["path": "/…/backup.minisbak"]
+        ),
+        MethodSpec(
+            name: "debug.backup.cleanup",
+            description: "Delete .minisbak packages left in Documents by export {keep:true}.",
+            params: [],
+            returns: "{removed, count, freedBytes}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.backup.rescue",
+            description: "Salvage what can be read from a damaged .minisbak: rescue.json, manifest.json, its tail copy, and the surviving member list.",
+            params: [
+                ParamSpec(name: "path", type: "string", required: true, default: nil,
+                          description: "Path to the (possibly damaged) .minisbak file"),
+            ],
+            returns: "{stages, backupId, blobCount, sessionCount, sessions, blobs, categories, missingMembers, notImplemented}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.backup.destinations",
+            description: "Inspect/set backup destination mounted folders (§6.2 path 2), and optionally deliver a package to them.",
+            params: [
+                ParamSpec(name: "select", type: "array", required: false, default: nil,
+                          description: "Mount ids to set as destinations"),
+                ParamSpec(name: "deliver", type: "string", required: false, default: nil,
+                          description: "Path to a .minisbak to copy to every destination"),
+            ],
+            returns: "{mounts, selectedIds, eligibleCount, packagesInDestinations, delivered?}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.backup.open",
+            description: "Drive the 'opened a .minisbak from Files' entry point (BackupOpenRouter.handle) and report whether the root restore sheet would present.",
+            params: [
+                ParamSpec(name: "path", type: "string", required: true, default: nil,
+                          description: "Path to the .minisbak file to open"),
+            ],
+            returns: "{recognisedAsPackage, handled, pendingPackage, hasPendingPackage, appIsLocked, sheetWouldPresent}",
+            example: ["path": "/…/backup-20260814-0230.minisbak"]
+        ),
+        MethodSpec(
+            name: "debug.backup.inspect",
+            description: "List a .minisbak package's entries and read back its manifest.",
+            params: [
+                ParamSpec(name: "path", type: "string", required: true, default: nil,
+                          description: "Path to the .minisbak file"),
+            ],
+            returns: "{path, entryCount, entries, manifest, lineCounts}",
+            example: ["path": "/…/backup-20260814-0230.minisbak"]
         ),
         MethodSpec(
             name: "debug.auth.list",
@@ -307,13 +423,90 @@ enum DebugMethodRegistry {
         ),
         MethodSpec(
             name: "debug.voiceInputs",
-            description: "Return the last ≤5 audio payloads actually sent to the ASR/transcription model (captured just before the request), for diagnosing whether VAD trimmed or dropped speech. In-memory only, DEBUG only.",
+            description: "Return the last ≤5 audio payloads actually sent to the ASR/transcription model (captured just before the request), for diagnosing whether VAD trimmed or dropped speech. Entries recorded during one mic session (VAD start→stop) share a 'sessionId' and carry that session's UN-CUT full recording under 'fullSession' — decode both WAVs and compare to see exactly where VAD cut. In-memory only, DEBUG only.",
             params: [
                 ParamSpec(name: "last", type: "int", required: false, default: nil, description: "Limit to the N most recent entries."),
                 ParamSpec(name: "includeAudio", type: "bool", required: false, default: true, description: "Include base64-encoded WAV per entry (set false for metadata only)."),
             ],
-            returns: "{count, voiceInputs:[{id, capturedAt, byteCount, durationSeconds, audioFormat:{container,sampleRate,channels,bitsPerSample}, vad:{segmentCount,endReason,runningDurationSeconds}, model?, language?, onDeviceRecognition?, audioBase64?}]}",
+            returns: "{count, voiceInputs:[{id, capturedAt, byteCount, durationSeconds, audioFormat:{container,sampleRate,channels,bitsPerSample}, vad:{segmentCount,endReason,runningDurationSeconds}, model?, language?, onDeviceRecognition?, audioBase64?, sessionId?, fullSession?:{byteCount,durationSeconds,truncated,audioBase64?}}]}. sessionId groups entries from one mic session; fullSession is that session's untrimmed start→stop recording (same for every entry of the session, absent while the session is still recording, truncated=true if it hit the 10-minute cap).",
             example: ["last": 5, "includeAudio": false]
+        ),
+        MethodSpec(
+            name: "debug.voiceCorrection.traceList",
+            description: "Every REAL voice-correction run with its full evidence chain: segmented tokens, retrieved candidates (per source, with fused scores), the hotwords mined from the conversation (rare-term digest WITH per-term rarity scores, plus the message excerpts), which vocab/confusion terms actually survived budget clamping into the prompt, and the model's verdict. This is the tuning view — unlike dryRunCorrection it reports what happened on-device rather than on text you supply. In-memory ring (last 40 runs), DEBUG only.",
+            params: [
+                ParamSpec(name: "limit", type: "int", required: false, default: 10, description: "Most recent N runs."),
+                ParamSpec(name: "sinceID", type: "int", required: false, default: nil, description: "Only runs with id greater than this — poll for new runs without re-reading."),
+                ParamSpec(name: "includePrompt", type: "bool", required: false, default: false, description: "Include the full assembled prompt per run (~2.5k chars each; off by default so a listing stays readable)."),
+            ],
+            returns: "{count, totalRetained, runs:[{id, at, trigger, locale, transcript, segmentedTokens, phoneticKeys, retrieval:{ms,cacheHit,candidateCount,candidates:[{token,phoneticKey,term,source,confidence,fusedScore,evidence}]}, contextMining:{scannedMessages,buildMs,digestChars,digestTerms:[{term,score,count,backgroundRank}],excerptChars,excerpts:[{role,newestIndex,kind,chars,text}]}, viewportContext:{available,centerY,viewportHeight,window,candidateRows,selectedRows:[{kind,messageId,blockId,distance,chars,cut}],viewportChars,viewportBudget,lines,latestReply,latestReplyDedup,latestReplyBlocksDropped,latestReplyChars,latestReplyBudget,latestReplyTruncated}, promptEvidence:{vocabTerms,confusionLines,blockChars}, verdict:{corrected,changed,appliedPairs,rejectedReason,modelGroup,totalMs}, prompt?}]}",
+            example: ["limit": 5, "includePrompt": false]
+        ),
+        MethodSpec(
+            name: "debug.voiceCorrection.viewportContext",
+            description: "[T-voice-viewport-context] Build voice correction's ON-SCREEN context for a session exactly as tapping the correction button would right now, without running a correction: the visible part of the message list plus half a screen above and below, rows taken nearest-to-screen-centre first up to 2000 chars (user text, assistant text, tool-call titles), rendered top→bottom; and the newest AI reply minus any block already on screen (≤2000 chars, tail kept). Scroll the chat, call this, and compare `lines` with the screen. The session must be loaded (debug.openSession). DEBUG only.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "Session whose chat list is on screen."),
+                ParamSpec(name: "includePrompt", type: "bool", required: false, default: false, description: "Also return the full correction prompt this context would produce (no candidates)."),
+                ParamSpec(name: "transcript", type: "string", required: false, default: nil, description: "Transcript to place in the returned prompt (with includePrompt)."),
+                ParamSpec(name: "locale", type: "string", required: false, default: "zh", description: "Recognizer locale that, with the transcript's script, picks the language profile (with includePrompt)."),
+            ],
+            returns: "{listOnScreen, snapshotRows, available, centerY, viewportHeight, window:[minY,maxY], candidateRows, selectedRows:[{kind,messageId,blockId,distance,chars,cut}], viewportChars, viewportBudget, lines:[string], latestReply, latestReplyDedup:'none'|'not_on_screen'|'partially_on_screen'|'fully_on_screen', latestReplyBlocksDropped, latestReplyChars, latestReplyBudget, latestReplyTruncated, recentExcerpts:[string], languageProfile?, systemPrompt?, prompt?}",
+            example: ["sessionId": "<uuid>", "includePrompt": true]
+        ),
+        MethodSpec(
+            name: "debug.chatShare.openPicker",
+            description: "[T-multi-select-share] Open the Share Chat picker on the session currently on screen, exactly as long-pressing a message and choosing \"Share Chat…\" would (its round preselected). Anchors on the last user message unless messageId is given. The session must be the one displayed. DEBUG only.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "The session on screen (debug.openSession)."),
+                ParamSpec(name: "messageId", type: "string", required: false, default: nil, description: "Message to anchor the preselected round on."),
+            ],
+            returns: "{ok, messageId}",
+            example: ["sessionId": "<uuid>"]
+        ),
+        MethodSpec(
+            name: "debug.chatExport.render",
+            description: "[T-multi-select-share] Export a loaded session's messages exactly as the share picker's Create does (long image or PDF), without the UI. Units follow the picker: one per user message, callback card or whole reply. The file is copied to Library/Caches/ChatExportDebug/ — fetch it with debug.readFile (base64). PDF results include the text PDFKit extracts, to confirm text stayed vector. DEBUG only.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "A loaded session (debug.openSession)."),
+                ParamSpec(name: "format", type: "string", required: false, default: "image", description: "image | pdf"),
+                ParamSpec(name: "wideLayout", type: "bool", required: false, default: false, description: "Lay the chat out at iPad width (1024pt) instead of the phone's."),
+                ParamSpec(name: "dark", type: "bool", required: false, default: false, description: "Render in dark appearance."),
+                ParamSpec(name: "adaptiveTables", type: "bool", required: false, default: false, description: "Tables at natural width; the page widens to fit (capped)."),
+                ParamSpec(name: "includeToolCalls", type: "bool", required: false, default: false, description: "Also select the tool-call cells of the chosen units (the picker leaves them unselected by default)."),
+                ParamSpec(name: "includeThinking", type: "bool", required: false, default: false, description: "Also select the thinking cells of the chosen units."),
+                ParamSpec(name: "lastUnits", type: "int", required: false, default: nil, description: "Export only the last N units (default: all)."),
+                ParamSpec(name: "unitIndexes", type: "array", required: false, default: nil, description: "Export these unit indexes (overrides lastUnits)."),
+                ParamSpec(name: "title", type: "string", required: false, default: "Debug Export", description: "Header title and file name."),
+            ],
+            returns: "{path, bytes, width, height, pages, units, totalUnits, cells:[kind], ms, pdfText?}",
+            example: ["sessionId": "<uuid>", "format": "pdf", "wideLayout": true, "lastUnits": 4]
+        ),
+        MethodSpec(
+            name: "debug.voiceCorrection.traceManualEdits",
+            description: "Transcript spans the user fixed BY HAND — i.e. the cases the corrector MISSED. Includes spans that CorrectionAdmission rejected as 'rewrite' (admitted:false), which are invisible everywhere else because nothing is written to the DB and the log carries lengths only. A genuine ASR fix appearing with admitted:false means the admission thresholds need tuning. 'precedingRunID' links a miss back to the traceList run whose prompt failed to catch it. DEBUG only.",
+            params: [
+                ParamSpec(name: "limit", type: "int", required: false, default: 30, description: "Most recent N edits."),
+                ParamSpec(name: "admittedOnly", type: "bool", required: false, default: nil, description: "true = only edits learned into confusion_dictionary; false = only rejected ones (the tuning-relevant set); omit for both."),
+            ],
+            returns: "{count, edits:[{id, at, source, locale, from, to, fromPhoneticKey, toPhoneticKey, phoneticKeyMatch, admitted, reason, sentenceLen, before, after, precedingRunID}]}",
+            example: ["limit": 20, "admittedOnly": false]
+        ),
+        MethodSpec(
+            name: "debug.voiceCorrection.vocabularyStats",
+            description: "Aggregate health of typed_vocabulary (the table filling the prompt's largest evidence block): frequency histogram, single-occurrence share, out-of-background-vocabulary share, and noise classes (hexLike UUID fragments / urlEncoded residue / pathFragment terms that entered via attachment markup) with example terms. Answers 'how much of this table is noise?' without paging thousands of rows over RPC. DEBUG only.",
+            params: [
+                ParamSpec(name: "sample", type: "int", required: false, default: 5000, description: "Rows to sample, highest-frequency first."),
+            ],
+            returns: "{totalRows, sampled, frequencyHistogram, singleOccurrence, outOfBackgroundVocabulary, noiseClasses, noiseExamples, backgroundListVersion}",
+            example: ["sample": 5000]
+        ),
+        MethodSpec(
+            name: "debug.voiceCorrection.traceClear",
+            description: "Clear the in-memory correction trace and manual-edit ring. Affects DEBUG capture only — never touches voice-correction.db.",
+            params: [],
+            returns: "{ok}",
+            example: [:]
         ),
         MethodSpec(
             name: "debug.voice.panel",
@@ -323,6 +516,194 @@ enum DebugMethodRegistry {
             ],
             returns: "{action, voiceActive}",
             example: ["action": "mic"]
+        ),
+        MethodSpec(
+            name: "debug.folders.list",
+            description: "List session folders with member counts and last member activity. Test/automation API for the home-list grouping feature.",
+            params: [],
+            returns: "{count, folders:[{id, name, origin, memberCount, lastActivity}]}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.folders.create",
+            description: "Create a session folder (same ChatStore path as the UI picker's New Folder). Posts the session-list refresh notification.",
+            params: [
+                ParamSpec(name: "name", type: "string", required: true, default: nil, description: "Folder display name (duplicates allowed by design)"),
+            ],
+            returns: "{id, name}",
+            example: ["name": "Work"]
+        ),
+        MethodSpec(
+            name: "debug.folders.move",
+            description: "Move sessions into a folder, or out of any folder when folderId is omitted. Mirrors the UI picker's apply path.",
+            params: [
+                ParamSpec(name: "sessionIds", type: "[string]", required: true, default: nil, description: "Session ids to move"),
+                ParamSpec(name: "folderId", type: "string", required: false, default: nil, description: "Target folder id; omit to ungroup"),
+            ],
+            returns: "{moved, folderId}",
+            example: ["sessionIds": ["<sid>"], "folderId": "<fid>"]
+        ),
+        MethodSpec(
+            name: "debug.folders.dissolve",
+            description: "Dissolve a folder: members' folder_id cleared, folder deleted, NO session deleted.",
+            params: [
+                ParamSpec(name: "folderId", type: "string", required: true, default: nil, description: "Folder id"),
+            ],
+            returns: "{folderId, freedSessions}",
+            example: ["folderId": "<fid>"]
+        ),
+        MethodSpec(
+            name: "debug.folders.get",
+            description: "One folder in full: metadata (name/origin/pinned/timestamps) plus member sessions (id/title/category/updatedAt), newest first.",
+            params: [
+                ParamSpec(name: "folderId", type: "string", required: true, default: nil, description: "Folder id (from debug.folders.list)"),
+            ],
+            returns: "{id, name, icon, color, origin, pinned, createdAt, updatedAt, memberCount, members:[{id,title,category,updatedAt}]}",
+            example: ["folderId": "<fid>"]
+        ),
+        MethodSpec(
+            name: "debug.folders.rename",
+            description: "Rename a folder (same ChatStore path as the header menu's Rename; rides FolderV2 LWW, members untouched).",
+            params: [
+                ParamSpec(name: "folderId", type: "string", required: true, default: nil, description: "Folder id"),
+                ParamSpec(name: "name", type: "string", required: true, default: nil, description: "New display name"),
+            ],
+            returns: "{folderId, name}",
+            example: ["folderId": "<fid>", "name": "Work"]
+        ),
+        MethodSpec(
+            name: "debug.sessions.badge",
+            description: "Inject a session badge (paused/…) with a back-dated entry stamp — exercises the group-card 24h freshness filter.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "Session id"),
+                ParamSpec(name: "state", type: "string", required: true, default: nil, description: "paused | iCloudSyncing | unread"),
+                ParamSpec(name: "ageHours", type: "number", required: false, default: "0", description: "How long ago the state was entered"),
+            ],
+            returns: "{sessionId, state, ageHours}",
+            example: ["sessionId": "<sid>", "state": "paused", "ageHours": 25]
+        ),
+        MethodSpec(
+            name: "debug.location.setAutoRetract",
+            description: "[T-bka-orphan-retract-exp] Turn the automatic orphaned-location-session retracts (launch, setup, foreground) on or off, so a leaked CLBackgroundActivitySession can be tested in isolation. Persists; turn back on after the experiment.",
+            params: [
+                ParamSpec(name: "enabled", type: "bool", required: true, default: nil, description: "true = automatic retracts run (default)"),
+            ],
+            returns: "{autoRetract}",
+            example: ["enabled": false]
+        ),
+        MethodSpec(
+            name: "debug.loadtest.getLimits",
+            description: "[T-loadtest-limits] DEBUG only. Effective concurrency limits (sessions / childJobs / queuedDelegations / tools), what each counts (scope: childJobs and queuedDelegations are PER PARENT conversation; sub agent runs take no session slot), the shipping values and which are overridden.",
+            params: [],
+            returns: "{sessions, childJobs, queuedDelegations, tools, scope, shipping, overridden}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.loadtest.setLimits",
+            description: "[T-loadtest-limits] DEBUG only, for the on-device load test. Override any subset of the hard concurrency limits; 0 restores the shipping value (6 sessions / 3 sub agents per parent / 10 queued per parent / 10 tools). In memory only - a relaunch restores the defaults. Raising the session limit does not wake already-suspended sessions; they start as slots free up.",
+            params: [
+                ParamSpec(name: "sessions", type: "int", required: false, default: nil, description: "ConcurrencyLimits.sessionSlots - agent loops of conversations at once (sub agents exempt)"),
+                ParamSpec(name: "childJobs", type: "int", required: false, default: nil, description: "ConcurrencyLimits.childJobsPerParent - sub agents running at once PER PARENT (alias: childJobsPerParent)"),
+                ParamSpec(name: "queuedDelegations", type: "int", required: false, default: nil, description: "ConcurrencyLimits.queuedDelegationsPerParent - queued delegations PER PARENT (alias: queuedDelegationsPerParent)"),
+                ParamSpec(name: "tools", type: "int", required: false, default: nil, description: "AIChatViewModel.maxConcurrentTools"),
+            ],
+            returns: "getLimits",
+            example: ["sessions": 10, "childJobs": 10]
+        ),
+        MethodSpec(
+            name: "debug.loadtest.sample",
+            description: "[T-loadtest-limits] DEBUG only. One resource snapshot: phys_footprint, os_proc_available_memory, threads, iSH guest processes and anon memory, thermal state, battery, app state, running / suspended sessions, running child jobs, limits.",
+            params: [],
+            returns: "{t, footprintMB, availMB, threads, guestProcs, guestAnonMB, thermal, battery, ...}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.bka.getProfile",
+            description: "[T-bka-debug-profile] Every background-behaviour knob (settings + DEBUG modes) and the live runtime state: app in background, run active, continued task running/released, location session open, silent audio playing.",
+            params: [],
+            returns: "{settings, debug, runtime}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.bka.setProfile",
+            description: "[T-bka-debug-profile] Set any subset of the background knobs at once, applied live (settings go through the running manager, so no relaunch). Optional preset first: legacy (the default: no continued task, continuous location) / bgtask (the opt-in switch on: continued task, location only when it is not running) / bgtask-only (bgtask + location off + Background Speak off) / audio-only (no continued task, location off, Background Speak on). Explicit keys override the preset. Returns getProfile.",
+            params: [
+                ParamSpec(name: "preset", type: "string", required: false, default: nil, description: "legacy | bgtask | bgtask-only | audio-only"),
+                ParamSpec(name: "enhancedBackground", type: "bool", required: false, default: nil, description: "Settings: Enhanced Background"),
+                ParamSpec(name: "backgroundSpeak", type: "bool", required: false, default: nil, description: "Settings: Background Speak (silent-audio keep-alive)"),
+                ParamSpec(name: "locationTracking", type: "bool", required: false, default: nil, description: "Settings: Location Tracking"),
+                ParamSpec(name: "liveActivity", type: "bool", required: false, default: nil, description: "Settings: Live Activity"),
+                ParamSpec(name: "continuedPreferred", type: "bool", required: false, default: nil, description: "Settings: Prefer Continued Background Processing"),
+                ParamSpec(name: "continuedMode", type: "string", required: false, default: nil, description: "preferred | fallback | off | default"),
+                ParamSpec(name: "locationMode", type: "string", required: false, default: nil, description: "continuous | off | default"),
+                ParamSpec(name: "laRestartAfterTask", type: "string", required: false, default: nil, description: "off | taskStart | resignActive - re-create the Live Activity after the continued task is up (Dynamic Island priority experiment)"),
+                ParamSpec(name: "liveActivityRelevance", type: "number", required: false, default: nil, description: "relevanceScore on our Live Activity (default 100); decides which of an app's activities holds the Dynamic Island"),
+            ],
+            returns: "{settings, debug, runtime}",
+            example: ["preset": "bgtask"]
+        ),
+        MethodSpec(
+            name: "debug.bka.setLocationMode",
+            description: "[T-bka-loc-pulse] How location keeps the Live Activity refreshing in the background: continuous (one session the whole time; default) / off (none, experiment) / default (clear the override). Takes effect at the next background arming.",
+            params: [
+                ParamSpec(name: "mode", type: "string", required: true, default: nil, description: "continuous | off | default"),
+            ],
+            returns: "{mode}",
+            example: ["mode": "continuous"]
+        ),
+        MethodSpec(
+            name: "debug.bka.setContinuedMode",
+            description: "[T-bka-continued-preferred-switch] iOS 26+ BGContinuedProcessingTask, only while the settings switch background.continuedProcessing is on (default off): preferred (default: every run started in the foreground; location stands down while the task runs) / fallback (only runs without the silent-audio keep-alive; location unchanged) / off. Applies from the next run.",
+            params: [
+                ParamSpec(name: "mode", type: "string", required: true, default: nil, description: "preferred | fallback | off"),
+            ],
+            returns: "{mode}",
+            example: ["mode": "preferred"]
+        ),
+        MethodSpec(
+            name: "debug.location.retractExperiment",
+            description: "[T-bka-orphan-retract-exp] Run one retract strategy on a leaked background location session and log each step ([BKA][RetractExp]).",
+            params: [
+                ParamSpec(name: "strategy", type: "string", required: true, default: nil, description: "probe | delayed1 | delayed5 | liveUpdates"),
+            ],
+            returns: "{ok, strategy, steps}",
+            example: ["strategy": "probe"]
+        ),
+        MethodSpec(
+            name: "debug.appearance.set",
+            description: "Set the app Theme override (0 system / 1 light / 2 dark) — drives appearance-dependent rendering for tests.",
+            params: [
+                ParamSpec(name: "mode", type: "int", required: true, default: nil, description: "0 system, 1 light, 2 dark"),
+            ],
+            returns: "{mode}",
+            example: ["mode": 2]
+        ),
+        MethodSpec(
+            name: "debug.sessions.pin",
+            description: "Toggle a session's pin (same ChatStore path as the row menu's Pin).",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "Session id"),
+            ],
+            returns: "{sessionId, pinned}",
+            example: ["sessionId": "<sid>"]
+        ),
+        MethodSpec(
+            name: "debug.folders.pin",
+            description: "Toggle a folder's pin (pinned folders float above unpinned ones).",
+            params: [
+                ParamSpec(name: "folderId", type: "string", required: true, default: nil, description: "Folder id"),
+            ],
+            returns: "{folderId, pinned}",
+            example: ["folderId": "<fid>"]
+        ),
+        MethodSpec(
+            name: "debug.folders.setAutoGrouping",
+            description: "Toggle the auto-grouping setting (title generation files new chats into matching existing folders). Test hook — the real toggle is in Settings → Appearance.",
+            params: [
+                ParamSpec(name: "enabled", type: "bool", required: true, default: nil, description: "true to enable"),
+            ],
+            returns: "{enabled}",
+            example: ["enabled": true]
         ),
         MethodSpec(
             name: "debug.rootfs.reset",
@@ -366,6 +747,39 @@ enum DebugMethodRegistry {
             ],
             returns: "{enabled: bool}",
             example: ["enabled": true]
+        ),
+        MethodSpec(
+            name: "debug.toolExec.setEnabled",
+            description: "Enable or disable the durable [ToolExec] breadcrumb that records each shell_execute immediately BEFORE it launches (O_SYNC, so it survives a SIGKILL/Jetsam mid-command). Default ON; the setting persists across launches. DEBUG builds only.",
+            params: [
+                ParamSpec(name: "enabled", type: "bool", required: true, default: nil, description: "New enabled state."),
+            ],
+            returns: "{enabled, path, exists, size, maxBytes, modified}",
+            example: ["enabled": true]
+        ),
+        MethodSpec(
+            name: "debug.crashDiag.list",
+            description: "Crash diagnostics on the device: this run's and earlier runs' breadcrumbs, archived crash contexts (fault address / registers) and MetricKit JSON. Read one with debug.crashDiag.read.",
+            params: [],
+            returns: "{items: [{id, kind, title, size, modified}]}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "debug.crashDiag.read",
+            description: "One crash-diagnostics item as text, sanitised exactly like the Settings export (keys, tokens, Authorization, URL query parameters, e-mail addresses removed).",
+            params: [
+                ParamSpec(name: "id", type: "string", required: true, default: nil, description: "An id from debug.crashDiag.list."),
+                ParamSpec(name: "limit", type: "int", required: false, default: 524288, description: "Maximum bytes returned (<= 1 MB)."),
+            ],
+            returns: "{id, text, bytes, truncated}",
+            example: ["id": "current:current.bin"]
+        ),
+        MethodSpec(
+            name: "debug.toolExec.getStatus",
+            description: "Current [ToolExec] breadcrumb state: whether it is on, plus the file's path/size/mtime. Read the contents with debug.readFile using the returned `path` — a STARTING line with no matching FINISHED is the command the process died inside.",
+            params: [],
+            returns: "{enabled, path, exists, size, maxBytes, modified}",
+            example: [:]
         ),
         MethodSpec(
             name: "debug.screenshot",
@@ -659,6 +1073,52 @@ enum DebugMethodRegistry {
             example: ["instanceId": "pi_xyz"]
         ),
         MethodSpec(
+            name: "provider.thinkingRules.list",
+            description: "List a provider's thinking rules — user-authored (custom) and built-in.",
+            params: [
+                ParamSpec(name: "instanceId", type: "string", required: true, default: nil, description: "Target instance UUID."),
+            ],
+            returns: "{instanceId, custom:[rule], builtIn:[rule]}",
+            example: ["instanceId": "pi_xyz"]
+        ),
+        MethodSpec(
+            name: "provider.thinkingRules.add",
+            description: "Create or update ONE user thinking rule via the same store API the UI uses.",
+            params: [
+                ParamSpec(name: "instanceId", type: "string", required: true, default: nil, description: "Target instance UUID."),
+                ParamSpec(name: "label", type: "string", required: true, default: nil, description: "Rule name."),
+                ParamSpec(name: "wireFormat", type: "object", required: true, default: nil, description: "Encoded ThinkingWireFormat, e.g. {\"kind\":\"omitEverything\"}."),
+                ParamSpec(name: "pattern", type: "string", required: false, default: nil, description: "Model glob. Omit for all models."),
+                ParamSpec(name: "sortOrder", type: "int", required: false, default: "0", description: "Position; lower evaluates first."),
+                ParamSpec(name: "id", type: "string", required: false, default: nil, description: "Pass an existing id to update in place."),
+            ],
+            returns: "{ok, id, instanceId}",
+            example: ["instanceId": "pi_xyz", "label": "test", "pattern": "*deepseek-v4*", "wireFormat": ["kind": "omitEverything"]]
+        ),
+        MethodSpec(
+            name: "provider.thinkingRules.delete",
+            description: "Delete one user thinking rule by id.",
+            params: [
+                ParamSpec(name: "instanceId", type: "string", required: true, default: nil, description: "Target instance UUID."),
+                ParamSpec(name: "id", type: "string", required: true, default: nil, description: "Rule id from thinkingRules.list."),
+            ],
+            returns: "{ok, id}",
+            example: ["instanceId": "pi_xyz", "id": "..."]
+        ),
+        MethodSpec(
+            name: "provider.thinkingRules.resolve",
+            description: "Resolve (model, level) through the real resolver and return the emitted body + trace.",
+            params: [
+                ParamSpec(name: "instanceId", type: "string", required: true, default: nil, description: "Target instance UUID."),
+                ParamSpec(name: "modelId", type: "string", required: true, default: nil, description: "Model id to resolve for."),
+                ParamSpec(name: "level", type: "string", required: false, default: "high", description: "off|low|medium|high|xhigh|max|ultra."),
+                ParamSpec(name: "maxTokens", type: "int", required: false, default: "8192", description: "For budget-shaped formats."),
+                ParamSpec(name: "offEffort", type: "string", required: false, default: nil, description: "Vendor off tier, when simulating one."),
+            ],
+            returns: "{modelId, level, body, trace:{rule, kind, source, emittedKeys}}",
+            example: ["instanceId": "pi_xyz", "modelId": "deepseek-v4-flash", "level": "high"]
+        ),
+        MethodSpec(
             name: "provider.models.add",
             description: "Add a custom model entry to an instance.",
             params: [
@@ -730,7 +1190,7 @@ enum DebugMethodRegistry {
             params: [
                 ParamSpec(name: "instanceId", type: "string", required: true, default: nil, description: "Target instance UUID."),
             ],
-            returns: "{instanceId, added, updated, disappeared, total, durationMs}",
+            returns: "{instanceId, source (vendor|built-in|models.dev|kept), vendorError (string|null), listed, added, removed, unlisted, updated, disappeared, total, durationMs}",
             example: ["instanceId": "pi_xyz"]
         ),
         MethodSpec(
@@ -750,6 +1210,60 @@ enum DebugMethodRegistry {
             ],
             returns: "{instanceId, instanceLabel, modelEntryCount, success}",
             example: ["configJson": "{\"version\":1,\"config\":{...}}"]
+        ),
+
+        // MARK: minis-config (remote CLI driver)
+        MethodSpec(
+            name: "config.get",
+            description: "Read one minis-config path through the real ConfigOffloadBridge — identical to `minis-config get <path>` in the iSH guest. Works for flat fields, collection children (`<base>.<id>.<leaf>`) and read-only aggregates.",
+            params: [
+                ParamSpec(name: "path", type: "string", required: true, default: nil, description: "Registered path, e.g. `thinkingrules` or `thinkingrules.<instanceId>:<ruleId>.scope`."),
+                ParamSpec(name: "filter", type: "string", required: false, default: nil, description: "Whitespace-split AND terms, matched case-insensitively against each array element's JSON."),
+                ParamSpec(name: "page", type: "int", required: false, default: "0", description: "1-based page for array values."),
+                ParamSpec(name: "pageSize", type: "int", required: false, default: "20", description: "Max 100."),
+            ],
+            returns: "The bridge envelope verbatim: {ok, value, …} or {ok:false, error, reason}",
+            example: ["path": "thinkingrules"]
+        ),
+        MethodSpec(
+            name: "config.set",
+            description: "Write minis-config path(s) through the real write batch — the same code path as `minis-config set`, including collection add/remove (`<base>.add` / `<base>.remove`) and array append. By DEFAULT this triggers the on-device confirmation sheet and blocks until it is answered (120s gate timeout); pass skipConfirmation to bypass it for unattended runs.",
+            params: [
+                ParamSpec(name: "path", type: "string", required: false, default: nil, description: "Single-write path. Use `items` for a batch."),
+                ParamSpec(name: "value_json", type: "string", required: false, default: "null", description: "Value as a JSON STRING, matching the CLI's argv contract (a string value is \"\\\"abc\\\"\")."),
+                ParamSpec(name: "items", type: "array", required: false, default: nil, description: "Batch form: [{path, value_json}, …]."),
+                ParamSpec(name: "caption", type: "string", required: false, default: "debug rpc config.set", description: "Shown on the confirmation sheet and stored in the audit row."),
+                ParamSpec(name: "actor", type: "string", required: false, default: "agent", description: "Audit actor."),
+                ParamSpec(name: "skipConfirmation", type: "bool", required: false, default: "false", description: "Bypass the confirmation sheet. DEBUG-only."),
+            ],
+            returns: "{ok, applied:[{path,display_name,old,new}], audit_ids, user_message} or an error envelope",
+            example: ["path": "thinkingrules.add", "value_json": "{\"provider\":\"<uuid>\",\"label\":\"my rule\",\"wire_format\":{\"kind\":\"reasoningEffort\"}}"]
+        ),
+        MethodSpec(
+            name: "config.topics",
+            description: "Every registered minis-config topic — the index `minis-config --help` prints. Use it to confirm a collection is actually registered.",
+            params: [],
+            returns: "{topics:[string]}",
+            example: [:]
+        ),
+        MethodSpec(
+            name: "config.topicHelp",
+            description: "Field schema for one topic, as `minis-config <topic> --help` prints it. This is how the writable paths of a collection are discovered.",
+            params: [
+                ParamSpec(name: "topic", type: "string", required: true, default: nil, description: "Topic name, e.g. `thinkingrules`."),
+            ],
+            returns: "{topic, fields:[{path, display_name, description, type, access, risk}]}",
+            example: ["topic": "thinkingrules"]
+        ),
+        MethodSpec(
+            name: "config.audit",
+            description: "Recent minis-config audit rows, to prove a write was recorded with the expected actor/status rather than merely returning ok.",
+            params: [
+                ParamSpec(name: "limit", type: "int", required: false, default: "20", description: "Max rows."),
+                ParamSpec(name: "scope", type: "string", required: false, default: nil, description: "Optional scope filter."),
+            ],
+            returns: "{ok, entries:[…]}",
+            example: ["limit": 5]
         ),
 
         // MARK: Group management
@@ -877,9 +1391,19 @@ enum DebugMethodRegistry {
                 ParamSpec(name: "modelGroupId", type: "string", required: false, default: nil, description: "Pin to a specific group. Mutually exclusive with modelEntryId."),
                 ParamSpec(name: "wait", type: "bool", required: false, default: false, description: "Block until completion."),
                 ParamSpec(name: "waitTimeout", type: "int", required: false, default: 600, description: "Seconds when wait=true. Clamped to [1, 1800]."),
+                ParamSpec(name: "pastedTexts", type: "[string]", required: false, default: nil, description: "Stash each string as a long-paste placeholder before sending; its [Pasted#N] literal replaces a {{PASTE<i>}} token in prompt, or is appended."),
             ],
             returns: "{sessionId, isNewSession, modelName, status, prompt, responseText, userMessageId, tokenUsage?}",
             example: ["prompt": "Say hi", "wait": true]
+        ),
+        MethodSpec(
+            name: "chat.title.regenerate",
+            description: "Regenerate a session's title (manual long-press action equivalent). With auto-grouping ON and the session unfiled, may also file it into a matching existing folder.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "Target session ID."),
+            ],
+            returns: "{sessionId, title, folderId}",
+            example: ["sessionId": "6D0F…"]
         ),
         MethodSpec(
             name: "chat.session.status",
@@ -957,9 +1481,30 @@ enum DebugMethodRegistry {
                 ParamSpec(name: "charCount", type: "int", required: false, default: 200_000, description: "Target total characters in the generated markdown."),
                 ParamSpec(name: "blockChars", type: "int", required: false, default: 800, description: "Approximate per-paragraph length. Number of paragraphs ≈ charCount/blockChars."),
                 ParamSpec(name: "role", type: "string", required: false, default: "assistant", description: "'assistant' or 'user'."),
+                ParamSpec(name: "text", type: "string", required: false, default: nil, description: "Verbatim markdown to inject. When present, charCount/blockChars are ignored and this exact text is stored — use it to replay a captured real conversation (CJK, LaTeX, tables) that generated lorem ipsum cannot reproduce."),
             ],
             returns: "{messageId, sortOrder, totalChars, blockCount, role}",
             example: ["sessionId": "6D0F…", "charCount": 200000, "blockChars": 800]
+        ),
+        MethodSpec(
+            name: "chat.debugRemoveMessages",
+            description: "TEST HOOK [T-msgidx-oob-repro]: remove N UI rows from the FRONT of the live view model's messages array (never the trailing assistant), simulating an external mid-loop mutation (iCloud rebuild / user delete). Mutates only the UI array — agentHistory and the DB are untouched. Time it into a stalled stream to reproduce the stale-msgIdx crash family.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "Target session ID (must be the live/open one)."),
+                ParamSpec(name: "count", type: "int", required: false, default: 2, description: "Rows to remove from the front. Clamped [1,10]."),
+            ],
+            returns: "{before, removed, after}",
+            example: ["sessionId": "6D0F…", "count": 2]
+        ),
+        MethodSpec(
+            name: "chat.deleteFromMessage",
+            description: "TEST HOOK [T-ios-delete-from-message]: delete the n-th user bubble and everything after it, exercising the same suffix-truncation rule as retry. Reports UI / agentHistory / trailing-entry state so a test can assert the surviving history never ends on a dangling tool_use.",
+            params: [
+                ParamSpec(name: "sessionId", type: "string", required: true, default: nil, description: "Target session ID (must be the live/open one)."),
+                ParamSpec(name: "index", type: "int", required: false, default: 0, description: "Which USER bubble to delete from, 0-based."),
+            ],
+            returns: "{userBubblesBefore, messagesBefore, messagesAfter, historyBefore, historyAfter, trailingHistoryRole, trailingHasToolUse}",
+            example: ["sessionId": "6D0F…", "index": 1]
         ),
         MethodSpec(
             name: "chat.compact.revert",

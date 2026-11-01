@@ -60,9 +60,77 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     /// nil means the provider uses native thinking blocks (Anthropic) or thought parts (Gemini).
     var interleavedReasoningField: String?
 
+    /// [T-reasoning-effort-data-driven] Effort tiers this model accepts on the
+    /// wire, from the models.dev `reasoning_options` entry of type `effort`
+    /// (e.g. `["high","max"]` for zhipuai glm-5.2). Lowercased.
+    ///
+    /// Two distinct jobs, both previously done by hardcoded id substring lists:
+    ///   1. Presence (non-nil, non-empty) = "this model is controlled by
+    ///      `reasoning_effort`" — the signal that replaces the
+    ///      deepseek/glm/kimi/minimax family skip-list.
+    ///   2. Contents = the ALLOWED tiers. The sets vary wildly across the
+    ///      catalog (`["low","medium","high"]`, `["high","max"]`,
+    ///      `["high","xhigh"]`, …), so the user's chosen level must be clamped
+    ///      onto this set — sending "xhigh" to a `["high","max"]` model is the
+    ///      same class of 400 the MiMo/Agnes clamp already guards against.
+    ///
+    /// nil = catalog says nothing; fall back to the legacy heuristics.
+    var reasoningEffortValues: [String]?
+
+    /// [OpenMinis#163] The catalog affirmatively declares NO effort tiers for
+    /// this model — it reasons, but takes no `reasoning_effort` parameter.
+    ///
+    /// Distinct from `reasoningEffortValues == nil`, which also covers "the
+    /// catalog has never heard of this model". Only the affirmative case may
+    /// suppress the field; the unknown case stays permissive so third-party
+    /// relays keep working. See `ModelsDevModel.declaresNoEffortTiers`.
+    ///
+    /// Optional (not a plain Bool) so decoding a model persisted before this
+    /// field existed yields nil — "unknown", the pre-existing behaviour —
+    /// rather than a synthesized `false` that would look like a real answer.
+    var declaresNoEffortTiers: Bool?
+
+    /// [T-thinking-off-custom-provider] True when `reasoningEffortValues` was read from a
+    /// catalog entry belonging to this model's OWN provider, rather than from the
+    /// cross-provider fallback scan.
+    ///
+    /// The fallback scan matches a bare model id under any publisher and majority-votes
+    /// the effort sets, which is what every user-defined OpenAI-compatible relay resolves
+    /// through (a custom provider name is in no `providerKeyMap` entry). Good enough to
+    /// clamp a requested tier; NOT good enough to override the user's explicit "thinking
+    /// off", because it describes somebody else's endpoint.
+    ///
+    /// Optional (not a plain `Bool`) for the same reason as `declaresNoEffortTiers`:
+    /// `LLMModel` uses SYNTHESIZED Codable, so a non-optional field would make every
+    /// model persisted before this existed fail to decode outright — taking the user's
+    /// configured entries with it. nil decodes cleanly and reads as "not authoritative",
+    /// which is the permissive/pass-through direction.
+    var effortDeclarationIsAuthoritative: Bool?
+
+    /// [T-openrouter-voice-catalog] OpenMinis#280. Which OpenRouter catalog
+    /// endpoint this model came from: "tts" (`?output_modalities=speech`),
+    /// "stt" (`?output_modalities=transcription`) or "none" (the default chat
+    /// catalog). nil = not catalog-sourced (custom entries, other providers,
+    /// models saved before this field), which keep the modality-based voice
+    /// rules. See `VoiceRole`. Optional so older saves decode as nil; set after
+    /// init, and carried across `ModelEntry.model`'s rebuild by hand. Mirrors
+    /// Android LLMModel.voiceRole (same name, same values).
+    var voiceRole: String?
+
+    /// [OpenMinis#438] True when `contextWindow` / `maxOutputTokens` were read
+    /// from this endpoint's own /models entry (`context_length`, `limit.context`,
+    /// `max_output_tokens`, …). models.dev then only fills the fields the
+    /// endpoint left nil: its match for a relay id is a cross-provider guess,
+    /// and a guessed window larger than the gateway's real one turns a graceful
+    /// compaction into a hard 400. Optional so older saves decode as nil (the
+    /// catalog keeps winning, as before); set after init and carried across
+    /// `ModelEntry.model`'s rebuild by hand, like `voiceRole`.
+    var limitsReportedByEndpoint: Bool?
+
     init(id: String, displayName: String, provider: String, modalityOverride: ModelModality? = nil,
          contextWindow: Int? = nil, maxOutputTokens: Int? = nil,
-         supportsReasoning: Bool? = nil, interleavedReasoningField: String? = nil) {
+         supportsReasoning: Bool? = nil, interleavedReasoningField: String? = nil,
+         reasoningEffortValues: [String]? = nil, declaresNoEffortTiers: Bool? = nil) {
         self.id = id
         self.displayName = displayName
         self.provider = provider
@@ -71,6 +139,8 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
         self.maxOutputTokens = maxOutputTokens
         self.supportsReasoning = supportsReasoning
         self.interleavedReasoningField = interleavedReasoningField
+        self.reasoningEffortValues = reasoningEffortValues
+        self.declaresNoEffortTiers = declaresNoEffortTiers
     }
 
     // [T-anthropic-context-window] Explicit context/output caps per Anthropic's
@@ -82,6 +152,39 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     static let claudeFable5 = LLMModel(
         id: "claude-fable-5",
         displayName: "Claude Fable 5",
+        provider: "Anthropic",
+        contextWindow: 1_000_000,
+        maxOutputTokens: 128_000
+    )
+
+    /// Fable 5.1 is adaptive-thinking ONLY — deliberately no manual thinking
+    /// budget is modeled here. Declaring a min/max budget makes the server read
+    /// the model as hybrid-thinking and reject the request upstream. The
+    /// `LLMModel` init has no budget fields at all, so this holds by
+    /// construction; the note is here so a future refactor that adds them does
+    /// not quietly extend them to this model.
+    static let claudeFable51 = LLMModel(
+        id: "claude-fable-5-1",
+        displayName: "Claude Fable 5.1",
+        provider: "Anthropic",
+        contextWindow: 1_000_000,
+        maxOutputTokens: 128_000
+    )
+
+    /// [T-anthropic-opus55] Adaptive-thinking only, like Fable 5.1 above: Opus
+    /// 5.5 REJECTS `thinking.type: "disabled"` with
+    ///   400 … not supported for this model
+    /// so the request must carry adaptive thinking. Its "thinking off" is
+    /// adaptive + `output_config.effort: "low"` (`AnthropicProvider.offThinking`
+    /// answers `.lowEffort`), pinned by `GPT6SolLunaOpus55Tests`.
+    ///
+    /// Also gated on the CLI fingerprint: Anthropic requires
+    /// `claude-cli >= 2.1.280` for this id, which is why `ClaudeCLIMimicry`
+    /// moved off 2.1.251. A stale UA reads as a 400 that looks like a bad
+    /// catalog entry rather than a version gate.
+    static let claudeOpus55 = LLMModel(
+        id: "claude-opus-5-5",
+        displayName: "Claude Opus 5.5",
         provider: "Anthropic",
         contextWindow: 1_000_000,
         maxOutputTokens: 128_000
@@ -106,6 +209,28 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     static let claudeOpus46 = LLMModel(
         id: "claude-opus-4-6",
         displayName: "Claude Opus 4.6",
+        provider: "Anthropic",
+        contextWindow: 1_000_000,
+        maxOutputTokens: 128_000
+    )
+
+    /// [T-anthropic-sonnet55] Claude Sonnet 5.5 (CLIProxyAPI registry
+    /// 9a3b869f "feat(models): add claude-sonnet-5-5 model"): 1M context, 128K
+    /// output, text + image in, thinking levels low…max. Upstream's thinking
+    /// entry is identical to claude-sonnet-5 / claude-opus-5, and on the wire
+    /// it takes the same Claude-5 path, all keyed on the parsed version (5,5):
+    /// no `temperature`, adaptive thinking + `output_config.effort`. "Thinking
+    /// off" is `thinking: {"type": "between_tools"}` - the only model that takes
+    /// it; `disabled` 400s here, and an absent field thinks at the default high
+    /// effort (`AnthropicProvider.offThinking` answers `.betweenTools`).
+    ///
+    /// Not in models-dev-api.json yet; enrichment reaches it through the
+    /// stage-3 prefix fallback (claude-sonnet-5-5 → claude-sonnet-5), and
+    /// `ThinkingLevelCatalog` pins the .max ceiling in case that lookup ever
+    /// misses. Output is 128K here (upstream), not Sonnet 5's static 64K.
+    static let claudeSonnet55 = LLMModel(
+        id: "claude-sonnet-5-5",
+        displayName: "Claude Sonnet 5.5",
         provider: "Anthropic",
         contextWindow: 1_000_000,
         maxOutputTokens: 128_000
@@ -136,7 +261,7 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     )
 
     static let allAnthropic: [LLMModel] = [
-        .claudeFable5, .claudeOpus5, .claudeOpus48, .claudeOpus46, .claudeSonnet5, .claudeSonnet46, .claudeHaiku45,
+        .claudeFable51, .claudeFable5, .claudeOpus55, .claudeOpus5, .claudeOpus48, .claudeOpus46, .claudeSonnet55, .claudeSonnet5, .claudeSonnet46, .claudeHaiku45,
     ]
 
     // MARK: - Gemini Models
@@ -204,6 +329,70 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
 
     // MARK: - OpenAI Models
 
+    /// Codex OAuth only (ChatGPT subscription). Reasoning tiers come from
+    /// ThinkingLevelCatalog (tops out at .max, like gpt-5.6-sol/terra).
+    ///
+    /// `supportsReasoning: true` must be explicit here: gpt-5.6-* get it from
+    /// `ModelsDevAPI.enrichModels()` (they are in models-dev-api.json), but a
+    /// brand-new id is not in that catalog, so the flag stayed nil — and
+    /// `OpenAIAgentProvider.reasoningEffort(for:)` guards on
+    /// `supportsReasoning ?? false`, which sent the Codex-OAuth fallback
+    /// `reasoning.effort: "low"` for every level the user picked.
+    static let gpt6Astra = LLMModel(
+        id: "gpt-6-astra",
+        displayName: "GPT-6 Astra",
+        provider: "OpenAI",
+        supportsReasoning: true
+    )
+
+    /// [T-gpt61-sol] GPT-6.1 Sol (OpenAI DevDay 2026-09-29), from CLIProxyAPI
+    /// PR #6207 "register GPT-6.1 Sol and client capabilities": context
+    /// 272000, max output 128000, thinking levels low…max,
+    /// `minimal_client_version` 0.155.0 in that PR; `OpenAIProvider
+    /// .codexClientVersion` is now 0.159.0 (see [T-codex-client-0159]).
+    ///
+    /// - `supportsReasoning: true` is explicit for the same reason as Astra: a
+    ///   new id is not in models-dev-api.json, so without it every level would
+    ///   collapse to the Codex-OAuth fallback effort "low".
+    /// - The context window is explicit too. No `gpt-6` rule exists in
+    ///   `contextWindowTokens`, so a gpt-6.x id falls through to the 128K
+    ///   default. That would make ContextPolicy compact at ~108K on a 272K
+    ///   model whenever the Codex backend's catalogue (which carries the real
+    ///   value) is not reachable and this built-in list is served.
+    static let gpt61Sol = LLMModel(
+        id: "gpt-6.1-sol",
+        displayName: "GPT-6.1 Sol",
+        provider: "OpenAI",
+        contextWindow: 272_000,
+        maxOutputTokens: 128_000,
+        supportsReasoning: true
+    )
+
+    /// [T-gpt6-sol-luna] Same explicit `supportsReasoning: true` as Astra above,
+    /// and for the same reason — a brand-new id is not in models-dev-api.json,
+    /// so `enrichModels()` leaves the flag nil and every thinking level collapses
+    /// to the Codex-OAuth fallback `reasoning.effort: "low"`.
+    ///
+    /// Both need Codex client >= 0.155.0 (`minimal_client_version` in OpenAI's
+    /// codex_client_models.json); see `OpenAIProvider.codexClientVersion`.
+    ///
+    /// Sol's thinking ladder deliberately stops below "ultra" — the backend
+    /// rejects that tier, exactly as it does for gpt-5.6-sol. That exclusion
+    /// lives in ThinkingLevelCatalog, not here.
+    static let gpt6Sol = LLMModel(
+        id: "gpt-6-sol",
+        displayName: "GPT-6 Sol",
+        provider: "OpenAI",
+        supportsReasoning: true
+    )
+
+    static let gpt6Luna = LLMModel(
+        id: "gpt-6-luna",
+        displayName: "GPT-6 Luna",
+        provider: "OpenAI",
+        supportsReasoning: true
+    )
+
     static let gpt56Sol = LLMModel(
         id: "gpt-5.6-sol",
         displayName: "GPT-5.6 Sol",
@@ -231,6 +420,15 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     static let gpt54 = LLMModel(
         id: "gpt-5.4",
         displayName: "GPT-5.4",
+        provider: "OpenAI"
+    )
+
+    /// [T-codex-oauth-model-prune] Codex OAuth only — verified callable on a
+    /// live ChatGPT-account token (2026-08-01) and present in CLIProxyAPI's
+    /// Codex client registry, but we had never listed it.
+    static let gpt54Mini = LLMModel(
+        id: "gpt-5.4-mini",
+        displayName: "GPT-5.4 Mini",
         provider: "OpenAI"
     )
 
@@ -350,6 +548,44 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
         modalityOverride: [.textInput, .imageInput, .imageOutput]
     )
 
+    /// [T-codex-gpt-image25-variants] The 2.5 variants of the same Codex OAuth
+    /// image path. They differ from `gptImage2` ONLY in that the
+    /// `image_generation` tool object must name them explicitly — see
+    /// `OpenAIProvider.generateImageViaCodexResponses`. `gpt-image-2` stays
+    /// unnamed so the backend keeps routing it by its own default, which is the
+    /// behaviour that is already verified on-device.
+    static let gptImage25Sunburst = LLMModel(
+        id: "gpt-image-2.5-sunburst",
+        displayName: "GPT Image 2.5 Sunburst",
+        provider: "OpenAI",
+        modalityOverride: [.textInput, .imageInput, .imageOutput]
+    )
+
+    static let gptImage25Flare = LLMModel(
+        id: "gpt-image-2.5-flare",
+        displayName: "GPT Image 2.5 Flare",
+        provider: "OpenAI",
+        modalityOverride: [.textInput, .imageInput, .imageOutput]
+    )
+
+    /// [T-codex-gpt-image25-variants] Every model that routes through the Codex
+    /// OAuth `image_generation` tool. One list so the routing gate in
+    /// `ModelUseOffloadBridge` and the tool-object builder in `OpenAIProvider`
+    /// cannot drift apart — adding a variant in one place and forgetting the
+    /// other would either strand the model on the wrong endpoint or send it
+    /// without the `model` field it needs.
+    static let allCodexOAuthImageModelIDs: Set<String> = [
+        gptImage2.id, gptImage25Sunburst.id, gptImage25Flare.id,
+    ]
+
+    /// [T-codex-gpt-image25-variants] True when the tool object must carry an
+    /// explicit `"model"`. `gpt-image-2` is deliberately excluded: it predates
+    /// the field and is served by the backend default, so leaving it alone
+    /// keeps that path byte-identical to what shipped.
+    static func codexImageToolNeedsExplicitModel(_ modelId: String) -> Bool {
+        modelId == gptImage25Sunburst.id || modelId == gptImage25Flare.id
+    }
+
     static let allOpenAI: [LLMModel] = [
         .gpt54, .gpt52, .gpt5, .gpt41,
         .gpt4o, .gpt4oMini,
@@ -358,12 +594,44 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     ]
 
     /// Models available via Codex OAuth (ChatGPT subscription).
+    ///
+    /// [T-codex-oauth-model-prune] The Codex backend rejects a model the
+    /// ChatGPT tier does not carry with
+    /// `HTTP 400 {"detail":"The '<id>' model is not supported when using Codex
+    /// with a ChatGPT account."}` — and that error surfaces as an empty
+    /// assistant turn, so an unusable entry in this picker reads to the user as
+    /// "tool calls are broken" rather than "wrong model". Entries verified 400
+    /// on-device (2026-08-01, real Codex OAuth token) were removed:
+    /// gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5-codex-mini, gpt-5.3, gpt-5.2,
+    /// gpt-5. The survivors match the model set CLIProxyAPI ships for the Codex
+    /// client (`internal/registry/models/codex_client_models.json`), which is
+    /// also gpt-5.6-*/5.5/5.4 only.
+    ///
+    /// Availability is tier-dependent, not absolute — a higher ChatGPT plan may
+    /// carry more. Re-probe before adding anything back; do not restore an id
+    /// from documentation alone.
+    ///
+    /// [T-gpt6-sol-luna] gpt-6-sol / gpt-6-luna added from CLIProxyAPI
+    /// `2430354330af` — the same `codex_client_models.json` this list already
+    /// tracks, where both are declared for every plan including free
+    /// (context_length 272000, max 872000, supports_search_tool). They have NOT
+    /// been probed against a live Codex OAuth token here, so if either turns out
+    /// to be tier-gated it will present as the empty-assistant-turn symptom
+    /// described above; remove it rather than assuming the picker is broken.
+    ///
+    /// [T-gpt61-sol] gpt-6.1-sol from CLIProxyAPI PR #6207, where its catalog
+    /// entry is declared for Team / Plus / Pro and NOT for Free. Not probed
+    /// against a live token here either: on a Free plan it is expected to show
+    /// the tier-gated symptom above.
     static let allOpenAICodexOAuth: [LLMModel] = [
+        .gpt6Astra, .gpt61Sol, .gpt6Sol, .gpt6Luna,
         .gpt56Sol, .gpt56Terra, .gpt56Luna,
-        .gpt55, .gpt54, .gpt53Codex, .gpt53CodexSpark,
-        .gpt5CodexMini,
-        .gpt52, .gpt53, .gpt5,
+        .gpt55, .gpt54, .gpt54Mini,
+        // gptImage2 is kept: it is an image endpoint, not a Codex chat model,
+        // so the text-model probe above does not apply to it. Same reasoning
+        // for the 2.5 variants. [T-codex-gpt-image25-variants]
         .gptImage2,
+        .gptImage25Sunburst, .gptImage25Flare,
     ]
 
     // MARK: - OpenRouter Models
@@ -422,9 +690,27 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
     /// pickers gate on `modalities.inputs == .audioInput` exactly, so a model that
     /// also advertises text/image input (from `base`) would NOT register as an
     /// ASR voice model.
+    ///
+    /// [T-asr-vendor-family-names] The delimiter-bracketed `asr` forms above only
+    /// catch ids that SAY "asr". Several widely-used Chinese ASR families are
+    /// named after the model architecture instead and matched nothing, so they
+    /// fell through to the broad output-union path and never registered as voice
+    /// models (issue #305):
+    ///
+    ///   paraformer-realtime-v2   (Alibaba DashScope)
+    ///   SenseVoiceSmall          (FunAudioLLM)
+    ///   fun-asr-flash            (FunAudioLLM; already matched via "-asr")
+    ///   qwen3-asr-flash          (already matched via "-asr")
+    ///
+    /// The family roots are added as bare substrings, not delimiter-bracketed,
+    /// because these names appear with every separator in the wild
+    /// (`SenseVoiceSmall`, `sense-voice`, `sensevoice_small`). `fun-asr` and
+    /// `qwen-asr` are redundant with `-asr` today and kept anyway: they document
+    /// the family and survive a vendor dropping the hyphen (`funasr`).
     private static let asrInferencePatterns: [String] = [
         "-asr", "asr-", "_asr", "asr_", "whisper", "transcrib", "speech-to-text",
         "speech2text", "stt-", "-stt", "_stt", "stt_", "voice-input", "voice_input",
+        "paraformer", "sensevoice", "fun-asr", "qwen-asr",
     ]
 
     /// [T-mimo-shadow-voice] Substrings that mark a DEDICATED text-to-speech
@@ -525,6 +811,38 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
             supportedModalities: .vision,
             supportedAuth: [.apiKey, .oauth]
         ),
+        // [T-provider-default-modality-key] The three OAuth-first providers that
+        // flow through OpenAIProvider. They were missing here while
+        // `ProviderType.<case>.defaultModality` already said `.vision`, so the
+        // two tables disagreed and a lookup MISS is silent by construction: it
+        // falls through to `defaultCapabilities` (textOnly), which is
+        // indistinguishable from a model that genuinely cannot see images.
+        //
+        // The visible consequence was the iOS twin of Android 6fff8231b, in the
+        // GH#265 shape: an uncatalogued Grok (grok-4.6 on the day it shipped) has
+        // no models.dev row, no literal `modalityOverride` and — before this — no
+        // table row, so `hasImageInput` was false for a model that can see
+        // images, which excludes it from Vision Group membership and turns every
+        // modality switch off. Kimi has the same shape. Copilot's models always
+        // carry an explicit override from `supports.vision`, so its row is
+        // insurance against that one line changing rather than a live fix.
+        //
+        // The modality is READ FROM THE ENUM rather than restated, so the two
+        // tables cannot drift apart again. Auth mirrors how each provider is
+        // actually signed into (see ProviderType's OAuth branches); nothing reads
+        // `supportedAuth` today, so it is documentation of intent.
+        "xAI": ModelCapabilities(
+            supportedModalities: ProviderType.xAI.defaultModality,
+            supportedAuth: [.apiKey, .oauth]
+        ),
+        "Kimi": ModelCapabilities(
+            supportedModalities: ProviderType.kimiCode.defaultModality,
+            supportedAuth: [.apiKey, .oauth]
+        ),
+        "GitHub Copilot": ModelCapabilities(
+            supportedModalities: ProviderType.githubCopilot.defaultModality,
+            supportedAuth: [.oauth]
+        ),
     ]
 
     /// Default capabilities when the provider is unknown.
@@ -566,10 +884,53 @@ struct LLMModel: Equatable, Hashable, Identifiable, Sendable, Codable {
         if lid.contains("codex") { return 200_000 }
         // DeepSeek
         if lid.contains("deepseek") { return 128_000 }
+        // xAI Grok. [T-ios-grok-context-underestimate] Without this branch a
+        // Grok id missing from the models.dev catalog fell through to the
+        // 128K default, and ContextPolicy turned that into
+        // compactThreshold = 128K - 20K = 108K — so a model with a 256K–2M
+        // window auto-compacted every ~20-30 tool calls. Field report
+        // 2026-08-13: `grok-4.6` (not yet in the catalog) compacted 6 times in
+        // 47 minutes. Grok 3 is the only 131K generation; Grok 4 and later are
+        // 256K at minimum, and the fast/4.20 lines advertise 2M. 256K is the
+        // conservative floor for an unknown Grok 4+; models.dev still
+        // overrides via the explicit `contextWindow` above whenever the id IS
+        // in the catalog.
+        if lid.contains("grok") {
+            if lid.contains("grok-2") || lid.contains("grok-3") { return 131_072 }
+            return 256_000
+        }
         // Default: assume a modern long-context model rather than 64K so the
         // group context-limit slider doesn't collapse to a single Unlimited stop.
         return 128_000
     }
+
+    // MARK: - Voice candidates [T-openrouter-voice-catalog]
+
+    /// Voice INPUT (ASR) candidate — behind voice pickers and voice-group
+    /// resolution. Deliberately separate from the `.audioInput` modality bit,
+    /// which still answers "can this chat model hear audio" for multimodal
+    /// chat. A catalog-tagged model is judged by its tag alone ("stt", or the
+    /// chat-audio allowlist); an untagged one keeps the modality rule — the
+    /// manual-entry escape hatch. Mirrors Android isVoiceInputCandidate.
+    var isVoiceInputCandidate: Bool {
+        switch voiceRole {
+        case nil: return capabilities.supportedModalities.contains(.audioInput)
+        case .some(VoiceRole.stt): return true
+        default: return VoiceRole.openRouterChatAudioModels.contains(id)
+        }
+    }
+
+    /// Voice OUTPUT (TTS) counterpart of `isVoiceInputCandidate`.
+    var isVoiceOutputCandidate: Bool {
+        switch voiceRole {
+        case nil: return capabilities.supportedModalities.contains(.audioOutput)
+        case .some(VoiceRole.tts): return true
+        default: return VoiceRole.openRouterChatAudioModels.contains(id)
+        }
+    }
+
+    /// Either direction — the Voice Services visibility predicate.
+    var isVoiceCandidate: Bool { isVoiceInputCandidate || isVoiceOutputCandidate }
 
     var capabilities: ModelCapabilities {
         if let override = modalityOverride {
@@ -756,20 +1117,46 @@ enum ThinkingLevel: String, Codable, Hashable, CaseIterable, Comparable {
 
     var displayName: String {
         switch self {
-        case .off: return String(localized: "Off")
-        case .low: return String(localized: "Low")
-        case .medium: return String(localized: "Med")
-        case .high: return String(localized: "High")
-        case .xhigh: return String(localized: "XHigh")
-        case .max: return String(localized: "Max")
-        case .ultra: return String(localized: "Ultra")
+        case .off: return AppLocalized("Off")
+        case .low: return AppLocalized("Low")
+        case .medium: return AppLocalized("Med")
+        case .high: return AppLocalized("High")
+        case .xhigh: return AppLocalized("XHigh")
+        case .max: return AppLocalized("Max")
+        case .ultra: return AppLocalized("Ultra")
         }
     }
 
     var isEnabled: Bool { self != .off }
 
+    /// [T-ios-restore-thinking-level] Case-insensitive parse; nil when the
+    /// value names no level. Android persists levels by enum NAME ("HIGH"),
+    /// iOS by raw value ("high"), and both land in the same backup/config
+    /// JSON. The strict `init(rawValue:)` rejected Android's spelling, so an
+    /// Android backup's "HIGH" fell through `decoded` to `.xhigh` — a
+    /// silently raised level — or to nil where callers used `rawValue:`.
+    static func parse(_ raw: String) -> ThinkingLevel? {
+        ThinkingLevel(rawValue: raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased())
+    }
+
     static func decoded(_ raw: String) -> ThinkingLevel {
-        ThinkingLevel(rawValue: raw) ?? .xhigh
+        parse(raw) ?? .xhigh
+    }
+
+    /// [T-ios-restore-thinking-level] Replaces the synthesized decoder for
+    /// every Codable type holding a ThinkingLevel, so both spellings read.
+    /// An unrecognized value still throws, exactly as the synthesized
+    /// decoder did — callers that fall back on that error keep doing so.
+    /// Encoding is untouched (RawRepresentable default: the raw value).
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        guard let level = ThinkingLevel.parse(raw) else {
+            throw DecodingError.dataCorruptedError(
+                in: container, debugDescription: "Unknown ThinkingLevel \"\(raw)\""
+            )
+        }
+        self = level
     }
 }
 
@@ -781,7 +1168,62 @@ extension LLMModel {
         // ceiling of that family's non-reasoning members (mimo-v2.5-tts/-asr).
         // [T-fallback-thinking-preclamp]
         if supportsReasoning == false { return .off }
-        return ThinkingLevelCatalog.declaredMaxLevel(for: id) ?? .xhigh
+        // [T-thinking-levels-data-driven] A declared effort set is a stronger
+        // statement than any id-substring rule: it names the exact tiers the
+        // backend accepts. Take its top tier as the ceiling so a model whose
+        // declaration reaches beyond the hardcoded default (.xhigh) — e.g.
+        // zhipuai glm-5.2 / deepseek-v4, both `["high","max"]` — is actually
+        // reachable from the UI. Without this, "max" was declared by the
+        // catalog, clamped to by the wire path, and yet unselectable.
+        // [T-thinking-max-unreachable] …but only ever as a RAISE, never as a cut.
+        //
+        // The declared set is what models.dev happens to list, and it is often
+        // incomplete for a model whose family rule we know reaches higher:
+        // gpt-5.6-sol has an explicit `.max` rule below, yet commonly declares
+        // only ["low","medium","high"]. Returning the declared top verbatim let
+        // that incomplete list LOWER a known ceiling, so Max vanished from the
+        // picker for exactly the models the rule exists to describe — the
+        // reported "model group is set to Max but the session won't offer it".
+        //
+        // Taking the higher of the two keeps the original intent (a declaration
+        // reaching past the .xhigh default is honoured) while a rule that knows
+        // better still wins. The wire path is unaffected: `clampEffort` snaps
+        // onto the declared set independently, so this cannot send an
+        // undeclared tier.
+        let ruleTop = ThinkingLevelCatalog.declaredMaxLevel(for: id)
+        if let declaredTop = selectableThinkingLevels.last {
+            return Swift.max(declaredTop, ruleTop ?? declaredTop)
+        }
+        return ruleTop ?? .xhigh
+    }
+
+    /// [T-thinking-levels-data-driven] The thinking levels worth OFFERING for
+    /// this model, derived from the catalog's declared effort tiers.
+    ///
+    /// The wire path (`clampEffort`) snaps any request onto the declared set,
+    /// so when a model declares a sparse set — `["high","max"]` is the single
+    /// most common sparse shape in the catalog (58 models, incl. zhipuai
+    /// glm-5.2 and official deepseek-v4) — the five generic UI levels collapse
+    /// onto one or two distinct wire values. The user then drags a slider that
+    /// provably changes nothing: verified on-device 2026-08-01, glm-5.2 sent
+    /// `reasoning_effort:"high"` for Low AND Med AND High AND XHigh.
+    ///
+    /// Returning one level per DISTINCT declared tier makes the picker honest:
+    /// every option the user can pick produces a different request. Empty when
+    /// nothing is declared, so the legacy id-rule ceiling still applies.
+    ///
+    /// `.off` is never included — it is a separate toggle, not an effort tier,
+    /// and the OFF wire value is chosen by `explicitOffEffort`, not here.
+    var selectableThinkingLevels: [ThinkingLevel] {
+        guard let declared = reasoningEffortValues, !declared.isEmpty else { return [] }
+        // Map each declared wire tier to the UI level that emits it. "none" and
+        // "minimal" are OFF-ish tiers handled by the toggle, not the ladder.
+        let mapping: [(wire: String, level: ThinkingLevel)] = [
+            ("low", .low), ("medium", .medium), ("high", .high),
+            ("xhigh", .xhigh), ("max", .max),
+        ]
+        let set = Set(declared.map { $0.lowercased() })
+        return mapping.filter { set.contains($0.wire) }.map(\.level)
     }
 }
 
@@ -924,4 +1366,28 @@ func modelDisplayName(from id: String) -> String {
             return token.prefix(1).uppercased() + token.dropFirst()
         }
         .joined(separator: " ")
+}
+
+// MARK: - VoiceRole [T-openrouter-voice-catalog]
+
+/// OpenMinis#280. Values of `LLMModel.voiceRole`, plus the OpenRouter
+/// chat-audio allowlist. Mirrors Android `VoiceRole`; the guard tests re-read
+/// both sources so the values cannot drift.
+///
+/// OpenRouter's default `GET /models` lists only chat models. Its 18 speech
+/// and 22 transcription models are served ONLY by `?output_modalities=speech`
+/// / `?output_modalities=transcription`, which share no id with the default
+/// list (checked against the live API). Before, the voice pickers were built
+/// from the default list's audio bits, so they held only false positives —
+/// chat models that merely hear audio (Muse Spark as "STT") or music
+/// generators that emit it (Lyria as "TTS") — and none of the real voice
+/// models.
+enum VoiceRole {
+    static let tts = "tts"
+    static let stt = "stt"
+    static let none = "none"
+
+    /// Chat models on OpenRouter that genuinely do both directions, via
+    /// chat/completions (audio-preview for TTS, `input_audio` for ASR).
+    static let openRouterChatAudioModels: Set<String> = ["openai/gpt-audio", "openai/gpt-audio-mini"]
 }

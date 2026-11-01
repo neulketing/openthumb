@@ -66,6 +66,9 @@ static NSString *const HELP_TEXT =
      "                read commands. Output groups: quantity_types, category_types,\n"
      "                characteristic_types, special_types.\n"
      "  batch         Read MULTIPLE metrics in one call — pass --types t1,t2,...\n"
+     "                Subcommand names work as aliases (hrv → hrv-sdnn,\n"
+     "                blood-oxygen → oxygen-saturation); results are keyed by the\n"
+     "                name you asked for.\n"
      "                One authorization prompt covers every requested type;\n"
      "                returns each metric's data over the same date range in a\n"
      "                single envelope. Cumulative metrics (steps, distance,\n"
@@ -88,7 +91,9 @@ static NSString *const HELP_TEXT =
      "  --end <datetime>     End time\n"
      "  --days <N>           Last N days\n"
      "  --today              Equivalent to --days 1\n"
-     "  --limit <N>          Maximum number of results (default: 100)\n"
+     "  --limit <N>          Maximum number of results (default: 100; batch applies\n"
+     "                       it PER TYPE and defaults to 20). Truncated results carry\n"
+     "                       a _warning and total_available.\n"
      "\n"
      "NUTRITION OPTIONS:\n"
      "  --type <type>        calories, protein, carbs, fat, water, caffeine, sugar, fiber\n"
@@ -257,23 +262,39 @@ static NSOperationQueue *authQueue(void) {
     return q;
 }
 
+// BEGIN HKTypeSanitizers
 // [T-ios-healthkit-share-types-auth-crash] Drop types that HealthKit never
 // permits as *share* (write) types, so they don't reach
 // requestAuthorizationToShareTypes: and trip
-// -_throwIfAuthorizationDisallowedForSharing: (which raises an uncaught ObjC
-// exception → SIGABRT on iOS 26.5). The structurally read-only classes are
-// HKCharacteristicType (biological sex, blood type, DOB, …) and
-// HKActivitySummaryType (the activity rings) — these can only ever be read.
-// Any further per-version restriction is still backstopped by the @try/@catch
-// around the request call. Returns nil if nothing remains shareable.
+// -_throwIfAuthorizationDisallowedForSharing: (which raises an ObjC
+// NSInvalidArgumentException synchronously, before any prompt). Structurally
+// never shareable, whatever the identifier:
+//   HKCharacteristicType   biological sex, blood type, date of birth, …
+//   HKActivitySummaryType  the activity rings
+//   HKCorrelationType      blood pressure, food — [GH#393] HealthKit only
+//                          accepts the constituent quantity types; the
+//                          correlation itself may never be requested
+//   HKClinicalType         health records (read-only by design)
+//   HKElectrocardiogramType ECG recordings (only Apple Watch writes them)
+// Per-identifier restrictions (e.g. Apple Exercise Time, only Apple devices
+// write it) are not listed here: they change between iOS releases, so they
+// are reported through the NoffHKAuthRejected path below instead of guessed.
+// Returns nil if nothing remains shareable.
+static BOOL hkTypeNeverShareable(HKObjectType *t) {
+    return [t isKindOfClass:[HKCharacteristicType class]]
+        || [t isKindOfClass:[HKActivitySummaryType class]]
+        || [t isKindOfClass:[HKCorrelationType class]]
+        || [t isKindOfClass:[HKClinicalType class]]
+        || [t isKindOfClass:[HKElectrocardiogramType class]];
+}
+
 static NSSet<HKSampleType *> *sanitizeShareTypes(NSSet<HKSampleType *> *shareTypes) {
     if (shareTypes.count == 0) return shareTypes;
     NSMutableSet<HKSampleType *> *filtered = [NSMutableSet setWithCapacity:shareTypes.count];
     for (HKSampleType *t in shareTypes) {
-        if ([t isKindOfClass:[HKCharacteristicType class]] ||
-            [t isKindOfClass:[HKActivitySummaryType class]]) {
-            NSLog(@"[healthkit/auth] dropping non-shareable (read-only) type from shareTypes: %@",
-                  t.identifier);
+        if (hkTypeNeverShareable(t)) {
+            NSLog(@"[healthkit/auth] dropping non-shareable type from shareTypes: %@ (%@)",
+                  t.identifier, NSStringFromClass([t class]));
             continue;
         }
         [filtered addObject:t];
@@ -281,17 +302,45 @@ static NSSet<HKSampleType *> *sanitizeShareTypes(NSSet<HKSampleType *> *shareTyp
     return filtered.count > 0 ? [filtered copy] : nil;
 }
 
-static BOOL requestHealthKitAccess(NSSet<HKObjectType *> *readTypes,
-                                    NSSet<HKSampleType *> *shareTypes,
-                                    NSString **outError) {
+// [GH#393] A correlation type is refused in the READ set too ("Authorization to
+// read the following types is disallowed"); reading a correlation is authorized
+// through its constituent quantity types, which callers must list themselves.
+static NSSet<HKObjectType *> *sanitizeReadTypes(NSSet<HKObjectType *> *readTypes) {
+    if (readTypes.count == 0) return readTypes;
+    NSMutableSet<HKObjectType *> *filtered = [NSMutableSet setWithCapacity:readTypes.count];
+    for (HKObjectType *t in readTypes) {
+        if ([t isKindOfClass:[HKCorrelationType class]]) {
+            NSLog(@"[healthkit/auth] dropping correlation type from readTypes: %@ — request its constituent types",
+                  t.identifier);
+            continue;
+        }
+        [filtered addObject:t];
+    }
+    return filtered.count > 0 ? [filtered copy] : nil;
+}
+// END HKTypeSanitizers
+
+/// Outcome of an authorization request. `Rejected` is NOT a permission answer:
+/// HealthKit refused the request itself (it raised while validating the type
+/// sets, before any prompt), so no Settings change can fix it.
+typedef NS_ENUM(NSInteger, NoffHKAuthResult) {
+    NoffHKAuthGranted = 0,
+    NoffHKAuthDenied,
+    NoffHKAuthRejected,
+};
+
+static NoffHKAuthResult requestHealthKitAccessResult(NSSet<HKObjectType *> *readTypes,
+                                                 NSSet<HKSampleType *> *shareTypes,
+                                                 NSString **outError) {
     if (![HKHealthStore isHealthDataAvailable]) {
         if (outError) *outError = @"HealthKit is not available on this device";
-        return NO;
+        return NoffHKAuthDenied;
     }
 
-    // Strip structurally read-only types before they can reach
-    // requestAuthorizationToShareTypes: and raise an uncaught exception.
+    // Strip types HealthKit refuses structurally before they can reach
+    // requestAuthorizationToShareTypes: and raise.
     shareTypes = sanitizeShareTypes(shareTypes);
+    readTypes = sanitizeReadTypes(readTypes);
 
     uint64_t tid = 0;
     pthread_threadid_np(NULL, &tid);
@@ -303,6 +352,7 @@ static BOOL requestHealthKitAccess(NSSet<HKObjectType *> *readTypes,
 
     __block BOOL granted = NO;
     __block NSError *authError = nil;
+    __block NSException *rejection = nil;
 
     // Create a blocking operation that runs on the serial auth queue.
     // The operation itself dispatches to main for the actual HK call,
@@ -342,15 +392,18 @@ static BOOL requestHealthKitAccess(NSSet<HKObjectType *> *readTypes,
                     dispatch_semaphore_signal(sem);
                 }];
             } @catch (NSException *ex) {
-                NSLog(@"[healthkit/auth] [tid=%llu] EXCEPTION from requestAuthorizationToShareTypes "
-                       "(likely a share type disallowed for writing on this iOS version): %@ — %@",
+                // [GH#393] This is HealthKit refusing the REQUEST (a type it never
+                // lets apps ask for), not the user denying access. It used to be
+                // dressed up as HKErrorAuthorizationDenied, so the caller printed
+                // authorization_denied + "enable it in Settings" — advice that can
+                // never work, which is how a correlation type in shareTypes went
+                // unnoticed. Keep the exception so the caller reports it as what
+                // it is.
+                NSLog(@"[healthkit/auth] [tid=%llu] REQUEST REJECTED by HealthKit validation "
+                       "(a type in the read/share sets can never be requested): %@ — %@",
                       tid, ex.name, ex.reason ?: @"(no reason)");
                 granted = NO;
-                authError = [NSError errorWithDomain:HKErrorDomain
-                                                code:HKErrorAuthorizationDenied
-                                            userInfo:@{NSLocalizedDescriptionKey:
-                    [NSString stringWithFormat:@"HealthKit rejected the authorization request: %@",
-                        ex.reason ?: ex.name]}];
+                rejection = ex;
                 dispatch_semaphore_signal(sem);
             }
         });
@@ -377,15 +430,49 @@ static BOOL requestHealthKitAccess(NSSet<HKObjectType *> *readTypes,
     // until all prior auth operations complete and this one finishes.
     [authQueue() addOperations:@[op] waitUntilFinished:YES];
 
-    NSLog(@"[healthkit/auth] [tid=%llu] auth queue returned (granted=%d)", tid, granted);
+    NSLog(@"[healthkit/auth] [tid=%llu] auth queue returned (granted=%d rejected=%d)",
+          tid, granted, rejection != nil);
 
+    if (rejection) {
+        if (outError) {
+            *outError = [NSString stringWithFormat:
+                @"HealthKit refused this request: %@. This is not a permission setting — "
+                 "HealthKit does not let apps request this access (for example, writing a type "
+                 "that only Apple devices record), so changing Settings will not help.",
+                rejection.reason ?: rejection.name];
+        }
+        return NoffHKAuthRejected;
+    }
     if (!granted && outError) {
         NSString *reason = authError.localizedDescription ?: @"HealthKit access not granted";
         *outError = [NSString stringWithFormat:
             @"%@. To grant access, open Settings > Health > Data Access & Devices > Minis "
              "and enable the required categories.", reason];
     }
-    return granted;
+    return granted ? NoffHKAuthGranted : NoffHKAuthDenied;
+}
+
+/// Boolean form for the retry paths, which re-request types that were already
+/// accepted once (so a rejection cannot newly appear there).
+static BOOL requestHealthKitAccess(NSSet<HKObjectType *> *readTypes,
+                                    NSSet<HKSampleType *> *shareTypes,
+                                    NSString **outError) {
+    return requestHealthKitAccessResult(readTypes, shareTypes, outError) == NoffHKAuthGranted;
+}
+
+/// Emit the JSON error for a failed authorization and return the exit code:
+/// a real denial stays authorization_denied; a request HealthKit refused
+/// outright is invalid_args, with HealthKit's own reason.
+static int hkEmitAuthFailure(int stdout_fd, NSString *command, NoffHKAuthResult result,
+                             NSString *authErr, BOOL compact, BOOL quiet) {
+    if (result == NoffHKAuthRejected) {
+        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, command,
+                       NOFF_ERR_INVALID_ARGS, authErr), compact, quiet);
+        return NOFF_EXIT_INVALID_ARGS;
+    }
+    noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, command,
+                   NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
+    return NOFF_EXIT_AUTH_DENIED;
 }
 
 // Detect HealthKit authorization errors returned by saveObject. HealthKit
@@ -404,7 +491,7 @@ static BOOL isHealthKitAuthError(NSError *err) {
 // old instance), re-run requestAuthorization, and try saving again. This
 // matches what users expect after toggling a permission on in Settings.
 static BOOL saveWithAuthRetry(HKObject *sample,
-                               HKSampleType *type,
+                               NSSet<HKSampleType *> *shareTypes,
                                NSError **outError) {
     __block BOOL success = NO;
     __block NSError *saveErr = nil;
@@ -426,8 +513,7 @@ static BOOL saveWithAuthRetry(HKObject *sample,
     NSLog(@"[healthkit/auth] save failed with auth error — rebuilding HKHealthStore and retrying");
     resetHealthStore();
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:type],
-                                 [NSSet setWithObject:type], &authErr)) {
+    if (!requestHealthKitAccess(shareTypes, shareTypes, &authErr)) {
         if (outError) {
             *outError = [NSError errorWithDomain:HKErrorDomain
                                             code:HKErrorAuthorizationDenied
@@ -450,13 +536,97 @@ static BOOL saveWithAuthRetry(HKObject *sample,
     return success;
 }
 
-// ── Generic sample query helper ──
+// ── Read-failure plumbing (GH#128) ──
+//
+// Every read helper below used to drop the `NSError` its results handler was
+// handed and return an empty array / zero. That made three very different
+// outcomes indistinguishable at the CLI: the query succeeded and the user
+// genuinely has no samples; the query failed; or the query never came back
+// before the 15s semaphore timeout. All three printed `ok:true` with zero rows.
+//
+// The case that made this actively harmful: Shortcuts can trigger an agent in
+// the background (e.g. a 7am briefing) while the device is still locked, and
+// Apple documents that the HealthKit store is encrypted and unreadable then
+// ("your app may not be able to read data from the store when it runs in the
+// background"). Every read fails with HKErrorDatabaseInaccessible, the CLI
+// reported `ok:true` + no data for every metric, and the agent concluded the
+// user had no health data — or that permission had been revoked — and told
+// them so. Reads now get the same error treatment writes already had via
+// isHealthKitAuthError/saveWithAuthRetry.
+//
+// Timeouts are reported separately from query failures: a timeout means we
+// never heard back at all, which is a different diagnosis (store busy/wedged)
+// than an error the store actively returned.
 
-static NSArray<__kindof HKSample *> *querySamples(HKSampleType *sampleType,
-                                                    NSPredicate *predicate,
-                                                    NSUInteger limit,
-                                                    NSArray<NSSortDescriptor *> *sortDescriptors) {
+// Error domain for conditions this file synthesizes rather than receives.
+static NSString *const kHKOffloadErrorDomain = @"MinisHealthKitOffload";
+typedef NS_ENUM(NSInteger, HKOffloadErrorCode) {
+    HKOffloadErrorQueryTimeout = 1,
+};
+
+static NSError *hkTimeoutError(NSString *what) {
+    return [NSError errorWithDomain:kHKOffloadErrorDomain
+                               code:HKOffloadErrorQueryTimeout
+                           userInfo:@{NSLocalizedDescriptionKey:
+        [NSString stringWithFormat:
+            @"HealthKit %@ query did not return within 15s. The store may be "
+             "locked (reads are blocked while the device is locked, including "
+             "Shortcuts-triggered background runs) or busy.", what ?: @"sample"]}];
+}
+
+// Map an NSError from a read into the CLI's error-code vocabulary so the caller
+// picks the right envelope code + exit status.
+static NSString *hkReadErrorCode(NSError *err) {
+    if (!err) return NOFF_ERR_INTERNAL_ERROR;
+    if ([err.domain isEqualToString:kHKOffloadErrorDomain]
+        && err.code == HKOffloadErrorQueryTimeout) {
+        return @"query_timeout";
+    }
+    if (isHealthKitAuthError(err)) return NOFF_ERR_AUTHORIZATION_DENIED;
+    return NOFF_ERR_INTERNAL_ERROR;
+}
+
+static int hkReadErrorExitCode(NSError *err) {
+    if (err && isHealthKitAuthError(err)) return NOFF_EXIT_AUTH_DENIED;
+    return NOFF_EXIT_ERROR;
+}
+
+// Human-readable detail carrying the raw domain/code so an agent (or a bug
+// report) can tell HKErrorDatabaseInaccessible from a denial or a timeout.
+static NSString *hkReadErrorMessage(NSError *err, NSString *what) {
+    if (!err) {
+        return [NSString stringWithFormat:@"HealthKit %@ query failed for an unknown reason.", what ?: @"sample"];
+    }
+    return [NSString stringWithFormat:@"HealthKit %@ query failed: %@ (domain=%@ code=%ld)",
+            what ?: @"sample", err.localizedDescription ?: @"unknown error",
+            err.domain, (long)err.code];
+}
+
+// Emit the standard failure envelope for a read that errored or timed out, and
+// return the exit code the command should propagate.
+static int hkEmitReadError(int stdout_fd, NSString *action, NSString *what,
+                            NSError *err, BOOL compact, BOOL quiet) {
+    NSLog(@"[healthkit/read] %@ failed: domain=%@ code=%ld desc=%@",
+          action, err.domain, (long)err.code, err.localizedDescription);
+    noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, action,
+                   hkReadErrorCode(err), hkReadErrorMessage(err, what)),
+                   compact, quiet);
+    return hkReadErrorExitCode(err);
+}
+
+// ── Generic sample query helper ──
+//
+// `outError` is optional so the ~20 existing call sites that don't yet
+// distinguish failure keep compiling unchanged; pass it to get the real
+// outcome. On failure the return value is still an empty array, so a caller
+// that ignores the error behaves exactly as before.
+static NSArray<__kindof HKSample *> *querySamplesWithError(HKSampleType *sampleType,
+                                                             NSPredicate *predicate,
+                                                             NSUInteger limit,
+                                                             NSArray<NSSortDescriptor *> *sortDescriptors,
+                                                             NSError **outError) {
     __block NSArray *results = nil;
+    __block NSError *queryErr = nil;
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
     HKSampleQuery *query = [[HKSampleQuery alloc]
@@ -466,18 +636,127 @@ static NSArray<__kindof HKSample *> *querySamples(HKSampleType *sampleType,
            sortDescriptors:sortDescriptors
             resultsHandler:^(HKSampleQuery *q, NSArray *samples, NSError *err) {
         results = samples;
+        queryErr = err;
         dispatch_semaphore_signal(sem);
     }];
     [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    long waitResult = dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
 
+    if (waitResult != 0) {
+        // Timed out: the handler may still fire later and write `results` /
+        // `queryErr`, so do not read them here — report the timeout itself.
+        if (outError) *outError = hkTimeoutError(sampleType.identifier);
+        return @[];
+    }
+    if (queryErr) {
+        if (outError) *outError = queryErr;
+        return @[];
+    }
+    // Success. `samples` may legitimately be an empty array — that is the one
+    // case that should still read as ok:true with zero rows.
+    if (outError) *outError = nil;
     return results ?: @[];
 }
 
-// ── Count query helper ──
+// NOTE: the old error-dropping `querySamples()` wrapper was deliberately
+// removed rather than kept for convenience — every caller now passes an
+// out-error. Re-adding a wrapper that discards the NSError would silently
+// reintroduce GH#128 (locked store reported as "no data").
 
-static NSUInteger countSamples(HKSampleType *sampleType, NSPredicate *predicate) {
-    __block NSUInteger total = 0;
+// ── Statistics-collection query helper ──
+//
+// [GH#128 follow-up] The `HKStatisticsCollectionQuery` + semaphore + enumerate
+// dance was open-coded in four commands. The first round of #128 fixes patched
+// `cmd_steps` in place, and the remaining three (elevation, basal_energy,
+// nutrition) kept the original error-dropping shape:
+//
+//     initialResultsHandler = ^(q, result, err) {     // err ignored
+//         [result enumerateStatisticsFromDate:...];   // result may be nil
+//     };
+//     dispatch_semaphore_wait(sem, ...);              // waitResult discarded
+//
+// A nil collection enumerates zero times without complaint, so a locked or
+// failed store produced a full range of legitimate-looking zeros under
+// `ok:true` — the exact symptom #128 reported, just via different subcommands.
+//
+// Centralising it here means the next command that needs daily statistics
+// cannot reintroduce the bug by copy-paste: there is no error-dropping variant
+// to copy. Returns nil (never an empty array) on failure so callers cannot
+// confuse "read failed" with "no samples in range" — an empty NON-nil array is
+// a genuine empty range.
+static NSArray<HKStatistics *> *statisticsCollectionWithError(HKQuantityType *quantityType,
+                                                               NSPredicate *predicate,
+                                                               HKStatisticsOptions options,
+                                                               NSDate *anchorDate,
+                                                               NSDateComponents *interval,
+                                                               NSDate *start,
+                                                               NSDate *end,
+                                                               NSError **outError) {
+    __block NSArray<HKStatistics *> *dailyStats = nil;
+    __block NSError *queryErr = nil;
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+
+    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
+        initWithQuantityType:quantityType
+         quantitySamplePredicate:predicate
+                         options:options
+                      anchorDate:anchorDate
+              intervalComponents:interval];
+
+    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
+                                     HKStatisticsCollection *result,
+                                     NSError *err) {
+        if (err) {
+            queryErr = err;
+            dispatch_semaphore_signal(sem);
+            return;
+        }
+        // Defensive: HealthKit should not hand back (nil, nil), but a nil
+        // collection here is precisely what produced the silent zeros.
+        if (!result) {
+            queryErr = [NSError errorWithDomain:kHKOffloadErrorDomain
+                                           code:HKOffloadErrorQueryTimeout
+                                       userInfo:@{NSLocalizedDescriptionKey:
+                @"HealthKit returned no statistics collection and no error. The "
+                 "store may be locked or unavailable."}];
+            dispatch_semaphore_signal(sem);
+            return;
+        }
+        NSMutableArray *stats = [NSMutableArray array];
+        [result enumerateStatisticsFromDate:start toDate:end
+            withBlock:^(HKStatistics *s, BOOL *stop) {
+                [stats addObject:s];
+            }];
+        dailyStats = stats;
+        dispatch_semaphore_signal(sem);
+    };
+
+    [healthStore() executeQuery:query];
+    long waitResult = dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+
+    // Timed out: the handler may still fire later, so do NOT read dailyStats or
+    // queryErr — same discipline as querySamplesWithError.
+    if (waitResult != 0) {
+        if (outError) *outError = hkTimeoutError(quantityType.identifier);
+        return nil;
+    }
+    if (queryErr) {
+        if (outError) *outError = queryErr;
+        return nil;
+    }
+    if (outError) *outError = nil;
+    return dailyStats;
+}
+
+// ── Count query helper ──
+//
+// Returns NSNotFound on failure/timeout so a failed count can't masquerade as
+// a real zero (which would silently suppress the truncation warning).
+static NSUInteger countSamplesWithError(HKSampleType *sampleType,
+                                         NSPredicate *predicate,
+                                         NSError **outError) {
+    __block NSArray *results = nil;
+    __block NSError *queryErr = nil;
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
     HKSampleQuery *query = [[HKSampleQuery alloc]
@@ -486,13 +765,31 @@ static NSUInteger countSamples(HKSampleType *sampleType, NSPredicate *predicate)
                      limit:HKObjectQueryNoLimit
            sortDescriptors:nil
             resultsHandler:^(HKSampleQuery *q, NSArray *samples, NSError *err) {
-        total = samples.count;
+        results = samples;
+        queryErr = err;
         dispatch_semaphore_signal(sem);
     }];
     [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    long waitResult = dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
 
-    return total;
+    if (waitResult != 0) {
+        if (outError) *outError = hkTimeoutError(sampleType.identifier);
+        return NSNotFound;
+    }
+    if (queryErr) {
+        if (outError) *outError = queryErr;
+        return NSNotFound;
+    }
+    if (outError) *outError = nil;
+    return results.count;
+}
+
+static NSUInteger countSamples(HKSampleType *sampleType, NSPredicate *predicate) {
+    NSError *err = nil;
+    NSUInteger total = countSamplesWithError(sampleType, predicate, &err);
+    // Legacy shape: callers that don't check treat a failure as "no extra
+    // records", which only suppresses a truncation warning — never fabricates data.
+    return total == NSNotFound ? 0 : total;
 }
 
 // ── Truncation warning helper ──
@@ -507,7 +804,35 @@ static void addTruncationWarning(NSMutableDictionary *data,
              "Use a larger --limit to retrieve more data.",
             (unsigned long)returned, (unsigned long)total];
         data[@"total_available"] = @(total);
+        // [GH#106 Phase 2d] Machine-readable boolean — callers previously had
+        // to string-probe `_warning` to detect truncation.
+        data[@"truncated"] = @YES;
     }
+}
+
+// ── Structured warnings (GH#106) ──
+//
+// `batch` used to drop unrecognized --types names into an `unknown_types` array
+// and still return the normal success envelope, so a partially-bad request was
+// indistinguishable from "no health data in this range". These helpers collect
+// machine-readable warnings that batch surfaces under data.warnings.
+//
+// Conventions (see the GH#106 design):
+//   - The envelope keeps ok:true for partial success; ok:false stays reserved
+//     for the pre-existing all-names-unknown hard failure.
+//   - `warnings` is emitted only when non-empty — an absent key means a clean run.
+//   - Each entry is {code, message, types}. Codes used here: "unknown_type",
+//     "results_truncated", "read_failed" (GH#128), and — since the Phase 2
+//     alias table landed — "alias_resolved" and "unsupported_in_batch".
+static void appendWarning(NSMutableArray *warnings,
+                           NSString *code,
+                           NSString *message,
+                           NSArray<NSString *> *types) {
+    [warnings addObject:@{
+        @"code": code,
+        @"message": message,
+        @"types": types ?: @[],
+    }];
 }
 
 // ── Date range resolution ──
@@ -581,10 +906,9 @@ static NSString *workoutActivityTypeName(HKWorkoutActivityType type) {
 static int cmd_steps(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *stepType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierStepCount];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:stepType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"steps",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:stepType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"steps", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -599,30 +923,17 @@ static int cmd_steps(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
                                                                endDate:end
                                                                options:HKQueryOptionStrictStartDate];
 
-    __block NSArray<HKStatistics *> *dailyStats = nil;
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
-        initWithQuantityType:stepType
-         quantitySamplePredicate:predicate
-                         options:HKStatisticsOptionCumulativeSum
-                      anchorDate:anchorDate
-              intervalComponents:interval];
-
-    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
-                                     HKStatisticsCollection *result,
-                                     NSError *err) {
-        NSMutableArray *stats = [NSMutableArray array];
-        [result enumerateStatisticsFromDate:start toDate:end
-            withBlock:^(HKStatistics *s, BOOL *stop) {
-                [stats addObject:s];
-            }];
-        dailyStats = stats;
-        dispatch_semaphore_signal(sem);
-    };
-
-    [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    // [GH#128] Routed through the shared helper along with the other three
+    // statistics commands. This was the one site the first round fixed in
+    // place; folding it in leaves NO open-coded copy of the pattern for a new
+    // command to clone.
+    NSError *statsErr = nil;
+    NSArray<HKStatistics *> *dailyStats = statisticsCollectionWithError(
+        stepType, predicate, HKStatisticsOptionCumulativeSum,
+        anchorDate, interval, start, end, &statsErr);
+    if (!dailyStats) {
+        return hkEmitReadError(stdout_fd, @"steps", @"step count", statsErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     double total = 0;
@@ -653,10 +964,9 @@ static int cmd_steps(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
 static int cmd_heart_rate(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *hrType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierHeartRate];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:hrType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"heart-rate",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:hrType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"heart-rate", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -671,7 +981,12 @@ static int cmd_heart_rate(int argc, char **argv, int stdout_fd, BOOL compact, BO
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(hrType, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(hrType, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"heart-rate", @"heart rate", readErr, compact, quiet);
+    }
     HKUnit *bpmUnit = [[HKUnit countUnit] unitDividedByUnit:[HKUnit minuteUnit]];
 
     NSMutableArray *items = [NSMutableArray array];
@@ -705,10 +1020,9 @@ static int cmd_heart_rate(int argc, char **argv, int stdout_fd, BOOL compact, BO
 static int cmd_sleep(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKCategoryType *sleepType = [HKCategoryType categoryTypeForIdentifier:HKCategoryTypeIdentifierSleepAnalysis];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:sleepType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"sleep",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:sleepType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"sleep", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -720,7 +1034,12 @@ static int cmd_sleep(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:YES];
 
-    NSArray *samples = querySamples(sleepType, predicate, HKObjectQueryNoLimit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(sleepType, predicate, HKObjectQueryNoLimit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"sleep", @"sleep", readErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     for (HKCategorySample *s in samples) {
@@ -773,10 +1092,9 @@ static int cmd_sleep(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
 static int cmd_workouts(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKWorkoutType *workoutType = [HKWorkoutType workoutType];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:workoutType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"workouts",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:workoutType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"workouts", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -793,7 +1111,12 @@ static int cmd_workouts(int argc, char **argv, int stdout_fd, BOOL compact, BOOL
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(workoutType, predicate, HKObjectQueryNoLimit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(workoutType, predicate, HKObjectQueryNoLimit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"workouts", @"workout", readErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     NSUInteger count = 0;
@@ -928,10 +1251,9 @@ static int cmd_cadence(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
 
     NSSet *readTypes = [NSSet setWithObjects:cadenceType, strideLenType, runCadenceType, stepCountType, nil];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess(readTypes, nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"cadence",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult(readTypes, nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"cadence", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -950,8 +1272,19 @@ static int cmd_cadence(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
     HKUnit *kmhUnit = [[HKUnit meterUnitWithMetricPrefix:HKMetricPrefixKilo] unitDividedByUnit:[HKUnit hourUnit]];
     HKUnit *cmUnit = [HKUnit meterUnitWithMetricPrefix:HKMetricPrefixCenti];
 
-    NSArray *speedSamples = querySamples(cadenceType, predicate, limit, @[sort]);
-    NSArray *stepLenSamples = querySamples(strideLenType, predicate, limit, @[sort]);
+    // [GH#128] Two reads back this command; either failing means the answer is
+    // incomplete, so fail the whole command rather than silently reporting the
+    // half that happened to succeed.
+    NSError *speedErr = nil;
+    NSArray *speedSamples = querySamplesWithError(cadenceType, predicate, limit, @[sort], &speedErr);
+    if (speedErr) {
+        return hkEmitReadError(stdout_fd, @"cadence", @"walking speed", speedErr, compact, quiet);
+    }
+    NSError *stepLenErr = nil;
+    NSArray *stepLenSamples = querySamplesWithError(strideLenType, predicate, limit, @[sort], &stepLenErr);
+    if (stepLenErr) {
+        return hkEmitReadError(stdout_fd, @"cadence", @"step length", stepLenErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
 
@@ -995,10 +1328,9 @@ static int cmd_cadence(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
 static int cmd_elevation(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *flightsType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierFlightsClimbed];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:flightsType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"elevation",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:flightsType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"elevation", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1014,30 +1346,17 @@ static int cmd_elevation(int argc, char **argv, int stdout_fd, BOOL compact, BOO
                                                                endDate:end
                                                                options:HKQueryOptionStrictStartDate];
 
-    __block NSArray<HKStatistics *> *dailyStats = nil;
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
-        initWithQuantityType:flightsType
-         quantitySamplePredicate:predicate
-                         options:HKStatisticsOptionCumulativeSum
-                      anchorDate:anchorDate
-              intervalComponents:interval];
-
-    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
-                                     HKStatisticsCollection *result,
-                                     NSError *err) {
-        NSMutableArray *stats = [NSMutableArray array];
-        [result enumerateStatisticsFromDate:start toDate:end
-            withBlock:^(HKStatistics *s, BOOL *stop) {
-                [stats addObject:s];
-            }];
-        dailyStats = stats;
-        dispatch_semaphore_signal(sem);
-    };
-
-    [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    // [GH#128] Was: unchecked enumerate over a possibly-nil collection with the
+    // handler's NSError dropped, so a locked store reported flights_climbed: 0
+    // for every day under ok:true.
+    NSError *statsErr = nil;
+    NSArray<HKStatistics *> *dailyStats = statisticsCollectionWithError(
+        flightsType, predicate, HKStatisticsOptionCumulativeSum,
+        anchorDate, interval, start, end, &statsErr);
+    if (!dailyStats) {
+        return hkEmitReadError(stdout_fd, @"elevation", @"flights climbed",
+                               statsErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     double total = 0;
@@ -1072,10 +1391,9 @@ static int cmd_elevation(int argc, char **argv, int stdout_fd, BOOL compact, BOO
 static int cmd_weight(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *weightType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierBodyMass];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:weightType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"weight",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:weightType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"weight", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1090,7 +1408,12 @@ static int cmd_weight(int argc, char **argv, int stdout_fd, BOOL compact, BOOL q
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(weightType, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(weightType, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"weight", @"body mass", readErr, compact, quiet);
+    }
 
     HKUnit *kgUnit = [HKUnit gramUnitWithMetricPrefix:HKMetricPrefixKilo];
     HKUnit *lbUnit = [HKUnit poundUnit];
@@ -1128,10 +1451,9 @@ static int cmd_weight(int argc, char **argv, int stdout_fd, BOOL compact, BOOL q
 static int cmd_blood_oxygen(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *spo2Type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierOxygenSaturation];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:spo2Type], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"blood-oxygen",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:spo2Type], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"blood-oxygen", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1146,7 +1468,12 @@ static int cmd_blood_oxygen(int argc, char **argv, int stdout_fd, BOOL compact, 
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(spo2Type, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(spo2Type, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"blood-oxygen", @"blood oxygen", readErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     for (HKQuantitySample *s in samples) {
@@ -1179,10 +1506,9 @@ static int cmd_blood_oxygen(int argc, char **argv, int stdout_fd, BOOL compact, 
 static int cmd_blood_glucose(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *bgType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierBloodGlucose];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:bgType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"blood-glucose",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:bgType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"blood-glucose", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1197,7 +1523,12 @@ static int cmd_blood_glucose(int argc, char **argv, int stdout_fd, BOOL compact,
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(bgType, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(bgType, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"blood-glucose", @"blood glucose", readErr, compact, quiet);
+    }
 
     // mg/dL is the most common unit; also provide mmol/L
     HKUnit *mgdLUnit = [HKUnit unitFromString:@"mg/dL"];
@@ -1245,10 +1576,9 @@ static int cmd_blood_glucose(int argc, char **argv, int stdout_fd, BOOL compact,
 static int cmd_hrv(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *hrvType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierHeartRateVariabilitySDNN];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:hrvType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"hrv",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:hrvType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"hrv", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1263,7 +1593,12 @@ static int cmd_hrv(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quie
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(hrvType, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(hrvType, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"hrv", @"HRV", readErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     for (HKQuantitySample *s in samples) {
@@ -1296,10 +1631,9 @@ static int cmd_hrv(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quie
 static int cmd_resting_heart_rate(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *rhrType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierRestingHeartRate];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:rhrType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"resting-heart-rate",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:rhrType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"resting-heart-rate", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1314,7 +1648,12 @@ static int cmd_resting_heart_rate(int argc, char **argv, int stdout_fd, BOOL com
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(rhrType, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(rhrType, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"resting-heart-rate", @"resting heart rate", readErr, compact, quiet);
+    }
     HKUnit *bpmUnit = [[HKUnit countUnit] unitDividedByUnit:[HKUnit minuteUnit]];
 
     NSMutableArray *items = [NSMutableArray array];
@@ -1348,10 +1687,9 @@ static int cmd_resting_heart_rate(int argc, char **argv, int stdout_fd, BOOL com
 static int cmd_vo2_max(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *vo2Type = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierVO2Max];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:vo2Type], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"vo2-max",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:vo2Type], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"vo2-max", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1366,7 +1704,12 @@ static int cmd_vo2_max(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
     NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate
                                                            ascending:NO];
 
-    NSArray *samples = querySamples(vo2Type, predicate, limit, @[sort]);
+    NSError *readErr = nil;
+    NSArray *samples = querySamplesWithError(vo2Type, predicate, limit, @[sort], &readErr);
+    // [GH#128] A failed/timed-out read must not be reported as zero samples.
+    if (readErr) {
+        return hkEmitReadError(stdout_fd, @"vo2-max", @"VO2 max", readErr, compact, quiet);
+    }
     // VO2 max canonical unit: mL/(kg·min)
     HKUnit *vo2Unit = [[[HKUnit literUnitWithMetricPrefix:HKMetricPrefixMilli]
                         unitDividedByUnit:[HKUnit gramUnitWithMetricPrefix:HKMetricPrefixKilo]]
@@ -1417,10 +1760,9 @@ static int cmd_nutrition(int argc, char **argv, int stdout_fd, int stderr_fd, BO
 
     HKQuantityType *qType = [HKQuantityType quantityTypeForIdentifier:typeId];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:qType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"nutrition",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:qType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"nutrition", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -1441,32 +1783,16 @@ static int cmd_nutrition(int argc, char **argv, int stdout_fd, int stderr_fd, BO
                                                                endDate:end
                                                                options:HKQueryOptionStrictStartDate];
 
-    __block NSArray<HKStatistics *> *dailyStats = nil;
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
-        initWithQuantityType:qType
-         quantitySamplePredicate:predicate
-                         options:HKStatisticsOptionCumulativeSum
-                      anchorDate:anchorDate
-              intervalComponents:interval];
-
-    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
-                                     HKStatisticsCollection *result,
-                                     NSError *err) {
-        NSMutableArray *stats = [NSMutableArray array];
-        if (result) {
-            [result enumerateStatisticsFromDate:start toDate:end
-                withBlock:^(HKStatistics *s, BOOL *stop) {
-                    [stats addObject:s];
-                }];
-        }
-        dailyStats = stats;
-        dispatch_semaphore_signal(sem);
-    };
-
-    [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    // [GH#128] The `if (result)` guard here prevented a crash but not the
+    // misreport: a failed read still yielded value: 0 for every day under
+    // ok:true. Distinguish failure from a genuinely empty range.
+    NSError *statsErr = nil;
+    NSArray<HKStatistics *> *dailyStats = statisticsCollectionWithError(
+        qType, predicate, HKStatisticsOptionCumulativeSum,
+        anchorDate, interval, start, end, &statsErr);
+    if (!dailyStats) {
+        return hkEmitReadError(stdout_fd, @"nutrition", typeName, statsErr, compact, quiet);
+    }
 
     NSMutableArray *samples = [NSMutableArray array];
     double total = 0;
@@ -1499,10 +1825,9 @@ static int cmd_nutrition(int argc, char **argv, int stdout_fd, int stderr_fd, BO
 static int cmd_summary(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKActivitySummaryType *summaryType = [HKActivitySummaryType activitySummaryType];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:summaryType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"summary",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:summaryType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"summary", auth, authErr, compact, quiet);
     }
 
     // Default to 7 days for summary
@@ -1546,18 +1871,38 @@ static int cmd_summary(int argc, char **argv, int stdout_fd, BOOL compact, BOOL 
         return NOFF_EXIT_INVALID_ARGS;
     }
 
+    // [GH#128] The results handler used to drop `err` on the floor, so a locked
+    // store produced an empty rings list under ok:true — "you closed no rings"
+    // instead of "can't read". HKActivitySummaryQuery is not a statistics
+    // collection, so it can't use statisticsCollectionWithError; the same
+    // err + waitResult discipline is applied inline.
     __block NSArray<HKActivitySummary *> *summaries = nil;
+    __block NSError *summaryErr = nil;
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
     HKActivitySummaryQuery *query = [[HKActivitySummaryQuery alloc]
         initWithPredicate:predicate
            resultsHandler:^(HKActivitySummaryQuery *q, NSArray *results, NSError *err) {
+        if (err) {
+            summaryErr = err;
+            dispatch_semaphore_signal(sem);
+            return;
+        }
         summaries = results;
         dispatch_semaphore_signal(sem);
     }];
 
     [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    long summaryWait = dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    // Timed out — the handler may still fire, so don't read either __block var.
+    if (summaryWait != 0) {
+        return hkEmitReadError(stdout_fd, @"summary", @"activity summary",
+                               hkTimeoutError(@"activity summary"), compact, quiet);
+    }
+    if (summaryErr) {
+        return hkEmitReadError(stdout_fd, @"summary", @"activity summary",
+                               summaryErr, compact, quiet);
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     for (HKActivitySummary *s in summaries) {
@@ -2527,14 +2872,17 @@ static int cmd_log_blood_pressure(int argc, char **argv, int stdout_fd, BOOL com
     HKQuantityType *diaType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierBloodPressureDiastolic];
     HKCorrelationType *bpType = [HKCorrelationType correlationTypeForIdentifier:HKCorrelationTypeIdentifierBloodPressure];
 
-    // Request authorization for all three types in one prompt. Correlation
-    // share-auth piggybacks on the constituent quantity types.
-    NSSet *writeTypes = [NSSet setWithObjects:sysType, diaType, bpType, nil];
+    // [GH#393] Authorize the two constituent quantity types only. HealthKit
+    // refuses a correlation type in either set — passing bpType here raised
+    // NSInvalidArgumentException on every call, which surfaced as
+    // authorization_denied no matter what the user allowed in Settings. Write
+    // access to both halves is what saving the correlation needs; bpType is
+    // only the container the samples are saved in.
+    NSSet *writeTypes = [NSSet setWithObjects:sysType, diaType, nil];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess(writeTypes, writeTypes, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"log-blood-pressure",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult(writeTypes, writeTypes, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"log-blood-pressure", auth, authErr, compact, quiet);
     }
 
     NSString *dateStr = noff_find_arg(argc, argv, "--date");
@@ -2569,11 +2917,10 @@ static int cmd_log_blood_pressure(int argc, char **argv, int stdout_fd, BOOL com
     }
 
     // Save the correlation; HealthKit persists the contained quantity samples
-    // as part of the atomic write. saveWithAuthRetry's second arg is only used
-    // to re-request authorization on -25300; passing sysType is sufficient
-    // because the retry path requests both constituent types via the set.
+    // as part of the atomic write. The retry path re-requests BOTH halves: the
+    // save needs write access to each.
     NSError *saveErr = nil;
-    if (!saveWithAuthRetry(bpCorrelation, sysType, &saveErr)) {
+    if (!saveWithAuthRetry(bpCorrelation, writeTypes, &saveErr)) {
         BOOL authDenied = isHealthKitAuthError(saveErr);
         NSString *msg = saveErr.localizedDescription ?: @"Failed to save blood-pressure correlation";
         if (authDenied) {
@@ -2650,11 +2997,10 @@ static int cmd_log(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
 
         HKQuantityType *qType = [HKQuantityType quantityTypeForIdentifier:typeId];
         NSString *authErr = nil;
-        if (!requestHealthKitAccess([NSSet setWithObject:qType],
-                                     [NSSet setWithObject:qType], &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"log",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:qType],
+                                     [NSSet setWithObject:qType], &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"log", auth, authErr, compact, quiet);
         }
 
         NSString *dateStr = noff_find_arg(argc, argv, "--date");
@@ -2676,7 +3022,7 @@ static int cmd_log(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
         }
 
         NSError *saveErr = nil;
-        if (!saveWithAuthRetry(sample, qType, &saveErr)) {
+        if (!saveWithAuthRetry(sample, [NSSet setWithObject:qType], &saveErr)) {
             BOOL authDenied = isHealthKitAuthError(saveErr);
             NSString *msg = saveErr.localizedDescription ?: @"Failed to save sample";
             if (authDenied) {
@@ -2723,11 +3069,10 @@ static int cmd_log(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
 
         HKCategoryType *cType = [HKCategoryType categoryTypeForIdentifier:catId];
         NSString *authErr = nil;
-        if (!requestHealthKitAccess([NSSet setWithObject:cType],
-                                     [NSSet setWithObject:cType], &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"log",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:cType],
+                                     [NSSet setWithObject:cType], &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"log", auth, authErr, compact, quiet);
         }
 
         NSDate *startDate, *endDate;
@@ -2759,7 +3104,7 @@ static int cmd_log(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL com
         }
 
         NSError *saveErr = nil;
-        if (!saveWithAuthRetry(sample, cType, &saveErr)) {
+        if (!saveWithAuthRetry(sample, [NSSet setWithObject:cType], &saveErr)) {
             BOOL authDenied = isHealthKitAuthError(saveErr);
             NSString *msg = saveErr.localizedDescription ?: @"Failed to save category sample";
             if (authDenied) {
@@ -2856,11 +3201,10 @@ static int cmd_delete(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
 
     // Authorization: deleting needs share (write) access, same as log.
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:sampleType],
-                                 [NSSet setWithObject:sampleType], &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"delete",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:sampleType],
+                                 [NSSet setWithObject:sampleType], &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"delete", auth, authErr, compact, quiet);
     }
 
     // Build predicate: --id takes precedence over date range.
@@ -2897,8 +3241,16 @@ static int cmd_delete(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
 
     // Query matching samples first so we can report which UUIDs were removed
     // and distinguish "nothing matched" from "delete failed".
-    NSArray<HKSample *> *matches = querySamples(sampleType, finalPredicate,
-                                                  HKObjectQueryNoLimit, nil);
+    NSError *lookupErr = nil;
+    NSArray<HKSample *> *matches = querySamplesWithError(sampleType, finalPredicate,
+                                                          HKObjectQueryNoLimit, nil, &lookupErr);
+    // [GH#128] A failed lookup previously fell through to the count==0 branch and
+    // reported "No matching samples" with ok:true — telling the user their data
+    // was checked and found absent when in fact nothing was ever read.
+    if (lookupErr) {
+        return hkEmitReadError(stdout_fd, @"delete",
+                               @"pre-delete lookup", lookupErr, compact, quiet);
+    }
     if (matches.count == 0) {
         NSDictionary *data = @{
             @"type": typeName,
@@ -2975,10 +3327,9 @@ static int cmd_delete(int argc, char **argv, int stdout_fd, int stderr_fd, BOOL 
 static int cmd_basal_energy(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     HKQuantityType *basalType = [HKQuantityType quantityTypeForIdentifier:HKQuantityTypeIdentifierBasalEnergyBurned];
     NSString *authErr = nil;
-    if (!requestHealthKitAccess([NSSet setWithObject:basalType], nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"basal-energy",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:basalType], nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"basal-energy", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -2993,30 +3344,16 @@ static int cmd_basal_energy(int argc, char **argv, int stdout_fd, BOOL compact, 
                                                                endDate:end
                                                                options:HKQueryOptionStrictStartDate];
 
-    __block NSArray<HKStatistics *> *dailyStats = nil;
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    HKStatisticsCollectionQuery *query = [[HKStatisticsCollectionQuery alloc]
-        initWithQuantityType:basalType
-         quantitySamplePredicate:predicate
-                         options:HKStatisticsOptionCumulativeSum
-                      anchorDate:anchorDate
-              intervalComponents:interval];
-
-    query.initialResultsHandler = ^(HKStatisticsCollectionQuery *q,
-                                     HKStatisticsCollection *result,
-                                     NSError *err) {
-        NSMutableArray *stats = [NSMutableArray array];
-        [result enumerateStatisticsFromDate:start toDate:end
-            withBlock:^(HKStatistics *s, BOOL *stop) {
-                [stats addObject:s];
-            }];
-        dailyStats = stats;
-        dispatch_semaphore_signal(sem);
-    };
-
-    [healthStore() executeQuery:query];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    // [GH#128] Same silent-zeros shape as elevation — see
+    // statisticsCollectionWithError.
+    NSError *statsErr = nil;
+    NSArray<HKStatistics *> *dailyStats = statisticsCollectionWithError(
+        basalType, predicate, HKStatisticsOptionCumulativeSum,
+        anchorDate, interval, start, end, &statsErr);
+    if (!dailyStats) {
+        return hkEmitReadError(stdout_fd, @"basal_energy", @"basal energy",
+                               statsErr, compact, quiet);
+    }
 
     HKUnit *kcalUnit = [HKUnit kilocalorieUnit];
     NSMutableArray *items = [NSMutableArray array];
@@ -3083,10 +3420,9 @@ static int cmd_characteristic(int argc, char **argv, int stdout_fd, BOOL compact
     }
 
     NSString *authErr = nil;
-    if (!requestHealthKitAccess(readSet, nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"characteristic",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult(readSet, nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"characteristic", auth, authErr, compact, quiet);
     }
 
     NSMutableDictionary *data = [NSMutableDictionary dictionary];
@@ -3176,10 +3512,9 @@ static int cmd_ecg(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quie
     if (@available(iOS 14.0, *)) {
         HKElectrocardiogramType *ecgType = [HKObjectType electrocardiogramType];
         NSString *authErr = nil;
-        if (!requestHealthKitAccess([NSSet setWithObject:ecgType], nil, &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"ecg",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:ecgType], nil, &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"ecg", auth, authErr, compact, quiet);
         }
 
         NSDate *start, *end;
@@ -3189,7 +3524,12 @@ static int cmd_ecg(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quie
 
         NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:start endDate:end options:HKQueryOptionStrictStartDate];
         NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate ascending:NO];
-        NSArray<HKElectrocardiogram *> *samples = querySamples(ecgType, predicate, limit, @[sort]);
+        NSError *ecgSamplesErr = nil;
+        NSArray<HKElectrocardiogram *> *samples = querySamplesWithError(ecgType, predicate, limit, @[sort], &ecgSamplesErr);
+        // [GH#128] Surface read failures instead of an empty result set.
+        if (ecgSamplesErr) {
+            return hkEmitReadError(stdout_fd, @"ecg", @"ECG", ecgSamplesErr, compact, quiet);
+        }
 
         HKUnit *bpmUnit = [[HKUnit countUnit] unitDividedByUnit:[HKUnit minuteUnit]];
         NSMutableArray *items = [NSMutableArray array];
@@ -3246,10 +3586,9 @@ static int cmd_audiogram(int argc, char **argv, int stdout_fd, BOOL compact, BOO
     if (@available(iOS 13.0, *)) {
         HKSampleType *audioType = [HKObjectType audiogramSampleType];
         NSString *authErr = nil;
-        if (!requestHealthKitAccess([NSSet setWithObject:audioType], nil, &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"audiogram",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:audioType], nil, &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"audiogram", auth, authErr, compact, quiet);
         }
 
         NSDate *start, *end;
@@ -3259,7 +3598,12 @@ static int cmd_audiogram(int argc, char **argv, int stdout_fd, BOOL compact, BOO
 
         NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:start endDate:end options:HKQueryOptionStrictStartDate];
         NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate ascending:NO];
-        NSArray<HKAudiogramSample *> *samples = querySamples(audioType, predicate, limit, @[sort]);
+        NSError *audioSamplesErr = nil;
+        NSArray<HKAudiogramSample *> *samples = querySamplesWithError(audioType, predicate, limit, @[sort], &audioSamplesErr);
+        // [GH#128] Surface read failures instead of an empty result set.
+        if (audioSamplesErr) {
+            return hkEmitReadError(stdout_fd, @"audiogram", @"audiogram", audioSamplesErr, compact, quiet);
+        }
 
         HKUnit *hz = [HKUnit hertzUnit];
         HKUnit *dBHL = [HKUnit decibelHearingLevelUnit];
@@ -3302,10 +3646,9 @@ static int cmd_vision_rx(int argc, char **argv, int stdout_fd, BOOL compact, BOO
     if (@available(iOS 16.0, *)) {
         HKSampleType *visionType = [HKObjectType visionPrescriptionType];
         NSString *authErr = nil;
-        if (!requestHealthKitAccess([NSSet setWithObject:visionType], nil, &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"vision-rx",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:visionType], nil, &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"vision-rx", auth, authErr, compact, quiet);
         }
 
         NSDate *start, *end;
@@ -3315,7 +3658,12 @@ static int cmd_vision_rx(int argc, char **argv, int stdout_fd, BOOL compact, BOO
 
         NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:start endDate:end options:HKQueryOptionStrictStartDate];
         NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate ascending:NO];
-        NSArray<HKVisionPrescription *> *samples = querySamples(visionType, predicate, limit, @[sort]);
+        NSError *visionSamplesErr = nil;
+        NSArray<HKVisionPrescription *> *samples = querySamplesWithError(visionType, predicate, limit, @[sort], &visionSamplesErr);
+        // [GH#128] Surface read failures instead of an empty result set.
+        if (visionSamplesErr) {
+            return hkEmitReadError(stdout_fd, @"vision-rx", @"vision prescription", visionSamplesErr, compact, quiet);
+        }
 
         NSMutableArray *items = [NSMutableArray array];
         for (HKVisionPrescription *v in samples) {
@@ -3363,10 +3711,9 @@ static int cmd_assessment(int argc, char **argv, int stdout_fd, BOOL compact, BO
         if (wantPHQ && phqType) [readSet addObject:phqType];
 
         NSString *authErr = nil;
-        if (!requestHealthKitAccess(readSet, nil, &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"assessment",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult(readSet, nil, &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"assessment", auth, authErr, compact, quiet);
         }
 
         NSDate *start, *end;
@@ -3378,7 +3725,12 @@ static int cmd_assessment(int argc, char **argv, int stdout_fd, BOOL compact, BO
 
         NSMutableDictionary *data = [NSMutableDictionary dictionary];
         if (wantGAD && gadType) {
-            NSArray<HKGAD7Assessment *> *raw = querySamples(gadType, predicate, limit, @[sort]);
+            NSError *gadRawErr = nil;
+        NSArray<HKGAD7Assessment *> *raw = querySamplesWithError(gadType, predicate, limit, @[sort], &gadRawErr);
+        // [GH#128] Surface read failures instead of an empty result set.
+        if (gadRawErr) {
+            return hkEmitReadError(stdout_fd, @"assessment", @"GAD-7 assessment", gadRawErr, compact, quiet);
+        }
             NSMutableArray *out = [NSMutableArray array];
             for (HKGAD7Assessment *s in raw) {
                 NSString *risk;
@@ -3401,7 +3753,12 @@ static int cmd_assessment(int argc, char **argv, int stdout_fd, BOOL compact, BO
             data[@"gad7"] = out;
         }
         if (wantPHQ && phqType) {
-            NSArray<HKPHQ9Assessment *> *raw = querySamples(phqType, predicate, limit, @[sort]);
+            NSError *phqRawErr = nil;
+        NSArray<HKPHQ9Assessment *> *raw = querySamplesWithError(phqType, predicate, limit, @[sort], &phqRawErr);
+        // [GH#128] Surface read failures instead of an empty result set.
+        if (phqRawErr) {
+            return hkEmitReadError(stdout_fd, @"assessment", @"PHQ-9 assessment", phqRawErr, compact, quiet);
+        }
             NSMutableArray *out = [NSMutableArray array];
             for (HKPHQ9Assessment *s in raw) {
                 NSString *risk;
@@ -3441,10 +3798,9 @@ static int cmd_state_of_mind(int argc, char **argv, int stdout_fd, BOOL compact,
     if (@available(iOS 18.0, *)) {
         HKSampleType *somType = [HKObjectType stateOfMindType];
         NSString *authErr = nil;
-        if (!requestHealthKitAccess([NSSet setWithObject:somType], nil, &authErr)) {
-            noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"state-of-mind",
-                           NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-            return NOFF_EXIT_AUTH_DENIED;
+        NoffHKAuthResult auth = requestHealthKitAccessResult([NSSet setWithObject:somType], nil, &authErr);
+        if (auth != NoffHKAuthGranted) {
+            return hkEmitAuthFailure(stdout_fd, @"state-of-mind", auth, authErr, compact, quiet);
         }
 
         NSDate *start, *end;
@@ -3453,7 +3809,12 @@ static int cmd_state_of_mind(int argc, char **argv, int stdout_fd, BOOL compact,
         NSUInteger limit = limitStr ? (NSUInteger)[limitStr integerValue] : DEFAULT_LIMIT;
         NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:start endDate:end options:HKQueryOptionStrictStartDate];
         NSSortDescriptor *sort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate ascending:NO];
-        NSArray<HKStateOfMind *> *samples = querySamples(somType, predicate, limit, @[sort]);
+        NSError *somSamplesErr = nil;
+        NSArray<HKStateOfMind *> *samples = querySamplesWithError(somType, predicate, limit, @[sort], &somSamplesErr);
+        // [GH#128] Surface read failures instead of an empty result set.
+        if (somSamplesErr) {
+            return hkEmitReadError(stdout_fd, @"state-of-mind", @"state of mind", somSamplesErr, compact, quiet);
+        }
 
         NSMutableArray *items = [NSMutableArray array];
         for (HKStateOfMind *s in samples) {
@@ -3534,9 +3895,13 @@ static BOOL quantityIsCumulative(HKQuantityTypeIdentifier ident) {
 }
 
 // Compute a single statistic (sum) over the date range. Synchronous.
-static double sumQuantityOverRange(HKQuantityType *qType, HKUnit *unit,
-                                    NSDate *start, NSDate *end) {
+// `outError` optional (GH#128). On failure/timeout the returned total is 0 and
+// `*outError` is set — a caller that passes NULL keeps the old lossy behaviour.
+static double sumQuantityOverRangeWithError(HKQuantityType *qType, HKUnit *unit,
+                                             NSDate *start, NSDate *end,
+                                             NSError **outError) {
     __block double total = 0;
+    __block NSError *queryErr = nil;
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
     NSPredicate *predicate = [HKQuery predicateForSamplesWithStartDate:start endDate:end
                                                                options:HKQueryOptionStrictStartDate];
@@ -3545,6 +3910,11 @@ static double sumQuantityOverRange(HKQuantityType *qType, HKUnit *unit,
              quantitySamplePredicate:predicate
                              options:HKStatisticsOptionCumulativeSum
                    completionHandler:^(HKStatisticsQuery *_q, HKStatistics *r, NSError *err) {
+        if (err) {
+            queryErr = err;
+            dispatch_semaphore_signal(sem);
+            return;
+        }
         HKQuantity *sum = r.sumQuantity;
         // A unit mismatch here would raise an uncatchable-by-caller NSException
         // inside the HealthKit callback and abort the app — never convert blind.
@@ -3552,9 +3922,24 @@ static double sumQuantityOverRange(HKQuantityType *qType, HKUnit *unit,
         dispatch_semaphore_signal(sem);
     }];
     [healthStore() executeQuery:q];
-    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+    long waitResult = dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC));
+
+    if (waitResult != 0) {
+        if (outError) *outError = hkTimeoutError(qType.identifier);
+        return 0;
+    }
+    if (queryErr) {
+        if (outError) *outError = queryErr;
+        return 0;
+    }
+    // Note: a nil sumQuantity with no error is a genuine "no samples in range"
+    // and correctly yields 0 — that stays a success.
+    if (outError) *outError = nil;
     return total;
 }
+
+// (No error-dropping `sumQuantityOverRange()` wrapper — see the note on
+// querySamples above. Callers must take the out-error.)
 
 static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL quiet) {
     NSString *typesArg = noff_find_arg(argc, argv, "--types");
@@ -3570,22 +3955,56 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
         return NOFF_EXIT_INVALID_ARGS;
     }
 
+    // [GH#106 Phase 2a] Alias table: every per-metric SUBCOMMAND name is a
+    // valid --types token too, resolved to its registry name. The two
+    // vocabularies previously diverged exactly here — `hrv` was a working
+    // subcommand but an "unknown type" in batch (registry: hrv-sdnn), same
+    // for blood-oxygen (registry: oxygen-saturation). Common synonyms ride
+    // along. Composite subcommands that have no single backing sample type
+    // are announced as unsupported_in_batch instead of "unknown + typo hint".
+    static NSDictionary<NSString *, NSString *> *batchAliases = nil;
+    static NSSet<NSString *> *batchUnsupported = nil;
+    static dispatch_once_t aliasOnce;
+    dispatch_once(&aliasOnce, ^{
+        batchAliases = @{
+            @"hrv": @"hrv-sdnn",
+            @"heart-rate-variability": @"hrv-sdnn",
+            @"blood-oxygen": @"oxygen-saturation",
+            @"spo2": @"oxygen-saturation",
+        };
+        batchUnsupported = [NSSet setWithArray:@[
+            @"cadence", @"elevation", @"workouts", @"nutrition", @"summary",
+            @"ecg", @"audiogram", @"vision-rx", @"assessment", @"state-of-mind",
+            @"characteristic",
+        ]];
+    });
+
     NSArray<NSString *> *rawNames = [typesArg componentsSeparatedByString:@","];
-    NSMutableArray<NSString *> *quantityNames = [NSMutableArray array];
+    NSMutableArray<NSString *> *quantityNames = [NSMutableArray array];   // requested (caller-facing) names
     NSMutableArray<NSString *> *categoryNames = [NSMutableArray array];
     NSMutableArray<NSString *> *unknownNames = [NSMutableArray array];
+    NSMutableArray<NSString *> *unsupportedNames = [NSMutableArray array];
+    // requested name → registry name, identity included; result entries stay
+    // keyed by the REQUESTED token so `results[what-I-asked-for]` always hits.
+    NSMutableDictionary<NSString *, NSString *> *resolvedNames = [NSMutableDictionary dictionary];
     NSMutableSet<HKObjectType *> *readSet = [NSMutableSet set];
 
     for (NSString *raw in rawNames) {
         NSString *name = [[raw stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]] lowercaseString];
         if (name.length == 0) continue;
-        NSDictionary *qInfo = logQuantityTypeInfo(name);
+        if ([batchUnsupported containsObject:name]) {
+            [unsupportedNames addObject:name];
+            continue;
+        }
+        NSString *resolved = batchAliases[name] ?: name;
+        resolvedNames[name] = resolved;
+        NSDictionary *qInfo = logQuantityTypeInfo(resolved);
         if (qInfo) {
             [quantityNames addObject:name];
             [readSet addObject:[HKQuantityType quantityTypeForIdentifier:qInfo[@"id"]]];
             continue;
         }
-        NSDictionary *cInfo = logCategoryTypeInfo(name);
+        NSDictionary *cInfo = logCategoryTypeInfo(resolved);
         if (cInfo) {
             [categoryNames addObject:name];
             [readSet addObject:[HKCategoryType categoryTypeForIdentifier:cInfo[@"id"]]];
@@ -3595,22 +4014,27 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
     }
 
     if (readSet.count == 0) {
-        NSDictionary *err = @{
+        NSMutableDictionary *err = [@{
             @"tool": TOOL_NAME, @"command": @"batch",
             @"error": @"None of the --types names were recognized.",
             @"unknown": unknownNames,
             @"hint": @"Run `apple-healthkit types` to see valid quantity/category names.",
-        };
+        } mutableCopy];
+        if (unsupportedNames.count > 0) {
+            err[@"unsupported_in_batch"] = unsupportedNames;
+            err[@"hint"] = @"Composite metrics (cadence, elevation, workouts, ...) have no single "
+                            "sample type — run their standalone subcommand instead. For everything "
+                            "else, run `apple-healthkit types` to see valid names.";
+        }
         noff_emit_json(stdout_fd, err, compact, quiet);
         return NOFF_EXIT_INVALID_ARGS;
     }
 
     // One authorization prompt for all requested metrics.
     NSString *authErr = nil;
-    if (!requestHealthKitAccess(readSet, nil, &authErr)) {
-        noff_emit_json(stdout_fd, noff_json_error(TOOL_NAME, @"batch",
-                       NOFF_ERR_AUTHORIZATION_DENIED, authErr), compact, quiet);
-        return NOFF_EXIT_AUTH_DENIED;
+    NoffHKAuthResult auth = requestHealthKitAccessResult(readSet, nil, &authErr);
+    if (auth != NoffHKAuthGranted) {
+        return hkEmitAuthFailure(stdout_fd, @"batch", auth, authErr, compact, quiet);
     }
 
     NSDate *start, *end;
@@ -3623,9 +4047,52 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
                                                                options:HKQueryOptionStrictStartDate];
     NSSortDescriptor *descSort = [NSSortDescriptor sortDescriptorWithKey:HKSampleSortIdentifierStartDate ascending:NO];
 
+    NSMutableArray *warnings = [NSMutableArray array];
+
+    // Unrecognized --types names are dropped (as before) but now also announced,
+    // so a typo can't masquerade as an empty date range. Suggestion wording
+    // matches the `log` command's unknown-type error.
+    for (NSString *unknown in unknownNames) {
+        NSString *suggestion = findClosestMatch(unknown,
+            [allQuantityTypeNames() arrayByAddingObjectsFromArray:allCategoryTypeNames()]);
+        NSString *msg;
+        if (suggestion) {
+            msg = [NSString stringWithFormat:
+                @"Unknown type '%@' — dropped. Did you mean '%@'? "
+                 "Run `apple-healthkit types` for valid names.", unknown, suggestion];
+        } else {
+            msg = [NSString stringWithFormat:
+                @"Unknown type '%@' — dropped. "
+                 "Run `apple-healthkit types` for valid names.", unknown];
+        }
+        appendWarning(warnings, @"unknown_type", msg, @[unknown]);
+    }
+
+    // [GH#106 Phase 2a] Composite subcommands can't be batched — say so
+    // explicitly (with the escape hatch) instead of treating them as typos.
+    for (NSString *unsupported in unsupportedNames) {
+        appendWarning(warnings, @"unsupported_in_batch",
+            [NSString stringWithFormat:
+                @"'%@' is a composite metric with no single sample type — run "
+                 "`apple-healthkit %@` directly instead.", unsupported, unsupported],
+            @[unsupported]);
+    }
+    // Announce alias resolutions so output keys are traceable to input tokens.
+    for (NSString *requested in resolvedNames) {
+        NSString *resolved = resolvedNames[requested];
+        if (![resolved isEqualToString:requested]) {
+            appendWarning(warnings, @"alias_resolved",
+                [NSString stringWithFormat:
+                    @"'%@' accepted as '%@' (results are keyed by '%@').",
+                    requested, resolved, requested],
+                @[requested]);
+        }
+    }
+
     NSMutableDictionary *quantityResults = [NSMutableDictionary dictionary];
     for (NSString *name in quantityNames) {
-        NSDictionary *info = logQuantityTypeInfo(name);
+        NSString *registryName = resolvedNames[name] ?: name;
+        NSDictionary *info = logQuantityTypeInfo(registryName);
         HKQuantityType *qType = [HKQuantityType quantityTypeForIdentifier:info[@"id"]];
         HKUnit *unit = info[@"unit"];
         NSString *unitLabel = info[@"label"];
@@ -3641,23 +4108,64 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
             @"desc": info[@"desc"] ?: @"",
             @"cumulative": @(cumulative),
         } mutableCopy];
+        if (![registryName isEqualToString:name]) {
+            entry[@"resolved_as"] = registryName;
+        }
 
         if (cumulative) {
-            double total = sumQuantityOverRange(qType, unit, start, end) * scale;
+            // [GH#128] Mark the entry as failed instead of publishing sum:0,
+            // which is indistinguishable from a real zero total.
+            NSError *sumErr = nil;
+            double total = sumQuantityOverRangeWithError(qType, unit, start, end, &sumErr) * scale;
+            if (sumErr) {
+                entry[@"error"] = hkReadErrorCode(sumErr);
+                entry[@"error_message"] = hkReadErrorMessage(sumErr, name);
+                appendWarning(warnings, @"read_failed",
+                              hkReadErrorMessage(sumErr, name), @[name]);
+                quantityResults[name] = entry;
+                continue;
+            }
             entry[@"sum"] = @(noff_round4(total));
         } else {
-            NSArray *samples = querySamples(qType, rangePred, perTypeLimit, @[descSort]);
+            NSError *readErr = nil;
+            NSArray *samples = querySamplesWithError(qType, rangePred, perTypeLimit, @[descSort], &readErr);
+            if (readErr) {
+                entry[@"error"] = hkReadErrorCode(readErr);
+                entry[@"error_message"] = hkReadErrorMessage(readErr, name);
+                appendWarning(warnings, @"read_failed",
+                              hkReadErrorMessage(readErr, name), @[name]);
+                quantityResults[name] = entry;
+                continue;
+            }
+            // [GH#106 Phase 2c] Duplicate `value` under the metric's natural
+            // unit key (ms / bpm / kg / kcal / steps / ...) so parsers written
+            // against the per-metric subcommands (which use those keys) read
+            // batch output unchanged. `value` stays for existing batch
+            // consumers — additive, not a rename. Only simple alphabetic
+            // labels qualify; symbolic units (%, mg/dL, °C, /min) don't map
+            // to a stable key and are skipped.
+            NSString *metricKey = nil;
+            if (unitLabel.length > 0 && unitLabel.length <= 8 &&
+                ![unitLabel isEqualToString:@"count"] && ![unitLabel isEqualToString:@"value"]) {
+                NSCharacterSet *nonAlpha = [[NSCharacterSet characterSetWithCharactersInString:
+                    @"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"] invertedSet];
+                if ([unitLabel rangeOfCharacterFromSet:nonAlpha].location == NSNotFound) {
+                    metricKey = unitLabel;
+                }
+            }
             NSMutableArray *items = [NSMutableArray array];
             for (HKQuantitySample *s in samples) {
                 // Skip samples whose stored unit can't convert to the table unit
                 // instead of letting doubleValueForUnit: throw and kill the app.
                 if (![s.quantity isCompatibleWithUnit:unit]) continue;
                 double v = [s.quantity doubleValueForUnit:unit] * scale;
-                [items addObject:@{
+                NSMutableDictionary *item = [@{
                     @"date": noff_format_date(s.startDate),
                     @"value": @(noff_round4(v)),
                     @"source": sourceNameForSample(s),
-                }];
+                } mutableCopy];
+                if (metricKey) item[metricKey] = @(noff_round4(v));
+                [items addObject:item];
             }
             entry[@"samples"] = items;
             entry[@"count"] = @(items.count);
@@ -3665,15 +4173,45 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
                 entry[@"latest_value"] = items.firstObject[@"value"];
                 entry[@"latest_date"]  = items.firstObject[@"date"];
             }
+            // Only pay for countSamples() when the cap was actually hit. It runs an
+            // unlimited query with a 15s semaphore wait, and batch fans out over
+            // every requested type — ungated that would be one extra full query per
+            // type. Same gate the single commands use.
+            if (items.count >= perTypeLimit) {
+                NSUInteger total = countSamples(qType, rangePred);
+                addTruncationWarning(entry, items.count, total);
+                if (total > items.count) {
+                    appendWarning(warnings, @"results_truncated",
+                        [NSString stringWithFormat:
+                            @"%@: returned %lu of %lu records (--limit %lu).",
+                            name, (unsigned long)items.count,
+                            (unsigned long)total, (unsigned long)perTypeLimit],
+                        @[name]);
+                }
+            }
         }
         quantityResults[name] = entry;
     }
 
     NSMutableDictionary *categoryResults = [NSMutableDictionary dictionary];
     for (NSString *name in categoryNames) {
-        NSDictionary *info = logCategoryTypeInfo(name);
+        NSString *registryName = resolvedNames[name] ?: name;
+        NSDictionary *info = logCategoryTypeInfo(registryName);
         HKCategoryType *cType = [HKCategoryType categoryTypeForIdentifier:info[@"id"]];
-        NSArray<HKCategorySample *> *samples = querySamples(cType, rangePred, perTypeLimit, @[descSort]);
+        // [GH#128] Same per-type failure marking as the quantity loop — a locked
+        // store must not render as "0 sleep segments".
+        NSError *catErr = nil;
+        NSArray<HKCategorySample *> *samples = querySamplesWithError(cType, rangePred, perTypeLimit, @[descSort], &catErr);
+        if (catErr) {
+            categoryResults[name] = [@{
+                @"desc": info[@"desc"] ?: @"",
+                @"error": hkReadErrorCode(catErr),
+                @"error_message": hkReadErrorMessage(catErr, name),
+            } mutableCopy];
+            appendWarning(warnings, @"read_failed",
+                          hkReadErrorMessage(catErr, name), @[name]);
+            continue;
+        }
         NSMutableArray *items = [NSMutableArray array];
         for (HKCategorySample *s in samples) {
             [items addObject:@{
@@ -3683,11 +4221,30 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
                 @"source": sourceNameForSample(s),
             }];
         }
-        categoryResults[name] = @{
+        NSMutableDictionary *cEntry = [@{
             @"desc": info[@"desc"] ?: @"",
             @"samples": items,
             @"count": @(items.count),
-        };
+        } mutableCopy];
+        if (![registryName isEqualToString:name]) {
+            cEntry[@"resolved_as"] = registryName;
+        }
+        // Category results were capped by --limit with no indication at all —
+        // sleep in particular runs 40-100+ segments per night, so a multi-day
+        // range silently lost data. Same gate as the quantity loop above.
+        if (items.count >= perTypeLimit) {
+            NSUInteger total = countSamples(cType, rangePred);
+            addTruncationWarning(cEntry, items.count, total);
+            if (total > items.count) {
+                appendWarning(warnings, @"results_truncated",
+                    [NSString stringWithFormat:
+                        @"%@: returned %lu of %lu records (--limit %lu).",
+                        name, (unsigned long)items.count,
+                        (unsigned long)total, (unsigned long)perTypeLimit],
+                    @[name]);
+            }
+        }
+        categoryResults[name] = cEntry;
     }
 
     NSMutableDictionary *data = [@{
@@ -3699,7 +4256,10 @@ static int cmd_batch(int argc, char **argv, int stdout_fd, BOOL compact, BOOL qu
         @"quantity": quantityResults,
         @"category": categoryResults,
     } mutableCopy];
+    // `unknown_types` is retained for backward compatibility; `warnings` is the
+    // structured form and appears only when there is something to report.
     if (unknownNames.count > 0) data[@"unknown_types"] = unknownNames;
+    if (warnings.count > 0) data[@"warnings"] = warnings;
 
     noff_emit_json(stdout_fd, noff_json_envelope(TOOL_NAME, @"batch", data), compact, quiet);
     return NOFF_EXIT_SUCCESS;

@@ -14,7 +14,7 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-SRC="$ROOT/src/android/app/src/main/java/com/fug/openthumb/sandbox/RootfsSource.kt"
+SRC="$ROOT/src/android/app/src/main/java/com/openminis/app/sandbox/RootfsSource.kt"
 OUT_DIR="$ROOT/build/rootfs"
 
 # Reads a Kotlin string constant whether its value sits on the declaration line
@@ -53,6 +53,9 @@ else
   python3 "$ROOT/scripts/rootfs_add_packages.py" "$IMAGE" python3
 fi
 
+tar tzvf "$IMAGE" | awk '$NF ~ /usr\/bin\/python3\.12$/ { found = 1; if ($1 !~ /x/) bad = 1 } END { exit (found && !bad) ? 0 : 1 }' \
+  || { echo "python3.12 is missing or not executable in $IMAGE" >&2; exit 1; }
+
 SUM=$(shasum -a 256 "$IMAGE" | awk '{print $1}')
 SIZE=$(du -h "$IMAGE" | cut -f1)
 
@@ -75,11 +78,11 @@ echo "digest matches the app. good."
 [ "${1:-}" = "--publish" ] || { echo; echo "re-run with --publish to upload."; exit 0; }
 
 echo
-if gh release view "$TAG" >/dev/null 2>&1; then
+if gh release view -R neulketing/openthumb "$TAG" >/dev/null 2>&1; then
   echo "release $TAG exists — replacing the asset"
-  gh release upload "$TAG" "$IMAGE" --clobber
+  gh release upload -R neulketing/openthumb "$TAG" "$IMAGE" --clobber
 else
-  gh release create "$TAG" "$IMAGE" \
+  gh release create -R neulketing/openthumb "$TAG" "$IMAGE" --target main \
     --title "Alpine rootfs $ALPINE_RELEASE (aarch64, python3)" \
     --notes "Sandbox image fetched at first run by builds that do not bundle it —
 F-Droid will not ship a tarball of precompiled binaries it cannot rebuild, and

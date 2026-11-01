@@ -124,6 +124,10 @@ def unpack_into(rec, dest: str) -> int:
             if m.name.startswith("/") or ".." in m.name.split("/"):
                 continue  # a package is untrusted input on its way to a path
             tf.extract(m, dest, set_attrs=False)
+            # set_attrs=False also drops the mode. PRoot refuses to run a
+            # 0644 binary, so an image without this has a python3 that cannot start.
+            if m.isreg():
+                os.chmod(os.path.join(dest, m.name), m.mode & 0o755)
             written += 1
     return written
 

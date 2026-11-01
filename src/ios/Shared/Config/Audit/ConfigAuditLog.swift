@@ -29,6 +29,9 @@ final class ConfigAuditLog: ObservableObject {
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         self.dbURL = base.appendingPathComponent("minis-config-audit.db")
         openAndMigrate()
+        // [T-config-audit-wal-loss] See checkpoint(): a disappeared log and a
+        // never-used one look identical without this line.
+        logRowCountForDiagnostics()
     }
 
     // MARK: Schema
@@ -60,6 +63,11 @@ final class ConfigAuditLog: ObservableObject {
         // run errors with "duplicate column name", which `exec` swallows
         // by logging — that's the desired no-op.
         exec("ALTER TABLE config_audit ADD COLUMN caption TEXT")
+        // [T-config-readable] Same idempotent pattern. Nullable, no DEFAULT:
+        // NULL means "written before readable descriptions existed". Older
+        // builds name their columns explicitly in SELECT / INSERT, so they
+        // ignore this column and a downgrade stays safe.
+        exec("ALTER TABLE config_audit ADD COLUMN readable TEXT")
         exec("CREATE INDEX IF NOT EXISTS idx_audit_at ON config_audit(at DESC)")
         exec("CREATE INDEX IF NOT EXISTS idx_audit_scope ON config_audit(scope, at DESC)")
         exec("CREATE INDEX IF NOT EXISTS idx_audit_revert_of ON config_audit(revert_of)")
@@ -85,8 +93,8 @@ final class ConfigAuditLog: ObservableObject {
         let sql = """
             INSERT OR REPLACE INTO config_audit
               (id, at, actor, session_id, scope, key, old_value, new_value,
-               confirmed_at, status, revert_of, caption)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               confirmed_at, status, revert_of, caption, readable)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
@@ -117,6 +125,11 @@ final class ConfigAuditLog: ObservableObject {
                 sqlite3_bind_text(stmt, 12, (cap as NSString).utf8String, -1, nil)
             } else {
                 sqlite3_bind_null(stmt, 12)
+            }
+            if let json = entry.readable?.jsonString() {
+                sqlite3_bind_text(stmt, 13, (json as NSString).utf8String, -1, nil)
+            } else {
+                sqlite3_bind_null(stmt, 13)
             }
             sqlite3_step(stmt)
         }
@@ -159,13 +172,51 @@ final class ConfigAuditLog: ObservableObject {
         revision &+= 1
     }
 
+    /// [T-config-audit-wal-loss] Fold the WAL back into the main DB file.
+    ///
+    /// This database is deliberately separate from `minis.db` so the audit table
+    /// never lands in a sync-dirty query — but that also left it out of
+    /// `ICloudBackupManager.walCheckpoint`, which covers minis.db and skills.db.
+    /// It runs in WAL mode with nothing ever checkpointing it, so a jetsam or
+    /// crash can drop history that was only in the `-wal` sidecar.
+    ///
+    /// This is the defensive half of OpenMinis#98 defect 3. The report's "audit
+    /// log was erased" could NOT be reproduced from code — no path in this tree
+    /// deletes the DB or bulk-deletes rows outside the 1000-row cap — so the two
+    /// surviving explanations are an uncheckpointed WAL (fixed here) or a
+    /// freshly-created DB after a container change (which this cannot address).
+    /// Called on background/terminate.
+    func checkpoint() {
+        guard let db else { return }
+        var errMsg: UnsafeMutablePointer<CChar>?
+        if sqlite3_exec(db, "PRAGMA wal_checkpoint(TRUNCATE)", nil, nil, &errMsg) != SQLITE_OK {
+            let msg = errMsg.map { String(cString: $0) } ?? "?"
+            sqlite3_free(errMsg)
+            auditLogger.warning("[Audit] wal_checkpoint failed: \(msg)")
+            return
+        }
+        auditLogger.info("[Audit] wal_checkpoint(TRUNCATE) ok")
+    }
+
+    /// [T-config-audit-wal-loss] Row count at open, so a log that vanishes
+    /// between launches is visible in the logs instead of being silently
+    /// indistinguishable from "never used".
+    func logRowCountForDiagnostics() {
+        guard let db else { return }
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM config_audit", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else { return }
+        auditLogger.info("[Audit] opened with \(sqlite3_column_int(stmt, 0)) rows at \(dbURL.lastPathComponent)")
+    }
+
     // MARK: Reads
 
     /// Most-recent first. `limit` capped at `maxRows`.
     func recent(limit: Int = 200, scope: String? = nil) -> [ConfigAuditEntry] {
         guard db != nil else { return [] }
         let cap = max(1, min(limit, Self.maxRows))
-        var sql = "SELECT id, at, actor, session_id, scope, key, old_value, new_value, confirmed_at, status, revert_of, caption FROM config_audit"
+        var sql = "SELECT id, at, actor, session_id, scope, key, old_value, new_value, confirmed_at, status, revert_of, caption, readable FROM config_audit"
         if scope != nil { sql += " WHERE scope = ?" }
         sql += " ORDER BY at DESC LIMIT ?"
         var stmt: OpaquePointer?
@@ -187,7 +238,7 @@ final class ConfigAuditLog: ObservableObject {
 
     func get(id: String) -> ConfigAuditEntry? {
         guard db != nil else { return nil }
-        let sql = "SELECT id, at, actor, session_id, scope, key, old_value, new_value, confirmed_at, status, revert_of, caption FROM config_audit WHERE id = ?"
+        let sql = "SELECT id, at, actor, session_id, scope, key, old_value, new_value, confirmed_at, status, revert_of, caption, readable FROM config_audit WHERE id = ?"
         var stmt: OpaquePointer?
         var entry: ConfigAuditEntry?
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
@@ -229,13 +280,15 @@ final class ConfigAuditLog: ObservableObject {
         guard let status = ConfigAuditStatus(rawValue: statusRaw) else { return nil }
         let revertOf = sqlite3_column_text(stmt, 10).map { String(cString: $0) }
         let caption = sqlite3_column_text(stmt, 11).map { String(cString: $0) }
+        let readable = ReadableSummary.decode(json: sqlite3_column_text(stmt, 12).map { String(cString: $0) })
         return ConfigAuditEntry(
             id: id, at: at, actor: actor, sessionId: sessionId,
             scope: scope, key: key,
             oldValueJSON: oldVal, newValueJSON: newVal,
             confirmedAt: confirmedAt, status: status,
             revertOf: revertOf,
-            caption: caption
+            caption: caption,
+            readable: readable
         )
     }
 }

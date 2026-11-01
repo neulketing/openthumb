@@ -8,6 +8,9 @@ struct ModelGroupDetailView: View {
 
     @State private var editingName = ""
     @State private var showAddModels = false
+    /// [T-quota-group-member-pill] Provider whose quota sheet a member's pill
+    /// opened; hosted at page level, not on the row.
+    @State private var quotaDetailProviderId: QuotaSheetTarget?
     @State private var showDeleteConfirm = false
     /// Holding `EditMode` directly (rather than a `Bool` + a derived
     /// `editMode` binding) lets SwiftUI own the same value the
@@ -47,6 +50,28 @@ struct ModelGroupDetailView: View {
         return levels.max() ?? .xhigh
     }
 
+    /// [T-thinking-levels-data-driven] The levels the group's Intensity picker
+    /// offers: the UNION of every reasoning member's selectable tiers, matching
+    /// the `.max()` ceiling policy above (offer what ANY member supports; the
+    /// per-model clamp at request time narrows it for the others).
+    ///
+    /// Each member contributes what IT can offer: its declared tiers, or — when
+    /// it declares none — the full ladder up to its own ceiling. Contributing
+    /// the ladder is load-bearing for MIXED groups: taking only declared tiers
+    /// would let one sparse member (glm-5.2, `["high","max"]`) erase Low/Med for
+    /// an un-catalogued member that genuinely supports them, since the
+    /// un-catalogued model contributes nothing to the union.
+    private func groupThinkingLevels(_ group: ModelGroup) -> [ThinkingLevel] {
+        let ceiling = groupMaxThinkingLevel(group)
+        let union = Set(group.memberEntryIds.compactMap { store.entry(for: $0) }
+            .filter { $0.effectiveMaxThinkingLevel != .off }
+            .flatMap { $0.selectableThinkingLevels })
+        guard !union.isEmpty else {
+            return ThinkingLevel.allCases.filter { $0 != .off && $0 <= ceiling }
+        }
+        return union.filter { $0 <= ceiling }.sorted()
+    }
+
     var body: some View {
         Group {
             if let group = group {
@@ -63,9 +88,9 @@ struct ModelGroupDetailView: View {
                 if let group {
                     Button {
                         UIPasteboard.general.string = "group:\(group.id)"
-                        MinisToast.show(String(localized: "Copied: \(group.name)"))
+                        MinisToast.show(AppLocalized("Copied: \(group.name)"))
                     } label: {
-                        Label(String(localized: "Copy Shortcut Model ID"), systemImage: "link")
+                        Label(AppLocalized("Copy Shortcut Model ID"), systemImage: "link")
                     }
                 }
             }
@@ -205,7 +230,7 @@ struct ModelGroupDetailView: View {
                 HStack {
                     Text("Models")
                     Spacer()
-                    Button(editMode.isEditing ? String(localized: "Done") : String(localized: "Edit")) {
+                    Button(editMode.isEditing ? AppLocalized("Done") : AppLocalized("Edit")) {
                         withAnimation {
                             editMode = editMode.isEditing ? .inactive : .active
                         }
@@ -243,15 +268,28 @@ struct ModelGroupDetailView: View {
 
                 if group.defaultThinkingLevel != nil {
                     let maxLevel = groupMaxThinkingLevel(group)
+                    let levels = groupThinkingLevels(group)
                     Picker("Intensity", selection: Binding(
-                        get: { group.defaultThinkingLevel ?? .medium },
+                        get: {
+                            // [T-thinking-levels-data-driven] A stored level may
+                            // no longer be offered (the catalog now declares a
+                            // sparse set, or membership changed). A segmented
+                            // picker whose selection matches no tag renders with
+                            // NOTHING highlighted, so snap the displayed value
+                            // onto the nearest offered tier at or below it.
+                            let current = group.defaultThinkingLevel ?? .medium
+                            if levels.contains(current) { return current }
+                            return levels.last(where: { $0 <= current })
+                                ?? levels.first
+                                ?? current
+                        },
                         set: { level in
                             var updated = group
                             updated.defaultThinkingLevel = min(level, maxLevel)
                             store.updateGroup(updated)
                         }
                     )) {
-                        ForEach(ThinkingLevel.allCases.filter { $0 != .off && $0 <= maxLevel }, id: \.self) { level in
+                        ForEach(levels, id: \.self) { level in
                             Text(level.displayName).tag(level)
                         }
                     }
@@ -314,12 +352,22 @@ struct ModelGroupDetailView: View {
                 }
             }
         }
-        .scrollDismissesKeyboard(.interactively)
+        // [T-ipad-sheet-keyboard-crash] `.immediately`, not `.interactively`:
+        // this page lives inside the Settings sheet, where an interactive
+        // keyboard drag and the sheet's drag-to-dismiss can share one gesture —
+        // the iPadOS 27 abort described at ModelEntryDetailSheet
+        // (ProviderInstanceDetailView.swift).
+        .scrollDismissesKeyboard(.immediately)
         .environment(\.editMode, $editMode)
         .sheet(isPresented: $showAddModels) {
             NavigationStack {
                 UnifiedModelPicker(config: addModelsConfig())
             }
+        }
+        .sheet(item: $quotaDetailProviderId) { target in
+            QuotaDetailSheet(instanceId: target.id)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -334,10 +382,13 @@ struct ModelGroupDetailView: View {
         let store = self.store
         let voiceNote: String? = {
             if store.voiceInputGroupId == gid {
-                return String(localized: "This group drives Voice Input — only models that accept audio input are listed.", comment: "Add-models filter note for the bound voice input group")
+                return AppLocalized("This group drives Voice Input — only models that accept audio input are listed.", comment: "Add-models filter note for the bound voice input group")
             }
             if store.voiceOutputGroupId == gid {
-                return String(localized: "This group drives Voice Output — only models that can output audio are listed.", comment: "Add-models filter note for the bound voice output group")
+                return AppLocalized("This group drives Voice Output — only models that can output audio are listed.", comment: "Add-models filter note for the bound voice output group")
+            }
+            if store.visionGroupId == gid {
+                return AppLocalized("This group describes images for models that cannot see them — only models that accept image input are listed.", comment: "Add-models filter note for the bound vision group")
             }
             return nil
         }()
@@ -351,7 +402,7 @@ struct ModelGroupDetailView: View {
             onAddMulti: { ids in
                 guard var group = store.group(for: gid) else { return }
                 group.memberEntryIds.append(contentsOf: ids.sorted())
-                store.updateGroup(group)
+                store.updateGroup(group, orderReason: "user-add")
             }
         )
     }
@@ -366,9 +417,20 @@ struct ModelGroupDetailView: View {
                 .opacity(providerDisabled ? 0.35 : 1)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(entry.model.displayName)
-                    .font(.subheadline)
-                    .foregroundStyle(providerDisabled ? Color.secondary : Color(UIColor.label))
+                HStack(alignment: .quotaCapCenter, spacing: 4) {
+                    Text(entry.model.displayName)
+                        .font(.subheadline)
+                        .foregroundStyle(providerDisabled ? Color.secondary : Color(UIColor.label))
+                        .alignmentGuide(.quotaCapCenter) { $0.quotaCapCenter }
+                    // [T-quota-group-member-pill] The model's (or its account's)
+                    // quota; this page has no other way to the provider's quota.
+                    if !providerDisabled {
+                        ModelQuotaMemberPill(instanceId: entry.providerInstanceId,
+                                             modelId: entry.baseModel.id) {
+                            quotaDetailProviderId = QuotaSheetTarget(id: entry.providerInstanceId)
+                        }
+                    }
+                }
                 if let instance = instance {
                     HStack(spacing: 4) {
                         Text(instance.label)
@@ -385,7 +447,18 @@ struct ModelGroupDetailView: View {
 
             Spacer()
 
-            Text(entry.model.provider)
+            // Same reasoning as ModelEntryDetailSheet.providerDisplayName:
+            // `model.provider` is a denormalized display string whose content
+            // depends on which path created the model (vendor name / protocol
+            // type / instance UUID), so prefer the owning instance's label.
+            // `instance` is already resolved above for the disabled check.
+            Text({
+                if let instance {
+                    let label = instance.label.trimmingCharacters(in: .whitespacesAndNewlines)
+                    return label.isEmpty ? instance.providerType.displayName : label
+                }
+                return entry.model.provider
+            }())
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .opacity(providerDisabled ? 0.5 : 1)
@@ -486,20 +559,20 @@ struct ModelGroupDetailView: View {
         var updated = group
         updated.memberEntryIds.removeAll { $0 == entryId }
         clampThinkingLevelIfNeeded(&updated)
-        store.updateGroup(updated)
+        store.updateGroup(updated, orderReason: "user-delete")
     }
 
     private func moveMember(from source: IndexSet, to destination: Int, in group: ModelGroup) {
         var updated = group
         updated.memberEntryIds.move(fromOffsets: source, toOffset: destination)
-        store.updateGroup(updated)
+        store.updateGroup(updated, orderReason: "user-drag")
     }
 
     private func deleteMember(at offsets: IndexSet, from group: ModelGroup) {
         var updated = group
         updated.memberEntryIds.remove(atOffsets: offsets)
         clampThinkingLevelIfNeeded(&updated)
-        store.updateGroup(updated)
+        store.updateGroup(updated, orderReason: "user-delete")
     }
 
     private func clampThinkingLevelIfNeeded(_ group: inout ModelGroup) {
@@ -543,7 +616,7 @@ private struct ContextLimitSlider: View {
         ("200K", 200_000),
         ("400K", 400_000),
         ("1M",   1_000_000),
-        (String(localized: "Unlimited"), Int.max),
+        (AppLocalized("Unlimited"), Int.max),
     ]
 
     private var sliderIndex: Double {
@@ -560,8 +633,8 @@ private struct ContextLimitSlider: View {
     }
 
     private var currentLabel: String {
-        guard let v = value else { return steps.last?.label ?? String(localized: "Unlimited") }
-        if v >= Int.max { return String(localized: "Unlimited") }
+        guard let v = value else { return steps.last?.label ?? AppLocalized("Unlimited") }
+        if v >= Int.max { return AppLocalized("Unlimited") }
         if let match = steps.first(where: { $0.tokens == v }) { return match.label }
         return "\(v / 1000)K"
     }

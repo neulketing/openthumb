@@ -8,6 +8,111 @@ import Speech
 // Shared VAD + ASR state machine. Drives the inline voice input
 // (InlineVoiceInputView); resolves the ASR provider via VoiceProviderResolver.
 
+/// [T-voice-input-failure-feedback] (#144/#134/#142) Why a voice utterance
+/// produced no text.
+///
+/// Every case here used to be an early `return` with at most a `VoiceLog` line:
+/// the spinner stopped, the transcript did not change, and the user could not
+/// tell "I spoke too briefly" from "the ASR server 401'd" from "the text was
+/// dropped because I was editing". Naming the failures is what makes those
+/// distinguishable — both to the user (toast) and to us (log grep).
+///
+/// Modelled on Android's `RecognitionError`
+/// (SystemSpeechRecognitionEngine.kt:345-382), which already had this
+/// distinction — notably a real `NO_MATCH` state, which iOS lacked.
+enum VoiceInputFailure: Equatable {
+    /// Capture stopped with less than `minSegmentSeconds` of audio.
+    case tooShort(seconds: Double)
+    /// Audio was sent and the request SUCCEEDED, but the transcript was empty.
+    /// The single most confusing failure: nothing errored, nothing appeared.
+    case noSpeechRecognized
+    /// Recognition result arrived while the user was hand-editing the
+    /// transcript, so appending would have clobbered their edit.
+    case droppedWhileEditing
+    /// Microphone permission denied.
+    case micPermissionDenied
+    /// Mic is granted but Speech recognition is not — on-device ASR cannot run.
+    /// Previously indistinguishable from a generic transcribe error.
+    case speechPermissionDenied
+    /// No usable ASR provider could be constructed (missing API key / bad
+    /// config). Previously surfaced as a bogus *network* error.
+    case noUsableProvider
+    /// The provider chain ran and every candidate threw.
+    case transcribeFailed(String)
+    /// Starting the audio engine failed.
+    case startFailed(String)
+
+    /// User-facing, already-localized. Kept short — these are toast lines.
+    var message: String {
+        switch self {
+        case .tooShort:
+            return AppLocalized("Too short — hold on and speak a little longer",
+                          comment: "Voice input: recording below the minimum length, discarded")
+        case .noSpeechRecognized:
+            return AppLocalized("No speech recognized — please try again",
+                          comment: "Voice input: ASR succeeded but returned an empty transcript")
+        case .droppedWhileEditing:
+            return AppLocalized("Speech ignored while editing — finish editing first",
+                          comment: "Voice input: result discarded because the user was editing the transcript")
+        case .micPermissionDenied:
+            return AppLocalized("Microphone access denied — enable it in Settings",
+                          comment: "Voice input: microphone permission denied")
+        case .speechPermissionDenied:
+            return AppLocalized("Speech recognition access denied — enable it in Settings",
+                          comment: "Voice input: Speech recognition permission denied")
+        case .noUsableProvider:
+            return AppLocalized("No usable speech-to-text model — check the voice settings",
+                          comment: "Voice input: no ASR provider could be built (missing key/config)")
+        case .transcribeFailed(let detail):
+            return detail
+        case .startFailed(let detail):
+            return detail
+        }
+    }
+
+    /// SF Symbol for the toast.
+    var systemImage: String {
+        switch self {
+        case .noSpeechRecognized, .tooShort: return "waveform.slash"
+        case .micPermissionDenied, .speechPermissionDenied: return "mic.slash.fill"
+        case .droppedWhileEditing: return "pencil.slash"
+        default: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    /// Stable tag for log grepping — the field diagnosis handle for #134/#142.
+    var logTag: String {
+        switch self {
+        case .tooShort: return "tooShort"
+        case .noSpeechRecognized: return "noSpeechRecognized"
+        case .droppedWhileEditing: return "droppedWhileEditing"
+        case .micPermissionDenied: return "micPermissionDenied"
+        case .speechPermissionDenied: return "speechPermissionDenied"
+        case .noUsableProvider: return "noUsableProvider"
+        case .transcribeFailed: return "transcribeFailed"
+        case .startFailed: return "startFailed"
+        }
+    }
+}
+
+/// [T-voice-input-failure-feedback] (#144) Thrown when every ASR candidate was
+/// skipped because no provider could be constructed (missing API key / bad
+/// config). A distinct type so the catch site can classify it as
+/// `.noUsableProvider` rather than a generic transcribe failure — this used to
+/// surface as `URLError(.cannotLoadFromNetwork)`, i.e. a *network* error for
+/// what is really a *configuration* one.
+struct NoUsableASRProviderError: LocalizedError {
+    var errorDescription: String? { VoiceInputFailure.noUsableProvider.message }
+}
+
+/// [T-voice-asr-stall-skip] The user skipped an ASR attempt that had no result
+/// after `VoiceInputViewModel.asrStallThreshold`.
+struct VoiceASRSkippedError: LocalizedError {
+    var errorDescription: String? {
+        AppLocalized("Skipped a voice model that stopped responding",
+                     comment: "Voice ASR: the user skipped a model with no response")
+    }
+}
 
 @MainActor
 final class VoiceInputViewModel: ObservableObject {
@@ -50,11 +155,46 @@ final class VoiceInputViewModel: ObservableObject {
     /// Non-nil when the last transcription request failed — shown as a tip so the
     /// user sees WHY (e.g. HTTP 404 / auth) instead of silent no-text.
     @Published var transcribeError: String?
-    @Published var retryCountdown: Int?
-    @Published var canManualRetry = false
-    private var retryAudioData: Data?
-    private var retryTimer: Timer?
-    private var isAutoRetry = false
+
+    /// [T-voice-asr-failure-retry-prompt] One utterance whose transcription
+    /// failed (error or timeout). Its audio is KEPT until the user decides:
+    /// dropping it silently meant re-dictating what might have been a minute of
+    /// speech.
+    struct FailedUtterance: Identifiable, Equatable {
+        let id = UUID()
+        let audio: Data
+        let seconds: Double
+        let reason: String
+    }
+    /// Failed utterances awaiting a Retry / Discard decision, oldest first.
+    private var failedUtterances: [FailedUtterance] = [] {
+        didSet { retryPrompt = failedUtterances.first }
+    }
+    /// The utterance the panel is currently asking about (drives the alert).
+    @Published private(set) var retryPrompt: FailedUtterance?
+
+    /// [T-voice-input-failure-feedback] (#144) Last reason a voice utterance
+    /// produced no text. Published so the panel can reflect it inline; also
+    /// toasted by `report(_:)` so it is visible in COMPACT mode, where the
+    /// existing `stateLabel` and error pill do not render at all (that
+    /// expanded-only limitation is why these failures read as "nothing
+    /// happened").
+    @Published var lastFailure: VoiceInputFailure?
+
+    /// Surface a failure: log it with a greppable tag and toast it.
+    ///
+    /// Toast rather than an inline row on purpose — an inline pill inserts a
+    /// row into the panel VStack and shifts the mic button, which users already
+    /// complained about (see the note in InlineVoiceInputView's error pill).
+    ///
+    /// `silent: true` records the failure for diagnostics without a toast, for
+    /// paths that are expected during normal use and would otherwise nag.
+    func report(_ failure: VoiceInputFailure, silent: Bool = false) {
+        lastFailure = failure
+        VoiceLog.log("[voice-failure] \(failure.logTag): \(failure.message)")
+        guard !silent else { return }
+        MinisToast.show(failure.message, duration: 2.2, systemImage: failure.systemImage)
+    }
 
     /// Total recording session cap (5 minutes). When continuous recording
     /// (from first mic start) exceeds this, force a full auto-stop.
@@ -103,6 +243,35 @@ final class VoiceInputViewModel: ObservableObject {
     /// each time the panel prepares so sessions spread across group members.
     private var inputLoadBalanceSeed = 0
 
+    // MARK: [T-voice-asr-stall-skip] Stalled-attempt skip
+
+    /// How long one ASR attempt may run without a result before the panel
+    /// offers to skip to the next voice model. Long utterances legitimately
+    /// take a few seconds; past this a user is better served by moving on than
+    /// by waiting on a connection or server that may never answer.
+    ///
+    /// 5 s (was 10 s at first ship): the button is only an OFFER. An attempt
+    /// the user does not skip keeps running and lands normally, so showing it
+    /// early costs nothing, while a 10 s wait before any way out felt too long.
+    static let asrStallThreshold: TimeInterval = 5
+
+    /// True while ≥1 transcription attempt is past `asrStallThreshold` AND has
+    /// a next model to go to. Drives the skip button and its status line.
+    @Published private(set) var isASRStalled = false
+
+    /// Set when the user skipped past the last candidate onto System ASR: later
+    /// segments in this capture session go straight to System instead of
+    /// queueing on the model that just hung again. Cleared whenever the
+    /// candidates are re-resolved (panel re-opened, or the user picks an engine).
+    private var systemASRPinned = false
+
+    private lazy var asrAttempts: SkippableASRAttempts = {
+        let attempts = SkippableASRAttempts(stallThreshold: Self.asrStallThreshold)
+        attempts.onStallChange = { [weak self] stalled in self?.isASRStalled = stalled }
+        attempts.log = { VoiceLog.log($0) }
+        return attempts
+    }()
+
     /// Auto-stop the mic after this many seconds with no detected speech, so a
     /// forgotten-open mic doesn't record (and drain battery) indefinitely.
     private static let idleTimeout: TimeInterval = 30
@@ -125,6 +294,7 @@ final class VoiceInputViewModel: ObservableObject {
     deinit {
         idleTimer?.invalidate()
         backgroundTimer?.invalidate()
+        finishPollTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -177,6 +347,19 @@ final class VoiceInputViewModel: ObservableObject {
 
     @objc private func appWillEnterForeground() {
         backgroundTimer?.invalidate(); backgroundTimer = nil
+        // [T-voice-interrupt-cannot-restart] Returning from a call is the moment
+        // to notice that capture died while we were away. iOS does not deliver
+        // `AVAudioSession.interruptionNotification .ended` to a suspended app,
+        // and the 15s background auto-stop timer above does not fire while
+        // suspended either — so a FaceTime call answered mid-dictation could
+        // leave the panel showing "Listening" over a dead engine, with no event
+        // that would ever correct it. Reconcile against what the engine is
+        // really doing.
+        guard vad.isRunning, !vad.isCapturing else { return }
+        VoiceLog.log("foreground: capture died while backgrounded (interrupted) — resetting to idle")
+        stopListening()
+        startError = AppLocalized("Recording was interrupted — tap the mic to resume",
+                                  comment: "Voice capture interrupted")
     }
 
     // MARK: - Control
@@ -193,6 +376,10 @@ final class VoiceInputViewModel: ObservableObject {
     /// capture session, while mid-session refreshes keep the current rotation.
     private func resolveInputCandidates(reseed: Bool) {
         if reseed { inputLoadBalanceSeed = Int.random(in: 0..<Int.max) }
+        if systemASRPinned {
+            VoiceLog.log("ASR: candidates re-resolved — leaving the System ASR fallback")
+            systemASRPinned = false
+        }
         inputCandidates = VoiceProviderResolver.resolvedInputCandidates(loadBalanceSeed: inputLoadBalanceSeed)
         if let sticky = stickyInputEntryId, !inputCandidates.contains(where: { $0.id == sticky }) {
             stickyInputEntryId = nil
@@ -248,6 +435,14 @@ final class VoiceInputViewModel: ObservableObject {
         }
     }
 
+    /// True when the resolved ASR is Apple's on-device recognizer — the only
+    /// case where Speech permission matters. Mirrors `prewarmIfSystem`'s test.
+    /// A nil `inputProvider` also counts: `transcribeWithFailover` falls back to
+    /// `SystemVoiceProvider.shared` when the candidate chain is empty.
+    private var willUseSystemASR: Bool {
+        inputProvider == nil || inputProvider is SystemVoiceProvider
+    }
+
     func stopListening() {
         vad.stop()
         state = .waiting
@@ -265,28 +460,20 @@ final class VoiceInputViewModel: ObservableObject {
     /// (continuous dictation) — segments transcribe as silence is detected while
     /// capture keeps running, so we never stop it just to transcribe.
     func handleMainButtonTap() {
-        VoiceLog.log("handleMainButtonTap called, state=\(state), vad.isRunning=\(vad.isRunning), isSpeaking=\(vad.isSpeaking), runningDuration=\(String(format: "%.1f", vad.runningDuration))s")
-        if vad.isRunning {
-            let wasSpeaking = vad.isSpeaking
-            let duration = vad.runningDuration
-            // Pausing: flush any in-progress speech to recognition first (so the
-            // audio captured up to the pause isn't lost). vad.flush delivers its
-            // segment asynchronously onto the main queue, so flush the merged
-            // pending buffer on the next tick — after that segment has landed.
-            vad.flush()
-            // FALLBACK: If VAD never detected speech but mic ran >1s, use raw audio
-            if !wasSpeaking && duration > 1.0 {
-                VoiceLog.log("VAD fallback: isSpeaking was false but mic ran \(String(format: "%.1f", duration))s — flushing raw buffer")
-                vad.flushRawFallback()
-            }
-            DispatchQueue.main.async { [weak self] in self?.flushPendingSegments() }
-            vad.stop()
-            state = .waiting
-            listeningLabelToken &+= 1
-            cancelTipCycle()
-        recordingTipIndex = 0
-            VoiceModePreference.shared.isCapturing = false
-            cancelTotalRecordingTimer()
+        // [T-voice-send-lock] The mic again while a send waits for recognition:
+        // the user is not done after all. Take the send back; they send when
+        // they are.
+        abandonFinishForSend(.recordingRestarted)
+        VoiceLog.log("[VoiceInputDebug] handleMainButtonTap called, state=\(state), vad.isRunning=\(vad.isRunning), isSpeaking=\(vad.isSpeaking), runningDuration=\(String(format: "%.1f", vad.runningDuration))s, ttsPlaying=\(VoiceOutputPlayer.shared.isPlaying), micPerm=\(VoiceActivityDetector.microphonePermission)")
+        // [T-voice-interrupt-cannot-restart] `isCapturing`, not `isRunning`: an
+        // interruption that never delivered its `.ended` (answering a FaceTime
+        // call backgrounds us, and iOS does not post `.ended` to a suspended
+        // app) leaves `isRunning == true` with the engine dead. Branching on the
+        // raw flag sent this tap down the PAUSE path — flushing and "stopping" a
+        // capture that was already gone — so the button did nothing visible and
+        // the user had to tap twice to get the mic back.
+        if vad.isCapturing {
+            pauseCapture()
             return
         }
         let mic = VoiceActivityDetector.microphonePermission
@@ -296,7 +483,7 @@ final class VoiceInputViewModel: ObservableObject {
             // System (offline) ASR also needs Speech permission — request it
             // (no-op once granted) before starting capture.
             Task {
-                await SystemVoiceProvider.ensureSpeechAuthorization()
+                await self.ensureSpeechAuthReportingDenial()
                 self.prewarmIfSystem()
                 self.startVAD()
             }
@@ -304,7 +491,166 @@ final class VoiceInputViewModel: ObservableObject {
             Task { await requestPermissionAndStart() }
         case .denied:
             permissionDenied = true
+            report(.micPermissionDenied)
         }
+    }
+
+    /// Pause capture, handing everything captured so far to recognition.
+    ///
+    /// `rawFallback: false` for the send path: there the VAD has detected
+    /// speech (that is why we are waiting), so `vad.flush()` already delivers
+    /// it, and the raw-buffer fallback would only re-send it or send silence.
+    private func pauseCapture(rawFallback: Bool = true) {
+        let wasSpeaking = vad.isSpeaking
+        let duration = vad.runningDuration
+        // Pausing: flush any in-progress speech to recognition first (so the
+        // audio captured up to the pause isn't lost). vad.flush delivers its
+        // segment asynchronously onto the main queue, so flush the merged
+        // pending buffer on the next tick — after that segment has landed.
+        vad.flush()
+        // FALLBACK: If VAD never detected speech but mic ran >1s, use raw audio
+        if rawFallback && !wasSpeaking && duration > 1.0 {
+            VoiceLog.log("VAD fallback: isSpeaking was false but mic ran \(String(format: "%.1f", duration))s — flushing raw buffer")
+            vad.flushRawFallback()
+        }
+        DispatchQueue.main.async { [weak self] in self?.flushPendingSegments() }
+        vad.stop()
+        state = .waiting
+        listeningLabelToken &+= 1
+        cancelTipCycle()
+        recordingTipIndex = 0
+        VoiceModePreference.shared.isCapturing = false
+        cancelTotalRecordingTimer()
+    }
+
+    // MARK: - Finish before send [T-voice-send-waits-for-asr]
+
+    /// True while a send is waiting for capture to stop and ASR to finish.
+    /// The composer shows its send button as busy and ignores taps for exactly
+    /// as long as this is true. [T-voice-send-lock]
+    @Published private(set) var isFinishingForSend = false
+    /// [T-voice-send-lock] The one pending wait, by attempt number. Everything
+    /// that can end it - the poll, the safety net, a cancel, an edit, a new
+    /// recording, leaving voice mode - goes through `concludeFinishForSend`
+    /// with its attempt, so the wait ends once and a late callback of an
+    /// earlier attempt does nothing.
+    private var sendGate = VoiceSendGate()
+    private var finishCompletion: (@MainActor (Bool) -> Void)?
+    private var finishPollTimer: Timer?
+
+    /// Anything captured that has not become transcript text yet: the mic is
+    /// still capturing, audio is held below the segment threshold, or a
+    /// transcription is in flight.
+    var hasUntranscribedAudio: Bool {
+        (vad.isCapturing && speechAwaitingSegment) || !pendingSegments.isEmpty || pendingTranscriptions > 0
+    }
+
+    /// Speech was detected and has not been handed over as a segment yet.
+    /// `state == .recording` cannot answer this: it is set the moment the mic
+    /// starts. Without it, an open-but-silent mic made every typed send wait
+    /// for (and toast "no speech" about) a transcription of silence.
+    private var speechAwaitingSegment = false
+
+    /// Longest a send waits for recognition before giving up. Beyond it the
+    /// send is abandoned (not sent half-done); the result still lands in the
+    /// transcript when it arrives.
+    static let finishForSendTimeout: TimeInterval = 60
+
+    /// [T-voice-send-waits-for-asr] Called when the user taps Send while voice
+    /// input still owes text. Stops the mic, pushes EVERY captured sample to
+    /// recognition — including audio below the segment minimum — and calls
+    /// `completion(true)` once all transcriptions have landed in `transcript`.
+    ///
+    /// `completion(false)` means "don't send": a transcription failed while
+    /// waiting (the retry prompt is up, and sending now would drop that
+    /// speech), the wait timed out, or the user did something that takes the
+    /// send back (see `abandonFinishForSend`). A second call while one is
+    /// pending is ignored, so repeated taps cannot send twice.
+    ///
+    /// [T-voice-send-lock] `completion` is called exactly once per accepted
+    /// call, and `isFinishingForSend` is true from this call until then.
+    ///
+    /// Before this, Send while recording invalidated the in-flight
+    /// transcription and dropped the pending audio (clearAndRearm), so the
+    /// last sentence spoken before the tap never made it into the message.
+    func finishCaptureForSend(completion: @escaping @MainActor (Bool) -> Void) {
+        guard !sendGate.isWaiting else {
+            VoiceLog.log("[voice-send] finish already pending — ignoring repeated send")
+            return
+        }
+        guard hasUntranscribedAudio else { completion(true); return }
+        guard let attempt = sendGate.begin() else { return }
+        isFinishingForSend = true
+        finishCompletion = completion
+        let failuresBefore = failedUtterances.count
+        let started = Date()
+        VoiceLog.log("[voice-send] #\(attempt) send while capturing=\(vad.isCapturing) pendingSegments=\(pendingSegments.count) inFlight=\(pendingTranscriptions) — finishing first")
+        if vad.isCapturing {
+            pauseCapture(rawFallback: false)
+        } else {
+            flushPendingSegments()
+        }
+        // Poll rather than observe: the flushed VAD segment is delivered
+        // asynchronously, so "nothing pending" is only trustworthy after it has
+        // landed (see VoiceSendGate.verdict). Common run loop modes: a finger
+        // on the conversation must not hold the send back.
+        var idleTicks = 0
+        finishPollTimer?.invalidate()
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] timer in
+            Task { @MainActor in
+                guard let self, self.sendGate.isCurrent(attempt) else { timer.invalidate(); return }
+                if !self.pendingSegments.isEmpty && !self.vad.isCapturing {
+                    // A late segment below the threshold: push it now.
+                    self.flushPendingSegments()
+                }
+                let verdict = VoiceSendGate.verdict(
+                    queuedSegments: self.pendingSegments.count,
+                    inFlight: self.pendingTranscriptions,
+                    failedSinceStart: self.failedUtterances.count > failuresBefore,
+                    elapsed: Date().timeIntervalSince(started),
+                    timeout: Self.finishForSendTimeout,
+                    idleTicks: &idleTicks)
+                if case .end(let end) = verdict {
+                    self.concludeFinishForSend(attempt: attempt, end)
+                }
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        finishPollTimer = timer
+        // Safety net, independent of the poll: whatever happens to the timer,
+        // this attempt cannot hold the send button past the time limit. If the
+        // attempt has ended by then, `concludeFinishForSend` ignores it.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.finishForSendTimeout + 2) { [weak self] in
+            self?.concludeFinishForSend(attempt: attempt, .timedOut)
+        }
+    }
+
+    /// [T-voice-send-lock] The only place a pending wait ends. Releases the
+    /// send button and reports the outcome - once: a stale attempt (already
+    /// ended, or replaced) is ignored, so it can neither send nor lock again.
+    private func concludeFinishForSend(attempt: Int, _ end: VoiceSendGate.End) {
+        guard sendGate.conclude(attempt) else { return }
+        finishPollTimer?.invalidate()
+        finishPollTimer = nil
+        isFinishingForSend = false
+        let completion = finishCompletion
+        finishCompletion = nil
+        VoiceLog.log("[voice-send] #\(attempt) ended: \(end.rawValue)\(end == .send ? " — sending" : " — not sent, send button released")")
+        if end == .timedOut {
+            MinisToast.show(AppLocalized("Still transcribing. Tap Send again when the text appears."),
+                            duration: 3, systemImage: "hourglass")
+        }
+        completion?(end == .send)
+    }
+
+    /// [T-voice-send-lock] Take a pending send back and release the send
+    /// button: the user cancelled the transcription, changed the text, started
+    /// recording again, or left voice mode or the chat. Recognition that is
+    /// still running keeps running and its text still lands in the transcript;
+    /// it is just no longer sent on its own. No-op when nothing is pending.
+    func abandonFinishForSend(_ end: VoiceSendGate.End) {
+        guard let attempt = sendGate.pending else { return }
+        concludeFinishForSend(attempt: attempt, end)
     }
 
     /// Stop capture and return the panel to idle.
@@ -316,6 +662,10 @@ final class VoiceInputViewModel: ObservableObject {
     /// Leaving it lets the text carry over; the next voice-mode entry re-seeds
     /// the transcript from inputText anyway (InlineVoiceInputView.onAppear).
     func reset(clearTranscript: Bool = true) {
+        // [T-voice-send-lock] Leaving voice mode with a send still waiting for
+        // recognition: the text now belongs to the keyboard composer and the
+        // user sends it from there.
+        abandonFinishForSend(.voiceDismissed)
         vad.stop()
         if clearTranscript { transcript = "" }
         // [T-voice-panel-gap-after-edit] Leaving voice mode (mic/"T" toggle) while
@@ -343,7 +693,13 @@ final class VoiceInputViewModel: ObservableObject {
         // Mutually exclusive with TTS playback: stop any reply being read aloud so
         // it doesn't echo into the mic / fight the audio session, and mark capture
         // active so further reply TTS is suppressed until we stop.
+        // [VoiceInputDebug] Record whether TTS was actually speaking when the mic
+        // was tapped — that is the case where the session has to switch
+        // .playback → .record, which is what used to lose the first tap.
+        let ttsWasPlaying = VoiceOutputPlayer.shared.isPlaying
+        VoiceLog.log("[VoiceInputDebug] startVAD enter ttsPlaying=\(ttsWasPlaying) vad.isRunning=\(vad.isRunning)")
         VoiceOutputPlayer.shared.stopAll()
+        VoiceLog.log("[VoiceInputDebug] TTS stopAll() returned (synchronous); session release is async")
         VoiceModePreference.shared.isCapturing = true
         do {
             // System ASR (SFSpeechRecognizer) limits each recognition request
@@ -357,25 +713,58 @@ final class VoiceInputViewModel: ObservableObject {
             state = .recording
             startError = nil
             transcribeError = nil
+            lastFailure = nil
             beginRecordingLabelCycle()
             startRippleAnimation()
             resetIdleTimer()
             startTotalRecordingTimer()
+            VoiceLog.log("[VoiceInputDebug] startVAD OK — state=.recording")
         } catch {
             VoiceModePreference.shared.isCapturing = false
             logger.error("Failed to start VAD: \(error.localizedDescription)")
+            // [VoiceInputDebug] This is the branch that produced the reported
+            // "first tap only stopped the speech" symptom: TTS was stopped above,
+            // then vad.start() threw, so no recording began and the panel fell
+            // back to .waiting with no visible error state change.
+            VoiceLog.log("[VoiceInputDebug] startVAD FAILED — recording NOT started, ttsWasPlaying=\(ttsWasPlaying), error=\(error.localizedDescription)")
             startError = error.localizedDescription
             state = .waiting
+            // [T-voice-input-failure-feedback] (#144) `startError` only renders
+            // in expandedBody; in compact mode this failed start looked exactly
+            // like a dead mic button. Toast so it is visible either way.
+            report(.startFailed(error.localizedDescription))
         }
     }
 
     private func requestPermissionAndStart() async {
         let granted = await VoiceActivityDetector.requestMicrophonePermission()
         VoiceLog.log("mic permission request result: granted=\(granted)")
-        guard granted else { permissionDenied = true; return }
-        await SystemVoiceProvider.ensureSpeechAuthorization()
+        guard granted else {
+            permissionDenied = true
+            report(.micPermissionDenied)
+            return
+        }
+        await ensureSpeechAuthReportingDenial()
         prewarmIfSystem()
         startVAD()
+    }
+
+    /// [T-voice-input-failure-feedback] (#144) Request Speech authorization and
+    /// SAY SO when it is refused.
+    ///
+    /// The result of `ensureSpeechAuthorization()` used to be discarded at both
+    /// call sites. With the mic granted but Speech denied, capture started
+    /// normally and only the on-device recognizer failed — every utterance
+    /// surfaced the generic `unsupported("Speech recognition permission not
+    /// granted")` string, never an actionable "grant Speech permission".
+    ///
+    /// Only reported when the system ASR is actually the one that would run;
+    /// with a remote (Whisper-style) provider configured, Speech permission is
+    /// irrelevant and warning about it would be noise.
+    private func ensureSpeechAuthReportingDenial() async {
+        let ok = await SystemVoiceProvider.ensureSpeechAuthorization()
+        guard !ok, willUseSystemASR else { return }
+        report(.speechPermissionDenied)
     }
 
     private func beginRecordingLabelCycle() {
@@ -463,6 +852,9 @@ final class VoiceInputViewModel: ObservableObject {
     /// meets the minimum-length gate; otherwise the short audio is discarded
     /// and the panel simply returns to idle.
     private func handleSegment(_ audioData: Data, reason: SegmentEndReason) {
+        // The detected speech now exists as a segment (pending or sent), so
+        // `pendingSegments` / in-flight transcriptions account for it.
+        speechAwaitingSegment = false
         guard !audioData.isEmpty else { return }
         if isEditingTranscript { return }
 
@@ -485,6 +877,13 @@ final class VoiceInputViewModel: ObservableObject {
             guard totalSeconds >= Self.minSegmentSeconds else {
                 VoiceLog.log("silence auto-stop: below min threshold, discarding \(String(format: "%.1f", totalSeconds))s")
                 pendingSegments.removeAll(keepingCapacity: true)
+                // [T-voice-input-failure-feedback] (#134) Speaking under
+                // minSegmentSeconds then falling silent used to discard the
+                // audio with no UI change at all — the single likeliest cause of
+                // "I tapped the mic, said something, and got nothing".
+                // Only speak up if the user actually produced some audio;
+                // a bare mic-open/mic-close with ~zero capture is not a failure.
+                if totalSeconds > 0.3 { report(.tooShort(seconds: totalSeconds)) }
                 return
             }
             #if DEBUG
@@ -492,7 +891,7 @@ final class VoiceInputViewModel: ObservableObject {
             #endif
             let merged = Self.mergeWavSegments(pendingSegments)
             pendingSegments.removeAll(keepingCapacity: true)
-            if let merged { transcribeAudio(merged) }
+            transcribeMerged(merged)
 
         case .maxLengthReached:
             #if DEBUG
@@ -500,7 +899,7 @@ final class VoiceInputViewModel: ObservableObject {
             #endif
             let merged = Self.mergeWavSegments(pendingSegments)
             pendingSegments.removeAll(keepingCapacity: true)
-            if let merged { transcribeAudio(merged) }
+            transcribeMerged(merged)
 
         case .manualFlush:
             guard totalSeconds >= Self.minSegmentSeconds else {
@@ -512,7 +911,7 @@ final class VoiceInputViewModel: ObservableObject {
             #endif
             let merged = Self.mergeWavSegments(pendingSegments)
             pendingSegments.removeAll(keepingCapacity: true)
-            if let merged { transcribeAudio(merged) }
+            transcribeMerged(merged)
         }
     }
 
@@ -567,39 +966,27 @@ final class VoiceInputViewModel: ObservableObject {
         }
     }
 
-    private func startRetryCountdown() {
-        retryCountdown = 5
-        canManualRetry = false
-        retryTimer?.invalidate()
-        retryTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-            Task { @MainActor in
-                guard let self else { timer.invalidate(); return }
-                guard let count = self.retryCountdown, count > 1 else {
-                    timer.invalidate()
-                    self.retryCountdown = nil
-                    self.executeRetry()
-                    return
-                }
-                self.retryCountdown = count - 1
-            }
+    /// [T-voice-asr-failure-retry-prompt] User chose Retry on the prompt:
+    /// transcribe the kept audio again. A second failure queues it again.
+    func retryFailedUtterance() {
+        guard let first = failedUtterances.first else { return }
+        // transcribeAudio drops audio while the transcript editor is open;
+        // keep the utterance queued instead of losing it on a retry tap.
+        guard !isEditingTranscript else {
+            report(.droppedWhileEditing)
+            return
         }
+        failedUtterances.removeFirst()
+        transcribeError = nil
+        VoiceLog.log("[voice-failure] retry requested (\(String(format: "%.1f", first.seconds))s)")
+        transcribeAudio(first.audio)
     }
 
-    private func executeRetry() {
-        guard let data = retryAudioData else { return }
-        isAutoRetry = true
-        retryAudioData = nil
-        transcribeError = nil
-        transcribeAudio(data)
-    }
-
-    func manualRetry() {
-        guard let data = retryAudioData else { return }
-        canManualRetry = false
-        isAutoRetry = false
-        retryAudioData = nil
-        transcribeError = nil
-        transcribeAudio(data)
+    /// [T-voice-asr-failure-retry-prompt] User chose Discard: drop that audio.
+    func discardFailedUtterance() {
+        guard let first = failedUtterances.first else { return }
+        failedUtterances.removeFirst()
+        VoiceLog.log("[voice-failure] discarded by user (\(String(format: "%.1f", first.seconds))s)")
     }
 
     private func schedulePendingForceFlush() {
@@ -629,7 +1016,21 @@ final class VoiceInputViewModel: ObservableObject {
         #endif
         let merged = Self.mergeWavSegments(pendingSegments)
         pendingSegments.removeAll(keepingCapacity: true)
-        if let merged { transcribeAudio(merged) }
+        transcribeMerged(merged)
+    }
+
+    /// [T-voice-input-failure-feedback] (#144) Send a merged utterance, or say
+    /// so when the merge produced nothing.
+    ///
+    /// `mergeWavSegments` returns nil when every segment is header-only (≤44
+    /// bytes). All four call sites used to be a bare `if let merged { … }` with
+    /// no `else`, so that outcome discarded the utterance in total silence.
+    private func transcribeMerged(_ merged: Data?) {
+        guard let merged else {
+            report(.noSpeechRecognized)
+            return
+        }
+        transcribeAudio(merged)
     }
 
     /// Transcribe ONE (possibly merged) utterance. The VAD engine keeps running
@@ -682,11 +1083,18 @@ final class VoiceInputViewModel: ObservableObject {
         #endif
 
         let generation = transcriptGeneration
-        let candidates = orderedInputCandidates()
+        // [T-voice-asr-stall-skip] Empty = the System engine (see transcribeWithFailover).
+        let candidates = systemASRPinned ? [] : orderedInputCandidates()
         let requestLanguage = language
         let task = Task { [weak self] in
             guard let self else { return }
             var text = ""
+            // Scoped to THIS attempt on purpose. `self.transcribeError` is only
+            // cleared on success, so a failure from an earlier utterance is
+            // still set here — testing it instead would suppress the
+            // "no speech recognized" report on the next empty-but-successful
+            // attempt, re-creating the exact silent failure this fixes.
+            var attemptFailed = false
             do {
                 try Task.checkCancellation()
                 text = try await self.transcribeWithFailover(audioData: audioData,
@@ -706,16 +1114,23 @@ final class VoiceInputViewModel: ObservableObject {
                 VoiceLog.log("ERROR transcription failed: \(error.localizedDescription)")
                 self.logger.error("Transcription failed: \(error.localizedDescription)")
                 self.transcribeError = error.localizedDescription
-                if Self.isTransientNetworkError(error) && !self.isAutoRetry {
-                    self.retryAudioData = audioData
-                    self.startRetryCountdown()
-                } else if Self.isTransientNetworkError(error) && self.isAutoRetry {
-                    self.isAutoRetry = false
-                    self.canManualRetry = true
-                    self.retryAudioData = audioData
+                attemptFailed = true
+                let failure: VoiceInputFailure = error is NoUsableASRProviderError
+                    ? .noUsableProvider
+                    : .transcribeFailed(error.localizedDescription)
+                // [T-voice-asr-failure-retry-prompt] Every failure (timeouts
+                // included) keeps the audio and asks the user. The old path
+                // retried once after a countdown for network errors only and
+                // DROPPED the audio for everything else. The prompt explains
+                // the failure itself, so no toast — only the log record.
+                self.report(failure, silent: true)
+                if generation == self.transcriptGeneration {
+                    self.failedUtterances.append(FailedUtterance(
+                        audio: audioData,
+                        seconds: VoiceInputViewModel.wavDurationSeconds(audioData),
+                        reason: error.localizedDescription))
                 } else {
-                    self.retryAudioData = nil
-                    self.canManualRetry = false
+                    VoiceLog.log("[voice-failure] failure after the composition was sent/cleared — not prompting")
                 }
             }
             if generation == self.transcriptGeneration,
@@ -723,6 +1138,21 @@ final class VoiceInputViewModel: ObservableObject {
                 self.transcript = self.transcript.isEmpty ? text : self.transcript + " " + text
                 VoiceLog.log("UI update: text=\"\(self.transcript)\"")
                 self.onTranscript?(self.transcript)
+            } else if generation != self.transcriptGeneration {
+                // Superseded by clearAndRearm()/cancelTranscription() (e.g. the
+                // user sent the message while this was in flight). Expected —
+                // record it, but don't nag.
+                VoiceLog.log("[voice-failure] staleGeneration: result dropped (gen \(generation) != \(self.transcriptGeneration))")
+            } else if self.isEditingTranscript {
+                self.report(.droppedWhileEditing)
+            } else if !attemptFailed {
+                // [T-voice-input-failure-feedback] (#134) The request SUCCEEDED
+                // and returned an empty string. This is the path that used to
+                // vanish without a trace: no throw, no error pill, no transcript
+                // change. Whisper returning "", the chat-ASR prompt honoring
+                // "output an empty string", and SystemVoiceProvider's 8s
+                // watchdog salvaging an empty result all land here.
+                self.report(.noSpeechRecognized)
             }
             if self.pendingTranscriptions > 0 {
                 self.pendingTranscriptions -= 1
@@ -753,16 +1183,41 @@ final class VoiceInputViewModel: ObservableObject {
             return try await SystemVoiceProvider.shared.transcribe(request).text
         }
         var lastError: Error?
+        var skippedCandidates = 0
+        // [T-voice-asr-stall-skip] Where a skip may go from each position: the
+        // next candidate, else System ASR as the last resort — unless System is
+        // already in the chain, in which case the last candidate has nowhere
+        // further to go and is not offered a skip.
+        let chainHasSystem = candidates.contains {
+            VoiceProviderResolver.isSystemEntry($0.id) || VoiceProviderResolver.isSystemEntry($0.providerInstanceId)
+        }
+        var userSkipped = false
         for (i, entry) in candidates.enumerated() {
             try Task.checkCancellation()
-            guard let provider = VoiceProviderResolver.inputProvider(for: entry) else { continue }
+            guard let provider = VoiceProviderResolver.inputProvider(for: entry) else {
+                // [T-voice-input-failure-feedback] (#144) A candidate whose
+                // provider can't be built (missing API key / bad config) used to
+                // be skipped invisibly; if EVERY candidate skipped, `lastError`
+                // stayed nil and we threw a bogus URLError(.cannotLoadFromNetwork)
+                // — reporting a *network* problem for a *configuration* one.
+                skippedCandidates += 1
+                VoiceLog.log("ASR fail-over: \(entry.model.displayName) skipped — provider unavailable (missing key/config)")
+                continue
+            }
             let request = VoiceInputRequest(audioData: audioData,
                                             model: entry.model.id,
                                             language: language,
                                             resolvedModel: entry.model,
                                             onDeviceRecognition: onDevice)
+            let nextEntryId: String? = i + 1 < candidates.count
+                ? candidates[i + 1].id
+                : (chainHasSystem ? nil : VoiceProviderResolver.systemEntryId)
             do {
-                let text = try await provider.transcribe(request).text
+                let text = try await asrAttempts.run(label: entry.model.displayName,
+                                                     nextEntryId: nextEntryId,
+                                                     canSkip: nextEntryId != nil) {
+                    try await provider.transcribe(request).text
+                }
                 if stickyInputEntryId != entry.id {
                     stickyInputEntryId = entry.id
                     inputProvider = provider
@@ -774,16 +1229,83 @@ final class VoiceInputViewModel: ObservableObject {
                 return text
             } catch is CancellationError {
                 throw CancellationError()
+            } catch is SkippableASRAttempts.Skipped {
+                userSkipped = true
+                lastError = VoiceASRSkippedError()
+                VoiceLog.log("ASR fail-over: \(entry.model.displayName) skipped by the user after \(Int(Self.asrStallThreshold))s without a result" +
+                             (i + 1 < candidates.count ? " — trying next candidate" : " — falling back to System"))
             } catch {
                 lastError = error
                 VoiceLog.log("ASR fail-over: \(entry.model.displayName) failed (\(error.localizedDescription))" +
                              (i + 1 < candidates.count ? " — trying next candidate" : " — chain exhausted"))
             }
         }
-        throw lastError ?? URLError(.cannotLoadFromNetwork)
+        // [T-voice-asr-stall-skip] The user chose to move on and the chain has
+        // nothing left: System ASR is the last resort. Only after a user skip —
+        // a chain that simply FAILED keeps its existing Retry / Discard prompt.
+        if userSkipped, !chainHasSystem {
+            try Task.checkCancellation()
+            systemASRPinned = true
+            VoiceLog.log("ASR fail-over: chain exhausted after a user skip — using System ASR for this capture session")
+            let request = VoiceInputRequest(audioData: audioData,
+                                            model: nil,
+                                            language: language,
+                                            resolvedModel: nil,
+                                            onDeviceRecognition: onDevice)
+            return try await SystemVoiceProvider.shared.transcribe(request).text
+        }
+        if let lastError { throw lastError }
+        // Every candidate was skipped for want of a usable provider — a config
+        // problem, so name it as one instead of blaming the network.
+        VoiceLog.log("[voice-failure] noUsableProvider: all \(skippedCandidates) candidate(s) unavailable")
+        throw NoUsableASRProviderError()
+    }
+
+    /// [T-voice-asr-stall-skip] The user tapped the skip button: abandon every
+    /// attempt that has been waiting past `asrStallThreshold`. Each abandoned
+    /// transcription continues with its next voice model (System as the last
+    /// resort); the audio is not lost.
+    ///
+    /// The NEXT segments are re-pointed here, synchronously, rather than when
+    /// the next model succeeds: audio flushed by the same tap (it pauses a
+    /// running capture) must not queue on the server that just hung.
+    func skipStalledTranscription() {
+        let nexts = asrAttempts.skipStalled()
+        guard !nexts.isEmpty else { return }
+        let targets = nexts.compactMap { $0 }
+        let nextName: String
+        if let next = targets.first(where: { !VoiceProviderResolver.isSystemEntry($0) }),
+           let entry = inputCandidates.first(where: { $0.id == next }) {
+            // A candidate whose provider can't be built right now (missing key)
+            // is left to the fail-over loop, which skips it on its own; only a
+            // usable one becomes the new starting point.
+            if let provider = VoiceProviderResolver.inputProvider(for: entry) {
+                stickyInputEntryId = entry.id
+                inputProvider = provider
+                inputResolvedModel = entry.model
+            }
+            nextName = entry.model.displayName
+        } else if targets.contains(where: { VoiceProviderResolver.isSystemEntry($0) }) {
+            systemASRPinned = true
+            nextName = AppLocalized("System speech recognition",
+                                    comment: "Voice ASR: name of the built-in iOS recognizer, used as fallback")
+        } else {
+            // The candidate set changed under the skip (engine switched): the
+            // abandoned attempts still move on inside their own loops.
+            nextName = AppLocalized("the next voice model",
+                                    comment: "Voice ASR: generic fallback target name in the retry toast")
+        }
+        VoiceLog.log("ASR stall: skip → next segments start on \(nextName)")
+        MinisToast.show(AppLocalized("Retrying with \(nextName)",
+                                     comment: "Voice ASR: toast after skipping a stalled model; %@ is the next model"),
+                        duration: 1.8, systemImage: "forward.end.fill")
     }
 
     func cancelTranscription() {
+        // [T-voice-send-lock] Cancelling the transcription a send is waiting
+        // for cancels that send too. Before, the wait saw "nothing in flight"
+        // and sent whatever text was already there.
+        abandonFinishForSend(.cancelled)
         for task in pendingTranscriptionTasks { task.cancel() }
         pendingTranscriptionTasks.removeAll()
         transcriptGeneration &+= 1
@@ -795,6 +1317,10 @@ final class VoiceInputViewModel: ObservableObject {
     /// user stays in voice mode (the inline panel remains), but the mic is no
     /// longer listening — they tap the mic again to dictate the next message.
     func clearAndRearm() {
+        // [T-voice-send-lock] Normally the wait has just ended (this runs after
+        // the send). If something clears the panel while one is pending, the
+        // send it was waiting to make no longer has its text.
+        abandonFinishForSend(.cancelled)
         // Invalidate any in-flight transcription so a late result can't refill the
         // field after the send (residual-text bug).
         transcriptGeneration &+= 1
@@ -807,6 +1333,7 @@ final class VoiceInputViewModel: ObservableObject {
         pendingSegments.removeAll(keepingCapacity: true)
         // Stop the mic on send (and cancel idle/background timers via stopListening).
         if vad.isRunning { stopListening() }
+        speechAwaitingSegment = false
         state = .waiting
         // Signal the inline view to collapse to compact mode after a send.
         collapseAfterSendToken &+= 1
@@ -824,6 +1351,9 @@ final class VoiceInputViewModel: ObservableObject {
             VoiceLog.log("[voice-edit-site] beginEditing() ignored — already editing")
             return
         }
+        // [T-voice-send-lock] Editing takes a pending send back: the text is
+        // about to change under it.
+        abandonFinishForSend(.textEdited)
         VoiceLog.log("[voice-edit-site] beginEditing(double-tap) false→true state=\(state)")
         isEditingTranscript = true
         // [voice-correction §5] Snapshot the pre-edit text. Whatever the user changes from
@@ -867,17 +1397,21 @@ final class VoiceInputViewModel: ObservableObject {
 
     /// Sync external (input-box) edits back into the transcript.
     func setTranscript(_ text: String) {
+        // [T-voice-send-lock] Text changed from outside the recogniser.
+        if text != transcript { abandonFinishForSend(.textEdited) }
         transcript = text
     }
 
     /// Delete the last character of the transcript (backspace).
     func deleteLastCharacter() {
+        abandonFinishForSend(.textEdited)   // [T-voice-send-lock]
         guard !transcript.isEmpty else { return }
         transcript.removeLast()
     }
 
     /// Clear the whole transcript (the "clear all" affordance).
     func clearTranscript() {
+        abandonFinishForSend(.textEdited)   // [T-voice-send-lock]
         guard !transcript.isEmpty else { return }
         transcript = ""
     }
@@ -891,6 +1425,7 @@ extension VoiceInputViewModel: VoiceActivityDelegate {
         // Ignore detected speech while the user is hand-editing the transcript.
         guard !isEditingTranscript else { return }
         state = .recording
+        speechAwaitingSegment = true
         // Speech detected — push the no-speech idle deadline back out.
         resetIdleTimer()
     }
@@ -915,7 +1450,7 @@ extension VoiceInputViewModel: VoiceActivityDelegate {
         cancelIdleTimer()
         backgroundTimer?.invalidate(); backgroundTimer = nil
         VoiceModePreference.shared.isCapturing = false
-        startError = String(localized: "Recording was interrupted — tap the mic to resume", comment: "Voice capture interrupted")
+        startError = AppLocalized("Recording was interrupted — tap the mic to resume", comment: "Voice capture interrupted")
     }
 
     private static func computeWaveformLevels(from pcmData: Data) -> [Float] {
@@ -1093,3 +1628,127 @@ enum VoiceLanguages {
         return Option(code: code, label: name, shortLabel: short)
     }
 }
+
+// MARK: - [T-voice-asr-stall-skip] User-skippable ASR attempts
+
+// [T-voice-asr-stall-skip] BEGIN skippable-asr-attempts
+/// Runs single ASR attempts so the user can abandon one that hangs.
+///
+/// A cloud ASR call can sit for a long time without failing — a half-dead
+/// connection, an inference server that accepted the upload and went quiet —
+/// and the existing fail-over only advances when an attempt THROWS. So an
+/// attempt that is still running after `stallThreshold` is marked stalled
+/// (only when there is somewhere to go next), and `skipStalled()` ends the
+/// wait for it immediately.
+///
+/// Skipping does not rely on the provider honouring cancellation: the caller's
+/// wait is resumed with `Skipped` right away, and the provider's own work is
+/// cancelled as a courtesy. A provider that ignores cancellation keeps running
+/// in the background and its late result is discarded.
+///
+/// Main-actor only, and UIKit-free so the standalone test can compile it.
+@MainActor
+final class SkippableASRAttempts {
+    /// Thrown into the waiting caller when the user skips a stalled attempt.
+    struct Skipped: Error {}
+
+    private final class Attempt {
+        let label: String
+        /// Where a skip should send the NEXT segments (nil = no preference).
+        let nextEntryId: String?
+        let canSkip: Bool
+        var continuation: CheckedContinuation<String, Error>?
+        var work: Task<Void, Never>?
+        var stallTimer: Task<Void, Never>?
+        init(label: String, nextEntryId: String?, canSkip: Bool) {
+            self.label = label
+            self.nextEntryId = nextEntryId
+            self.canSkip = canSkip
+        }
+        /// Resume the waiting caller exactly once, whichever side gets here first.
+        func finish(_ result: Result<String, Error>) {
+            guard let c = continuation else { return }
+            continuation = nil
+            stallTimer?.cancel()
+            c.resume(with: result)
+        }
+    }
+
+    let stallThreshold: TimeInterval
+    /// Called with the new value whenever "any attempt is stalled" flips.
+    var onStallChange: ((Bool) -> Void)?
+    var log: ((String) -> Void)?
+
+    private var live: [UUID: Attempt] = [:]
+    private var stalled: Set<UUID> = [] {
+        didSet {
+            let now = !stalled.isEmpty
+            if now != !oldValue.isEmpty { onStallChange?(now) }
+        }
+    }
+
+    var hasStalled: Bool { !stalled.isEmpty }
+
+    init(stallThreshold: TimeInterval) {
+        self.stallThreshold = stallThreshold
+    }
+
+    /// Run one attempt. Returns its text, or throws its error, `Skipped`, or
+    /// `CancellationError` when the calling task is cancelled.
+    func run(label: String,
+             nextEntryId: String?,
+             canSkip: Bool,
+             _ operation: @escaping () async throws -> String) async throws -> String {
+        let id = UUID()
+        let attempt = Attempt(label: label, nextEntryId: nextEntryId, canSkip: canSkip)
+        live[id] = attempt
+        defer {
+            live[id] = nil
+            stalled.remove(id)
+        }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+                attempt.continuation = cont
+                attempt.work = Task { @MainActor in
+                    do {
+                        let text = try await operation()
+                        attempt.finish(.success(text))
+                    } catch {
+                        attempt.finish(.failure(error))
+                    }
+                }
+                guard canSkip else { return }
+                let threshold = stallThreshold
+                attempt.stallTimer = Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: UInt64(threshold * 1_000_000_000))
+                    guard !Task.isCancelled, let self, attempt.continuation != nil,
+                          self.live[id] != nil else { return }
+                    self.log?("ASR stall: \(attempt.label) has no result after \(Int(threshold))s — offering skip")
+                    self.stalled.insert(id)
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in
+                attempt.work?.cancel()
+                attempt.finish(.failure(CancellationError()))
+            }
+        }
+    }
+
+    /// Abandon every stalled attempt. Returns the `nextEntryId` of each one
+    /// skipped, in no particular order (empty when nothing was stalled).
+    @discardableResult
+    func skipStalled() -> [String?] {
+        var nexts: [String?] = []
+        for id in stalled {
+            guard let attempt = live[id] else { continue }
+            log?("ASR stall: user skipped \(attempt.label)")
+            nexts.append(attempt.nextEntryId)
+            attempt.work?.cancel()
+            attempt.finish(.failure(Skipped()))
+        }
+        stalled.removeAll()
+        return nexts
+    }
+}
+// [T-voice-asr-stall-skip] END skippable-asr-attempts

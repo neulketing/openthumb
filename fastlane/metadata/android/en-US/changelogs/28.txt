@@ -1,4 +1,4 @@
-The application ID changes to com.fug.openthumb, so 1.1.0 installs beside
+The application ID changes to com.openminis.app, so 1.1.0 installs beside
 1.0.x rather than over it. Android treats a different application ID as a
 different app entirely. Uninstall the old one after checking anything you want
 to keep — settings and provider credentials do not carry across. Doing this now

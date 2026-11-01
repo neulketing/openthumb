@@ -97,7 +97,7 @@ unmodified.
 | **fork** | [Android 8/9 startup crash fix](#android-8-and-9-support) |
 | **fork** | Replies in the messenger the notification came from — KakaoTalk, SMS, LINE, Telegram |
 | **fork** | CI that builds debug and release APKs and runs this fork's unit tests (upstream has none) |
-| **fork** | [`scripts/rebrand.sh`](scripts/rebrand.sh) — reproducible package rename, JNI symbols included |
+| **fork** | [`scripts/rebrand.py`](scripts/rebrand.py) — re-applies the product name after each upstream merge; the Kotlin package stays upstream's so merges stay cheap |
 | **fork** | [Privacy policy](PRIVACY.md) (nothing collected) · [distribution channels](docs/distribution.md) |
 
 ---
@@ -347,8 +347,8 @@ always carries the latest APK.
 ## Building from source
 
 Minis ships a Linux sandbox inside the app, so the native dependencies (iSH on
-iOS, PRoot on Android, FFmpeg, LAME) and the Alpine rootfs are **built from
-source** rather than committed as binaries.
+iOS, PRoot on Android, FFmpeg, LAME, rclone) and the Alpine rootfs are **built
+from source** rather than committed as binaries.
 
 **→ See [BUILDING.md](BUILDING.md) for the full first-build guide.**
 
@@ -358,13 +358,18 @@ The short version:
 git clone --recurse-submodules https://github.com/neulketing/openthumb.git
 cd openthumb
 
-# iOS  — order matters: FFmpeg links against LAME
+# iOS  — needs Go 1.25+ and Xcode's Metal Toolchain
+#        (xcodebuild -downloadComponent MetalToolchain)
+#        order matters: FFmpeg links against LAME
 ./deps/build_lame.sh && ./deps/build_ffmpeg.sh
 ./deps/build_ish.sh && ./deps/prepare_alpine_rootfs.sh
+./deps/build_rclone_ios.sh
 open src/ios/Minis.xcodeproj
 
-# Android — needs NDK r28+
+# Android — needs NDK r28+, Go 1.25+ and gomobile
 ./deps/build_proot.sh && ./scripts/prepare_android_sandbox.sh
+./deps/build_rclone_android.sh
+mkdir -p src/android/app/libs && cp deps/build/rclone/rclone.aar src/android/app/libs/
 cd src/android && ./gradlew :app:assembleDebug
 ```
 

@@ -73,3 +73,20 @@ For each commit the digest marks with `!`:
 Unmarked commits touch files we never changed and can usually be taken as-is.
 When the digest says divergence was not checked, that is not the same as no
 conflicts — do not read the absence of a mark as safe.
+
+## Taking a publish
+
+The Kotlin package stays `com.openminis.app`, so this is an ordinary merge:
+
+```sh
+git fetch upstream
+git merge upstream/main
+scripts/rebrand.py        # puts the product name and contact points back
+```
+
+Strings conflict on almost every publish, because their text changed and ours
+is a rewrite of it: take theirs, keep keys only we have, then run the script.
+Check `applicationId`, `RELEASE_REPO` and `shortcuts.xml` afterwards.
+
+Build the native dependencies with Go 1.25.5, not newer (`GOTOOLCHAIN=go1.25.5`):
+tailscale's JSON dependency fails on Go 1.27.

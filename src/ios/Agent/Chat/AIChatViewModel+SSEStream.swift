@@ -1,15 +1,22 @@
 import Foundation
+import UIKit
 
 private let logger = AppLogger(category: "AIChatVM")
 
 // MARK: - Stream Stall Timeout
-
-private struct StreamStallError: Error, LocalizedError {
-    let seconds: Int
-    var errorDescription: String? {
-        "No response from the server for \(seconds) seconds. The connection may have been dropped silently. Please try again."
-    }
-}
+//
+// [T-ios-stream-stall-no-retry] The stall watchdog used to throw a PRIVATE
+// `StreamStallError` struct here. That type was invisible to the agent loop's
+// `catch let streamError as LLMError where streamError.isRetryable` gate, so a
+// mid-stream stall skipped the entire existing recovery pipeline (uncommitted-
+// tail cleanup → immediate same-model re-dispatch → group fallback on a second
+// failure) and killed the loop outright. Field case 2026-08-18 22:11: upstream
+// emitted a tool_use header + 2 bytes of arguments, went silent for exactly
+// 120.0s, and the task died with no retry — while the request would almost
+// certainly have succeeded on a re-send (and hit the prompt cache doing it).
+// The watchdog now throws `LLMError.transientError`, which walks straight into
+// that pipeline. Net behavior: one immediate retry on the same model; a second
+// stall falls back to the next model in the group; turn budget untouched.
 
 private final class StreamIteratorBox<T: Sendable>: @unchecked Sendable {
     private var iterator: AsyncThrowingStream<T, Error>.AsyncIterator
@@ -21,9 +28,135 @@ private final class StreamIteratorBox<T: Sendable>: @unchecked Sendable {
     }
 }
 
+/// [T-stream-watchdog-single-timer] The stream's stall watchdog: ONE ticking
+/// task per stream instead of a fresh 120s `Task.sleep` raced against every
+/// event.
+///
+/// The old shape created and cancelled a dispatch timer per SSE event - tens to
+/// hundreds a second while text streams - and a TestFlight 1.15 (6) build on
+/// iOS 27.0.1 crashed inside exactly that call: `Task.sleep(nanoseconds:)` ->
+/// `swift_dispatchEnqueueWithDeadline` -> `dispatch_after_f` ->
+/// `dispatch_source_create` trapped with "BUG IN CLIENT OF LIBDISPATCH: Setting
+/// interval to 0", for a constant 120s argument. Nothing in the call is wrong,
+/// so the fix is to stop driving the runtime's timer path at event rate.
+///
+/// Semantics are the old ones: only time spent WAITING for the next event
+/// counts (processing an event does not), and a stall resumes the waiting side
+/// with the same error. The per-iteration racer suspends on a continuation - no
+/// timer - and the tick task is the only timer, once a second.
+private final class StreamStallWatchdog: @unchecked Sendable {
+    /// One `wait()` call. Cancellation and firing both go through the lock, so
+    /// a cancel that lands before the continuation is stored still resumes it.
+    private final class Waiter {
+        var continuation: CheckedContinuation<Void, Error>?
+        var cancelled = false
+    }
+
+    private let lock = NSLock()
+    private var waitingSince: Date?
+    private var current: Waiter?
+    private var firedError: Error?
+
+    /// The loop started awaiting the next event.
+    func beginWait(at date: Date) { lock.withLock { waitingSince = date } }
+    /// An event arrived; processing it is not stall time.
+    func endWait() { lock.withLock { waitingSince = nil } }
+    /// When the current wait started, or nil while an event is being processed.
+    var waitStart: Date? { lock.withLock { waitingSince } }
+
+    /// Suspends until the watchdog fires (throws its error) or the calling task
+    /// is cancelled (returns normally - the racing event already won).
+    func wait() async throws {
+        let waiter = Waiter()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
+                lock.lock()
+                if let error = firedError {
+                    lock.unlock()
+                    c.resume(throwing: error)
+                } else if waiter.cancelled {
+                    lock.unlock()
+                    c.resume()
+                } else {
+                    waiter.continuation = c
+                    current = waiter
+                    lock.unlock()
+                }
+            }
+        } onCancel: {
+            lock.lock()
+            waiter.cancelled = true
+            let c = waiter.continuation
+            waiter.continuation = nil
+            if current === waiter { current = nil }
+            lock.unlock()
+            c?.resume()
+        }
+    }
+
+    /// Stall: resume the waiting side with `error`; any later wait throws it too.
+    func fire(_ error: Error) {
+        lock.lock()
+        firedError = error
+        let c = current?.continuation
+        current?.continuation = nil
+        current = nil
+        lock.unlock()
+        c?.resume(throwing: error)
+    }
+}
+
 // MARK: - Background SSE Stream Processing
 
 extension AIChatViewModel {
+
+    // MARK: - Stall diagnostics helpers (#181)
+
+    /// Millisecond-precision wall-clock stamp for stall diagnosis. The
+    /// `AppLogger` line already carries a timestamp, but that one is written
+    /// when the line is flushed; these are captured at the measurement point,
+    /// which is what makes "was Task.sleep stretched?" answerable.
+    nonisolated static func diagTimestamp(_ date: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "HH:mm:ss.SSS"
+        return fmt.string(from: date)
+    }
+
+    /// Foreground/background at the instant the watchdog fired. If the app was
+    /// backgrounded, candidate 3 (throttled/stretched timer) becomes the prime
+    /// suspect; if it was active the whole time, candidate 3 is out.
+    @MainActor
+    static func diagAppStateName() -> String {
+        switch UIApplication.shared.applicationState {
+        case .active: return "active"
+        case .inactive: return "inactive"
+        case .background: return "background"
+        @unknown default: return "unknown"
+        }
+    }
+
+    /// Short event-kind label for the arrival timeline. Deliberately does NOT
+    /// include payloads — this runs on a hot path and must never log message
+    /// content.
+    nonisolated static func diagEventName(_ event: AgentStreamEvent) -> String {
+        switch event {
+        case .contentBlockStart(let s):
+            switch s {
+            case .text: return "contentBlockStart(text)"
+            case .toolUse(_, let name): return "contentBlockStart(tool:\(name))"
+            }
+        case .textDelta: return "textDelta"
+        case .toolInputDelta(let name, _): return "toolInputDelta(\(name))"
+        case .toolCallComplete(_, let name, _, _): return "toolCallComplete(\(name))"
+        case .usage: return "usage"
+        case .responseModel: return "responseModel"
+        case .thinkingDelta: return "thinkingDelta"
+        case .reasoningContent: return "reasoningContent"
+        case .reasoningEcho: return "reasoningEcho"
+        case .streamActivity: return "streamActivity"
+        case .done(let stop): return "done(\(stop))"
+        }
+    }
 
     // MARK: - Background SSE Stream Processing
 
@@ -268,23 +401,100 @@ extension AIChatViewModel {
             return "\(raw)-\(n)"
         }
 
-        let stallTimeoutSeconds: TimeInterval = 120
+        // [T-sse-idle-timeout] 120 s for every provider except an
+        // OpenAI-compatible one whose user set a longer response idle timeout
+        // (a local server prefilling a large context sends nothing for
+        // minutes). Read once per stream.
+        let stallTimeoutSeconds: TimeInterval = provider.responseIdleTimeout
         var _streamError: Error? = nil
         let iterBox = StreamIteratorBox(stream)
+        // [StreamDiag] (#181) Diagnostics for the "No response from the server
+        // for 120 seconds" stall. Three hypotheses are still live and this
+        // instrumentation is what separates them:
+        //   1. the request never actually went out (loop stuck on an await)
+        //   2. the stream really did go 120s without an event
+        //   3. Task.sleep got stretched by background CPU throttling, so the
+        //      watchdog fired on wall-clock far from the nominal 120s
+        //      (BrowserTabPool.swift documents this exact trap, verified on
+        //      device — that code switched to a GCD wall-clock timer; this
+        //      watchdog is still a plain Task.sleep).
+        // Both timestamps below are wall-clock, so comparing the measured gap
+        // against `stallTimeoutSeconds` settles (3) on its own.
+        let streamDiagSession = await MainActor.run { self.sessionId ?? "nil" }
+        // [T-ios-streamdiag-phantom-model] Read the model from the PROVIDER —
+        // the object this stream actually belongs to. This used to read
+        // `self.selectedModel.id`, which is a never-written legacy property
+        // whose compile-time default is `.claudeHaiku45`: every stream-open and
+        // STALL line therefore claimed "claude-haiku-4-5" regardless of the
+        // model the request was really for, and a stall investigation was
+        // nearly pinned on a model the session never used.
+        let streamDiagModel = provider.model.id
+        var lastEventAt = Date()
+        var eventSeq = 0
+        logger.info("[StreamDiag] stream open session=\(streamDiagSession) provider=\(provider.name) model=\(streamDiagModel) at=\(Self.diagTimestamp(Date()))")
+        // [T-crash-breadcrumbs] Request start/end, model name only. Once per
+        // request - nothing per streamed event.
+        CrashBreadcrumbs.record("req.start", detail: streamDiagModel)
+        defer { CrashBreadcrumbs.record("req.end", detail: streamDiagModel) }
+        // [T-stream-watchdog-single-timer] One watchdog per stream (see
+        // StreamStallWatchdog): a 1s tick checks how long the loop has been
+        // waiting for the next event and fires once that passes the timeout.
+        let stallWatchdog = StreamStallWatchdog()
+        let stallTick = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard !Task.isCancelled, let waitStart = stallWatchdog.waitStart else { continue }
+                let firedAt = Date()
+                let measured = firedAt.timeIntervalSince(waitStart)
+                guard measured >= stallTimeoutSeconds else { continue }
+                // Measured wait vs the nominal timeout: with a 1s tick a gap far
+                // above 120s means the tick was stretched (candidate 3); a gap
+                // close to 120s points at a genuinely silent stream (candidate 2).
+                let appState = await MainActor.run { Self.diagAppStateName() }
+                logger.error(
+                    "[StreamDiag][STALL] watchdog fired session=\(streamDiagSession) provider=\(provider.name) model=\(streamDiagModel) "
+                    + "nominal=\(Int(stallTimeoutSeconds))s measured=\(String(format: "%.1f", measured))s "
+                    + "appState=\(appState) iterStart=\(Self.diagTimestamp(waitStart)) firedAt=\(Self.diagTimestamp(firedAt))"
+                )
+                // [T-ios-stream-stall-no-retry] An LLMError so the agent
+                // loop's retryable-error gate catches it — see the header
+                // comment at the top of this file.
+                stallWatchdog.fire(LLMError.transientError(message: "No response from the server for \(Int(stallTimeoutSeconds)) seconds — the stream stalled mid-generation"))
+                return
+            }
+        }
+        defer { stallTick.cancel() }
         do {
         while true {
+            stallWatchdog.beginWait(at: Date())
             let maybeEvent: AgentStreamEvent? = try await withThrowingTaskGroup(of: AgentStreamEvent?.self) { group in
                 group.addTask { try await iterBox.next() }
                 group.addTask {
-                    try await Task.sleep(nanoseconds: UInt64(stallTimeoutSeconds * 1_000_000_000))
-                    throw StreamStallError(seconds: Int(stallTimeoutSeconds))
+                    // No timer here: suspends until the watchdog fires (throws)
+                    // or the event above wins and cancelAll() releases it.
+                    try await stallWatchdog.wait()
+                    return nil
                 }
                 let result = try await group.next()!
                 group.cancelAll()
                 return result
             }
+            stallWatchdog.endWait()
             guard let event = maybeEvent else { break }
             try Task.checkCancellation()
+            // [StreamDiag] Per-event timeline. Throttled: the first 5 events of
+            // a stream (covers "did the first byte ever arrive"), then only when
+            // a gap exceeds 5s — enough to reconstruct the arrival timeline
+            // without flooding the log on a normal fast stream.
+            do {
+                let now = Date()
+                let gap = now.timeIntervalSince(lastEventAt)
+                eventSeq += 1
+                if eventSeq <= 5 || gap >= 5 {
+                    logger.info("[StreamDiag] event #\(eventSeq) \(Self.diagEventName(event)) gap=\(String(format: "%.2f", gap))s at=\(Self.diagTimestamp(now)) session=\(streamDiagSession)")
+                }
+                lastEventAt = now
+            }
 
             switch event {
             case .contentBlockStart(let start):
@@ -354,6 +564,8 @@ extension AIChatViewModel {
                     case "browser_use": .browserTool(action: "")
                     case "read_image": .readImageTool(path: "")
                     case "memory_write", "memory_get": .memoryTool(action: name)
+                    case SubAgentDefinition.toolName: .delegateTool(title: "")
+                    case UserAskTool.name: .userAskTool  // [T-user-ask]
                     default: .shellTool(command: name)
                     }
                     if name == "file_write" || name == "file_edit" {
@@ -376,7 +588,14 @@ extension AIChatViewModel {
                             block.content = assistantText
                             block.cachedMarkdown = parsed
                             cacheAttributedString(for: block)
-                            objectWillChange.send()
+                            // [T-ios-stream-publish-transition-gap] "Bypassing
+                            // the suspend check" (above) refers to
+                            // `streamingUIUpdatesSuspended` — the scroll/defer
+                            // gate, which this path deliberately ignores so text
+                            // is never swallowed. It must NOT also bypass
+                            // `transitionSuspended`: that one exists solely to
+                            // keep publishes out of a hosting-subgraph teardown.
+                            publishUnlessTransitioning()
                             if wasEmpty {
                                 blockContentFilledSignal.send((
                                     messageId: messages[msgIdx].id,
@@ -408,7 +627,8 @@ extension AIChatViewModel {
                         logger.debug("[TOOL:CREATED] \(name) id:\(tuId.prefix(20)) displayText=\"\(toolBlock.toolSummary ?? toolBlock.toolDescription)\" content=\"\"")
                         #endif
                         logger.info("[ToolLifecycle] RECEIVED toolId=\(tuId.prefix(20)) tool=\(name) sid=\(self.sessionId?.prefix(8) ?? "nil") appState=\(UIApplication.shared.applicationState == .active ? "fg" : "bg") suspended=\(self.streamingUIUpdatesSuspended) isProcessing=\(self.isProcessing)")
-                        objectWillChange.send()
+                        // [T-ios-stream-publish-transition-gap]
+                        publishUnlessTransitioning()
                         scrollToBottomSignal.send()
                     }
                     currentStreamingToolId = tuId
@@ -623,7 +843,10 @@ extension AIChatViewModel {
                     logger.debug("[TOOL:STREAMING] \(name) displayText=\"\(blk.toolSummary ?? blk.toolDescription)\" content=\"\(displayContent.prefix(120))\" bytes:\(byteCount)")
                     #endif
                     if !hadSummary && blk.toolSummary != nil {
-                        objectWillChange.send()
+                        // [T-ios-stream-publish-transition-gap] This is the
+                        // `[TOOL:STREAMING]` site whose publishes straddled the
+                        // teardown in the 2026-08-10 crash log.
+                        publishUnlessTransitioning()
                     }
                     if shouldScroll { scrollToBottomSignal.send() }
                 }
@@ -791,6 +1014,12 @@ extension AIChatViewModel {
                         messages[msgIdx].blocks.append(
                             AssistantBlock(kind: .thinking, content: "")
                         )
+                        // [T-bka-continued-card-status] So the Live Activity
+                        // and the continued-processing card say "thinking"
+                        // instead of the previous tool or reply.
+                        if let sid = self.sessionId {
+                            SessionActivityTracker.shared.updateToolInfo(sessionId: sid, toolName: "thinking", toolStatus: "")
+                        }
                         return messages[msgIdx].blocks.count - 1
                     }
                     guard idx >= 0 else { continue }
@@ -822,7 +1051,8 @@ extension AIChatViewModel {
                               let thinkIdx = currentThinkingBlockIdx,
                               thinkIdx < self.messages[msgIdx].blocks.count else { return }
                         self.messages[msgIdx].blocks[thinkIdx].flushThinkingBuffer()
-                        self.objectWillChange.send()
+                        // [T-ios-stream-publish-transition-gap]
+                        self.publishUnlessTransitioning()
                         if self.isNearBottom { self.scrollToBottomSignal.send() }
                     }
                 }
@@ -845,6 +1075,17 @@ extension AIChatViewModel {
                 result.iterationUsage.add(u)
                 #endif
 
+            case .streamActivity:
+                // [T-sse-idle-timeout] Nothing to show or store: arriving here
+                // already reset the stall watchdog, which is all it is for.
+                break
+
+            case .responseModel(let reported):
+                // [T-agent-model-identity] The API named the model that is
+                // serving this turn — record it on the vm so an agent's
+                // parent block / job can show the effective model in place.
+                await MainActor.run { self.noteResponseModel(reported) }
+
             case .done(let reason):
                 // Final flush of thinking block content
                 if let thinkIdx = currentThinkingBlockIdx, !result.thinkingText.isEmpty {
@@ -855,7 +1096,18 @@ extension AIChatViewModel {
                         messages[msgIdx].blocks[thinkIdx].content = finalThinking
                     }
                 }
-                result.stopReason = reason
+                // [T-openai-done-overwrite] GH#263. First terminal reason wins
+                // over a later generic `.endTurn`. Providers emit `.done` once
+                // for the real finish reason and again at end-of-stream (OpenAI
+                // `[DONE]`, Gemini/Antigravity `.done`), and the end-of-stream
+                // one only knows "tool calls or not". Letting it overwrite
+                // turned `.maxTokens` / `.refusal` into `.endTurn`, i.e. a
+                // truncated or declined reply into "empty response".
+                if let prior = result.stopReason, prior != .endTurn, reason == .endTurn {
+                    logger.info("[StopReason] keeping \(prior) over later .endTurn")
+                } else {
+                    result.stopReason = reason
+                }
             }
         }
         // The AsyncThrowingStream may silently terminate (return nil) on Task
