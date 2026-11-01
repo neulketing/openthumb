@@ -26,7 +26,7 @@
     <tspan fill="#e6edf3">Open</tspan><tspan fill="url(#g)">Thumb</tspan>
   </text>
   <text x="422" y="288" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
-        font-size="34" font-weight="700" fill="#e6edf3">Your phone, running itself.</text>
+        font-size="34" font-weight="700" fill="#e6edf3">Check your phone. Fix it with AI.</text>
   <text x="422" y="336" font-family="-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"
-        font-size="23" fill="#8b949e">On-device AI agent · real Linux shell · works unattended</text>
+        font-size="23" fill="#8b949e">Phone score · your own AI key · asks before changes</text>
 </svg>
