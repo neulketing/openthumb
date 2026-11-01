@@ -8,6 +8,8 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-11-02
+
 ### Changed
 - **Rebuilt on OpenMinis 1.15.** Everything upstream shipped since 0.20-preview
   comes with it: sub agents, a Settings > Network page with Tailscale and proxies,

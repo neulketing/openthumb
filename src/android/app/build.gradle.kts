@@ -43,11 +43,11 @@ android {
         applicationId = "com.fug.openthumb"
         minSdk = 26
         targetSdk = 35
-        versionCode = 33
+        versionCode = 34
         // Own version line, decoupled from upstream's: OpenThumb 2.0 is
         // OpenMinis 1.15 + the fork's changes. Never reuse upstream's
         // preview numbers — both projects hit 0.21-preview the same week.
-        versionName = "1.5.0"
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

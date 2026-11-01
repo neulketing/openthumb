@@ -1,0 +1,20 @@
+-- Changed
+- Rebuilt on OpenMinis 1.15. Everything upstream shipped since 0.20-preview
+  comes with it: sub agents, a Settings > Network page with Tailscale and proxies,
+  a usage page and provider quotas, questions from the assistant that can be
+  answered from a notification, in-app updates, rebuilt backup and restore, tablet
+  layout, and 20+ languages. Notification triggers, the approval gate, per-app
+  memory and the setup screen carry over unchanged.
+- Accessibility and notification access have to be turned on again after
+  updating from 1.5.0: Android stores those grants by class name, and the classes
+  moved back to upstream's package so future updates merge cleanly.
+- The release APK is named OpenThumb-<version>-build<N>-arm64-v8a.apk, which is
+  what the in-app updater reads the version from.
+
+-- Fixed
+- python3 in the sandbox. The rootfs image was built without execute bits on
+  packaged binaries, which the newer PRoot refuses to run. New image
+  rootfs-3.21.3-2.
+- Crash reports, feedback mail and the privacy link no longer go to upstream's
+  addresses, and provider attribution names this project.
+- Sync follows the default route in Settings > Network.
