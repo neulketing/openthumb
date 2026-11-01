@@ -188,7 +188,7 @@ fun AgentSetupScreen(onBack: () -> Unit, onOpenTriggers: () -> Unit) {
             // acts inside apps you are logged into instead of needing an API
             // for each one. Optional and off by default — it is the widest
             // permission here, and the reply flow works without it.
-            val driveStep = if (com.openminis.app.BuildConfig.HAS_ACCESSIBILITY) 1 else 0
+            val driveStep = if (com.openminis.app.BuildConfig.HAS_DEVICE_CONTROL) 1 else 0
             if (driveStep == 1) SetupGate(
                 number = 3,
                 title = "Let it use your apps",

@@ -2016,4 +2016,6 @@
     <string name="mcp_signin_not_signed_in">로그인되지 않음</string>
     <string name="mcp_signin_sign_in">로그인</string>
     <string name="mcp_signin_reset_confirm">초기화</string>
+    <string name="chat_report_reply">이 답변 신고</string>
+    <string name="chat_report_no_mail">메일 앱이 없어요. neulketing@gmail.com으로 보내 주세요.</string>
 </resources>

@@ -130,7 +130,7 @@ fun SystemPermissionsScreen(onBack: () -> Unit) {
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            if (BuildConfig.HAS_ACCESSIBILITY) SettingsSection(
+            if (BuildConfig.HAS_DEVICE_CONTROL) SettingsSection(
                 header = stringResource(R.string.system_permissions_section_a11y),
                 footer = stringResource(R.string.system_permissions_a11y_footer),
             ) {

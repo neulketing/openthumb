@@ -753,13 +753,13 @@ class MinisApp : Application(), ImageLoaderFactory {
         NativeOffloadServer.register("android-location", LocationOffloadHandler(this))
         NativeOffloadServer.register("android-notification", NotificationOffloadHandler(this))
         NativeOffloadServer.register("android-open", OpenOffloadHandler(this))
-        NativeOffloadServer.register("android-photos", PhotosOffloadHandler(this))
+        if (BuildConfig.HAS_DEVICE_CONTROL) NativeOffloadServer.register("android-photos", PhotosOffloadHandler(this))
         NativeOffloadServer.register("android-player", PlayerOffloadHandler())
         NativeOffloadServer.register("android-speak", SpeakOffloadHandler(this))
         NativeOffloadServer.register("android-speech", SpeechOffloadHandler(this))
         NativeOffloadServer.register("android-weather", WeatherOffloadHandler(this))
         // T323: UI-layer automation backed by MinisAccessibilityService.
-        if (BuildConfig.HAS_ACCESSIBILITY) NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(this))
+        if (BuildConfig.HAS_DEVICE_CONTROL) NativeOffloadServer.register("android-a11y-cli", AccessibilityOffloadHandler(this))
         NativeOffloadServer.register("minis-model-use", ModelUseOffloadHandler(this, providerRepository))
         // T-config: minis-config — agent-facing settings management
         // (read/write registered ConfigFields with audit + revert).
@@ -798,7 +798,7 @@ class MinisApp : Application(), ImageLoaderFactory {
         // user hasn't installed / started / authorized Shizuku, so we
         // can register unconditionally; ShizukuManager.init below wires
         // up the binder lifecycle listeners + StateFlow.
-        NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(this))
+        if (BuildConfig.HAS_DEVICE_CONTROL) NativeOffloadServer.register("android-shizuku-cli", ShizukuOffloadHandler(this))
         com.openminis.app.offload.ShizukuManager.init(this)
 
         // T-android-minis-debug-cli: shell-side CLI wrapper around the in-app

@@ -11,6 +11,9 @@ because the GitHub one cannot pass review:
 | Accessibility may not let an app "autonomously initiate, plan, and execute actions" ([source](https://support.google.com/googleplay/android-developer/answer/10964491)) | Service, settings row, setup step and `android-a11y-cli` removed |
 | No self-update, no executable code from outside Play ([source](https://support.google.com/googleplay/android-developer/answer/9888379)) | No in-app updater, no install permission; the rootfs ships inside the bundle: copy it to `src/store/assets/alpine-minirootfs.tar.gz` first |
 | All-files access needs its own declaration | `MANAGE_EXTERNAL_STORAGE` removed |
+| Photo and video access needs a core-use declaration | `READ_MEDIA_IMAGES` removed, the `android-photos` tool not registered. Attachments still use the system picker |
+| Native code must support 16 KB pages | Our CMake libraries build with flexible page sizes; the vendored 32-bit PRoot loader is left out, the rootfs is arm64 only |
+| Device and network abuse | Shizuku permission, provider, screen and tool removed |
 
 Still a judgement call, not a pass: the agent can fetch and run binaries from
 inside the sandbox after install, and PRoot runs them natively. Termux and UserLAnd

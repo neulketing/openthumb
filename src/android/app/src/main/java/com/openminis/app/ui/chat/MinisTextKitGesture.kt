@@ -1102,6 +1102,8 @@ fun MinisSelectionToolbarHost(
                     com.openminis.app.R.string.markdown_table_copy_table_image)
                 val labelShareChat = androidx.compose.ui.res.stringResource(
                     com.openminis.app.R.string.chat_share_share_chat)
+                val labelReport = androidx.compose.ui.res.stringResource(
+                    com.openminis.app.R.string.chat_report_reply)
 
                 // Actions are collected into a list first so the bar can show a
                 // few and push the rest into an overflow menu. Ordered by how
@@ -1258,6 +1260,18 @@ fun MinisSelectionToolbarHost(
                         })
                     }
                     // [T-multi-select-share] "Share Chat…" is the bar's last item.
+                    // Play's AI-generated content policy: flag a reply from inside the app.
+                    add(SelectionAction(labelReport) {
+                        val body = android.net.Uri.encode(controller.selectedPlainText().take(1500))
+                        val mail = android.net.Uri.parse(
+                            "mailto:neulketing@gmail.com?subject=OpenThumb%20AI%20reply%20report&body=$body")
+                        runCatching {
+                            context.startActivity(android.content.Intent(android.content.Intent.ACTION_SENDTO, mail))
+                        }.onFailure {
+                            toast(context.getString(com.openminis.app.R.string.chat_report_no_mail))
+                        }
+                        controller.clearSelection()
+                    })
                     if (actions?.onShareChat != null) {
                         add(SelectionAction(labelShareChat) {
                             // A selection across two messages preselects the round

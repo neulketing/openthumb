@@ -123,7 +123,7 @@ fun OffloadPermissionScreen(
         // Each card shows the CLI description, the tri-state agent gate, the
         // system-layer status, and (when system-layer is not satisfied) a
         // deeplink back to the OS settings page that fixes it.
-        if (com.openminis.app.BuildConfig.HAS_ACCESSIBILITY) IntegrationSection(
+        if (com.openminis.app.BuildConfig.HAS_DEVICE_CONTROL) IntegrationSection(
             iconVector = Icons.Outlined.Accessibility,
             iconTint = Color(0xFF34C759),
             sectionHeaderRes = R.string.perm_section_a11y,
@@ -196,7 +196,7 @@ fun OffloadPermissionScreen(
             }
         }
 
-        IntegrationSection(
+        if (com.openminis.app.BuildConfig.HAS_DEVICE_CONTROL) IntegrationSection(
             iconVector = Icons.Outlined.Shield,
             iconTint = Color(0xFFAF52DE),
             // [T-android-privileged-backend] One section covers both Shizuku

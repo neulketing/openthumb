@@ -1,1 +1,1 @@
-On-device AI agent with a real Linux shell — fleet-ready fork of OpenMinis
+Check your phone's health, then fix what it finds with your own AI key.

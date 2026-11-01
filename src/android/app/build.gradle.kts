@@ -84,6 +84,8 @@ android {
             cmake {
                 cppFlags += "-std=c++17"
                 arguments += "-DANDROID_STL=c++_shared"
+                // Play has refused native code that cannot run on 16 KB pages since Nov 2025.
+                arguments += "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
             }
         }
     }
@@ -175,7 +177,7 @@ android {
             buildConfigField("boolean", "SELF_UPDATE", "true")
             buildConfigField("boolean", "AUTO_UPDATE_CHECK", "true")
             buildConfigField("boolean", "IN_APP_INSTALL", "true")
-            buildConfigField("boolean", "HAS_ACCESSIBILITY", "true")
+            buildConfigField("boolean", "HAS_DEVICE_CONTROL", "true")
         }
         create("store") {
             dimension = "distribution"
@@ -187,7 +189,7 @@ android {
             buildConfigField("boolean", "SELF_UPDATE", "false")
             buildConfigField("boolean", "AUTO_UPDATE_CHECK", "false")
             buildConfigField("boolean", "IN_APP_INSTALL", "false")
-            buildConfigField("boolean", "HAS_ACCESSIBILITY", "false")
+            buildConfigField("boolean", "HAS_DEVICE_CONTROL", "false")
         }
     }
 
@@ -262,6 +264,13 @@ android {
 //   (outputs/apk/<type>/app-<type>.apk); the flavored originals stay at
 //   outputs/apk/github/<type>/app-github-<type>.apk.
 val storeDevVariants = providers.gradleProperty("minis.storeDev").map { it.toBoolean() }.getOrElse(false)
+androidComponents {
+    onVariants(selector().withFlavor("distribution" to "store")) { variant ->
+        // The rootfs is arm64 only, and this vendored loader is not 16 KB aligned.
+        variant.packaging.jniLibs.excludes.add("**/libproot-loader32.so")
+    }
+}
+
 androidComponents {
     beforeVariants(selector().withFlavor("distribution" to "store")) { variant ->
         if (variant.buildType != "release" && !storeDevVariants) variant.enable = false

@@ -1988,9 +1988,9 @@
     <string name="phone_check_battery_detail">As reported by the battery itself</string>
     <string name="phone_check_screen">%1$d apps can read your screen</string>
     <string name="phone_check_screen_none">No other app reads your screen</string>
-    <string name="phone_check_notifications">%1$d apps read your notifications</string>
+    <string name="phone_check_notifications">Apps that read your notifications: %1$d</string>
     <string name="phone_check_notifications_none">No other app reads your notifications</string>
-    <string name="phone_check_admins">%1$d device administrator apps</string>
+    <string name="phone_check_admins">Device administrator apps: %1$d</string>
     <string name="phone_check_admins_none">No device administrator apps</string>
     <string name="phone_check_apps_detail">%2$s</string>
     <string name="settings_agent_setup">Set up the agent</string>
@@ -2773,4 +2773,6 @@
     <string name="approval_expiry_desc">A reply to a message from hours ago fits the conversation worse than no reply at all.</string>
     <string name="approval_ledger_title">Sent and discarded</string>
     <string name="approval_ledger_empty">No replies have been drafted yet.</string>
+    <string name="chat_report_reply">Report this reply</string>
+    <string name="chat_report_no_mail">No email app. Write to neulketing@gmail.com.</string>
 </resources>
