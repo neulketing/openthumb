@@ -8,6 +8,18 @@ section into the version heading, the release notes and the store changelog.
 
 ## [Unreleased]
 
+### Added
+- **Phone check is the first screen.** An agent app that opens on an empty chat
+  leaves people with nothing to type. A new install now shows a score for this
+  phone and what it is based on: free storage, security patch age, battery health,
+  and which other apps can read the screen, read notifications or act as device
+  administrators. It needs no model, key or permission. Each finding has a **Fix
+  it** button that hands the job to the agent in a new chat, which has to ask
+  before changing anything. Also in Settings.
+
+### Fixed
+- Scripts and tools regained their execute bits, lost in the 1.15 merge.
+
 ## [2.0.0] — 2026-11-02
 
 ### Changed

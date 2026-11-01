@@ -223,6 +223,7 @@ object Routes {
     // [T-thumb-notification-triggers] Notification trigger rules.
     const val NOTIFICATION_TRIGGERS = "notification_triggers"
     const val AGENT_SETUP = "agent_setup"
+    const val PHONE_CHECK = "phone_check"
 
     fun logDetail(fileName: String) = "log_detail/$fileName"
     fun configAuditDetail(auditId: String) = "config_audit_detail/$auditId"
@@ -569,7 +570,7 @@ fun AppNavigation(
         // fork exists to do. Cleared as soon as the screen is shown, so this
         // costs a returning user nothing.
         com.openminis.app.ui.trigger.AgentSetupPrefs.shouldOfferSetup(context) ->
-            Routes.AGENT_SETUP
+            Routes.PHONE_CHECK
         else -> Routes.SESSION_LIST
     }
     NavHost(
@@ -686,6 +687,7 @@ fun AppNavigation(
                 onSyncClick = { navController.safeNavigate(Routes.SYNC) },
                 onSoulClick = { navController.safeNavigate(Routes.SOUL) },
                 onAgentSetupClick = { navController.safeNavigate(Routes.AGENT_SETUP) },
+                onPhoneCheckClick = { navController.safeNavigate(Routes.PHONE_CHECK) },
                 onTriggersClick = { navController.safeNavigate(Routes.NOTIFICATION_TRIGGERS) },
                 onPermissionsClick = { navController.safeNavigate(Routes.PERMISSIONS) },
                 onUsageClick = { navController.safeNavigate(Routes.USAGE_STATS) },
@@ -1652,6 +1654,24 @@ fun AppNavigation(
         composable(Routes.NOTIFICATION_TRIGGERS) {
             com.openminis.app.ui.trigger.NotificationTriggersScreen(
                 onBack = { navController.safePopBackStack() },
+            )
+        }
+        // [T-thumb-phone-check] The front door on first run: something true about
+        // this phone before anyone has to find an API key.
+        composable(Routes.PHONE_CHECK) {
+            val firstRun = remember { com.openminis.app.ui.trigger.AgentSetupPrefs.shouldOfferSetup(context) }
+            com.openminis.app.ui.phonecheck.PhoneCheckScreen(
+                hasModel = { providerRepository.config.value.modelGroups.isNotEmpty() },
+                onBack = if (firstRun) null else ({ navController.safePopBackStack() }),
+                onContinue = if (firstRun) ({ navController.safeNavigate(Routes.AGENT_SETUP) }) else null,
+                onSkip = if (firstRun) ({
+                    com.openminis.app.ui.trigger.AgentSetupPrefs.markSeen(context)
+                    navController.navigate(Routes.SESSION_LIST) {
+                        popUpTo(Routes.PHONE_CHECK) { inclusive = true }
+                    }
+                }) else null,
+                onAddModel = { navController.safeNavigate(Routes.ADD_PROVIDER) },
+                onOpenChat = { navController.safeNavigate(Routes.chat(it)) },
             )
         }
         // [T-thumb-agent-setup] Permissions + first rule, in one guided screen.

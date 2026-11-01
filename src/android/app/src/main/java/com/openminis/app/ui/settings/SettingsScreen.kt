@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderShared
 import androidx.compose.material.icons.outlined.FrontHand
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Lock
@@ -114,6 +115,7 @@ fun SettingsScreen(
     // here it lived only under Scheduled tasks → bell, several screens from
     // anywhere a returning user actually is.
     onAgentSetupClick: () -> Unit = {},
+    onPhoneCheckClick: () -> Unit = {},
     onTriggersClick: () -> Unit = {},
     onPermissionsClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
@@ -243,6 +245,13 @@ fun SettingsScreen(
                 // [T-thumb-agent-setup] Answering on its own is what this fork
                 // adds; before this it was only reachable through Scheduled
                 // tasks, which reads like a place for something else entirely.
+                SettingsItem(
+                    icon = Icons.Outlined.PhoneAndroid,
+                    iconColor = Color(0xFF007AFF),
+                    title = stringResource(R.string.phone_check_title),
+                    subtitle = stringResource(R.string.phone_check_subtitle),
+                    onClick = onPhoneCheckClick,
+                )
                 SettingsItem(
                     icon = Icons.Outlined.FrontHand,
                     iconColor = Color(0xFFC9683A),

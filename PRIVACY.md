@@ -11,6 +11,13 @@ app (`com.fug.openthumb`) distributed from this repository.
 server of ours. Crash reports are written to files on your device
 (`filesDir/logs/`) and go nowhere unless you choose to share them.
 
+
+## Phone check
+
+Phone check reads storage, battery, patch level and app access on the device and
+keeps the result there. Tapping **Fix it** sends that one finding to the model
+provider you configured, like any other message.
+
 ## What leaves your device
 
 Only what you configure it to send:
