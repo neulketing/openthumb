@@ -21,6 +21,7 @@
 [![Downloads](https://img.shields.io/github/downloads/neulketing/openthumb/total?label=downloads&color=555)](https://github.com/neulketing/openthumb/releases)
 [![Last commit](https://img.shields.io/github/last-commit/neulketing/openthumb?color=555)](https://github.com/neulketing/openthumb/commits/main)
 [![No telemetry](https://img.shields.io/badge/telemetry-none-success)](PRIVACY.md)
+[![SPONSORED BY E2B FOR STARTUPS](https://img.shields.io/badge/SPONSORED%20BY-E2B%20FOR%20STARTUPS-ff3001?style=for-the-badge&labelColor=black)](https://e2b.dev/startups)
 
 </div>
 
